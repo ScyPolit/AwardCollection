@@ -2,9 +2,7 @@ FROM node:20-alpine as build-stage
 
 WORKDIR /app
 RUN corepack enable
-RUN corepack prepare pnpm@latest --activate
-
-RUN npm config set registry https://registry.npmmirror.com
+RUN corepack prepare pnpm@10.33.2 --activate
 
 COPY .npmrc package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
