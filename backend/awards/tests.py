@@ -22,6 +22,11 @@ from .services import (
 
 class WorkflowTests(TestCase):
     def setUp(self):
+        self.media_directory = tempfile.TemporaryDirectory()
+        self.media_override = override_settings(MEDIA_ROOT=Path(self.media_directory.name))
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+        self.addCleanup(self.media_directory.cleanup)
         User = get_user_model()
         self.owner = User.objects.create_user("owner", password="Test-Pass-2026")
         self.admin_a = User.objects.create_user("admin_a", password="Test-Pass-2026")
