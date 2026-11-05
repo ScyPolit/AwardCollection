@@ -26,7 +26,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-awardcollection}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-awardcollection}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-192.168.31.12,localhost}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-192.168.31.12,localhost,127.0.0.1}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://192.168.31.12:18080}
       SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       DJANGO_SETTINGS_MODULE: config.settings
@@ -39,7 +39,7 @@ services:
       - backup_data:/srv/backups
     networks: [internal]
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/', timeout=3)"]
       interval: 15s
       timeout: 5s
       retries: 12
