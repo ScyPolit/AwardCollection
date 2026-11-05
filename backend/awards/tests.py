@@ -174,6 +174,13 @@ class WorkflowTests(TestCase):
         response = client.post("/api/v1/auth/login/", {"username": "owner", "password": "Test-Pass-2026"}, format="json")
         self.assertEqual(response.status_code, 429)
 
+    def test_batch_detail_action_returns_awards_and_approvals(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.get(f"/api/v1/batches/{self.batch.id}/detail/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["awards"]), 1)
+        self.assertEqual(len(response.data["approvals"]), 2)
+
     def test_long_text_fits_or_raises_instead_of_truncating(self):
         size, _, lines = fit_text("长作品名" * 30, "Helvetica", 500, 120, 20, 8)
         self.assertGreaterEqual(size, 8)
