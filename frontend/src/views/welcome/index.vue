@@ -1,9 +1,3 @@
-<script setup lang="ts">
-defineOptions({
-  name: "Welcome"
-});
-</script>
-
-<template>
-  <h1>Pure-Admin-Thin（非国际化版本）</h1>
-</template>
+<script setup lang="ts">defineOptions({name:"Welcome"});</script>
+<template><div class="dashboard"><header><div><h1>证书签发工作台</h1><p>查看待办、生成任务和近期签发状态</p></div><el-tag type="success">系统运行正常</el-tag></header><div class="stats"><div><span>待审批批次</span><strong>0</strong></div><div><span>生成中任务</span><strong>0</strong></div><div><span>本月签发</span><strong>0</strong></div><div><span>未读消息</span><strong>0</strong></div></div><section><h2>近期动态</h2><el-empty description="尚无业务记录" :image-size="90"/></section></div></template>
+<style scoped>.dashboard{padding:24px}header{display:flex;justify-content:space-between;align-items:center}h1{margin:0;font-size:24px;letter-spacing:0}header p{margin:8px 0 0;color:#73767a}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:24px 0}.stats div,section{background:#fff;border:1px solid #ebeef5;padding:18px;border-radius:6px}.stats span{display:block;color:#73767a}.stats strong{display:block;margin-top:10px;font-size:28px}section h2{font-size:18px;letter-spacing:0}@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}}</style>

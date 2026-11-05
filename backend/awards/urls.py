@@ -16,5 +16,9 @@ urlpatterns = [
     path("routes/", views.public_routes),
     path("excel/template/", views.excel_template_view),
     path("excel/validate/", views.excel_validate_view),
+    path("approvals/<int:requirement_id>/decide/", views.approval_decide),
+    path("verification/challenge/", views.verification_challenge),
+    path("verification/query/", views.public_verify),
+    path("certificates/<int:certificate_id>/download/<str:kind>/", views.certificate_download),
     path("", include(router.urls)),
 ]
