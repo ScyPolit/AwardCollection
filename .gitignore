@@ -1,0 +1,23 @@
+# Local/system state
+clear/
+.env
+.env.*
+!.env.example
+*.credential.xml
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+Thumbs.db
+
+# Runtime data
+media/
+backups/
+postgres-data/
