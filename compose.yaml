@@ -61,6 +61,7 @@ services:
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
       WORKER_CONCURRENCY: "1"
+      RENDER_CONCURRENCY: ${RENDER_CONCURRENCY:-4}
     depends_on:
       db: {condition: service_healthy}
       api: {condition: service_healthy}
