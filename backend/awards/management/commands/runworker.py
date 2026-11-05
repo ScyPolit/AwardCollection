@@ -1,4 +1,6 @@
 import time
+import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -10,13 +12,28 @@ from awards.services import allocate_number, claim_task
 
 def process_task(task):
     lease_token = task.lease_token
+    departments = [
+        requirement.department
+        for requirement in task.version.required_departments.select_related("department").order_by("department_id")
+    ]
+    pending = []
     for award in task.version.awards.order_by("source_row"):
         with transaction.atomic():
             certificate = Certificate.objects.select_for_update().filter(award=award).first()
             if certificate is None:
                 certificate = Certificate.objects.create(award=award, number=allocate_number())
-        if not certificate.pdf:
-            pdf, image, digest = render_certificate(award, certificate.number)
+        if certificate.pdf:
+            continue
+        pending.append((award, certificate))
+
+    concurrency = max(1, min(int(os.getenv("RENDER_CONCURRENCY", "4")), 8))
+
+    def render(item):
+        award, certificate = item
+        return certificate, render_certificate(award, certificate.number, departments)
+
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        for certificate, (pdf, image, digest) in executor.map(render, pending):
             certificate.pdf.name = str(pdf.relative_to(pdf.parents[3])).replace("\\", "/")
             certificate.image.name = str(image.relative_to(image.parents[3])).replace("\\", "/")
             certificate.pdf_sha256 = digest

@@ -143,17 +143,20 @@ def append_signature(source, destination, department, index):
         PdfSigner(metadata, signer=signer, new_field_spec=spec).sign_pdf(writer, output=outf)
 
 
-def render_certificate(award, number):
+def render_certificate(award, number, departments=None):
     root = Path(settings.MEDIA_ROOT) / "protected" / "certificates" / str(datetime.now().year)
     root.mkdir(parents=True, exist_ok=True)
     base = root / number
     unsigned = base.with_suffix(".unsigned.pdf")
     render_unsigned(award, number, unsigned)
     current = unsigned
-    requirements = list(award.version.required_departments.select_related("department").order_by("department_id"))
-    for index, requirement in enumerate(requirements):
+    departments = departments or [
+        requirement.department
+        for requirement in award.version.required_departments.select_related("department").order_by("department_id")
+    ]
+    for index, department in enumerate(departments):
         signed = base.with_suffix(f".signed-{index + 1}.pdf")
-        append_signature(current, signed, requirement.department, index)
+        append_signature(current, signed, department, index)
         if current != unsigned and current.exists():
             current.unlink()
         current = signed
