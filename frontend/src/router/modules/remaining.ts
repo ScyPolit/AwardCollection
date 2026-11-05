@@ -10,6 +10,15 @@ export default [
       showLink: false
     }
   },
+  {
+    path: "/verify",
+    name: "PublicVerification",
+    component: () => import("@/views/business/verification.vue"),
+    meta: {
+      title: "证书编号查验",
+      showLink: false
+    }
+  },
   // 全屏403（无权访问）页面
   {
     path: "/access-denied",
