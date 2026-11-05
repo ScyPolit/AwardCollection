@@ -1,19 +1,19 @@
 import time
 import os
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
 from awards.models import AwardBatch, Certificate, GenerationTask
-from awards.renderer import render_certificate
+from awards.renderer import render_certificate_payload
 from awards.services import allocate_number, claim_task
 
 
 def process_task(task):
     lease_token = task.lease_token
     departments = [
-        requirement.department
+        {"id": requirement.department.id, "name": requirement.department.name}
         for requirement in task.version.required_departments.select_related("department").order_by("department_id")
     ]
     pending = []
@@ -28,12 +28,26 @@ def process_task(task):
 
     concurrency = max(1, min(int(os.getenv("RENDER_CONCURRENCY", "4")), 8))
 
-    def render(item):
+    def payload(item):
         award, certificate = item
-        return certificate, render_certificate(award, certificate.number, departments)
+        return ({
+            "team_name": award.team_name,
+            "members": award.members,
+            "award_name": award.award_name,
+            "work_name": award.work_name,
+        }, certificate.number, departments, certificate.id)
 
-    with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        for certificate, (pdf, image, digest) in executor.map(render, pending):
+    jobs = [payload(item) for item in pending]
+    with ProcessPoolExecutor(max_workers=concurrency) as executor:
+        results = executor.map(
+            render_certificate_payload,
+            (job[0] for job in jobs),
+            (job[1] for job in jobs),
+            (job[2] for job in jobs),
+            chunksize=1,
+        )
+        for job, (pdf, image, digest) in zip(jobs, results):
+            certificate = Certificate.objects.get(pk=job[3])
             certificate.pdf.name = str(pdf.relative_to(pdf.parents[3])).replace("\\", "/")
             certificate.image.name = str(image.relative_to(image.parents[3])).replace("\\", "/")
             certificate.pdf_sha256 = digest

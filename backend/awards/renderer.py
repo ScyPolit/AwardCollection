@@ -2,6 +2,7 @@ import hashlib
 import os
 from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import fitz
 from cryptography import x509
@@ -102,7 +103,7 @@ def department_pfx(department):
         f"dept-{department.id}".encode(), key, cert, None,
         serialization.BestAvailableEncryption(KEY_PASSWORD),
     )
-    temporary = path.with_suffix(".tmp")
+    temporary = path.with_suffix(f".{os.getpid()}.tmp")
     temporary.write_bytes(data)
     temporary.replace(path)
     return path
@@ -169,3 +170,9 @@ def render_certificate(award, number, departments=None):
     pixmap.save(image)
     document.close()
     return final_pdf, image, sha256(final_pdf)
+
+
+def render_certificate_payload(payload, number, department_payloads):
+    award = SimpleNamespace(**payload)
+    departments = [SimpleNamespace(**item) for item in department_payloads]
+    return render_certificate(award, number, departments)
