@@ -34,6 +34,12 @@ class DepartmentMembership(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["department", "user", "role"], name="uniq_department_member_role")]
 
 
+class LoginProtection(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="login_protection")
+    failed_attempts = models.PositiveIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+
+
 class Competition(TimeStampedModel):
     name = models.CharField(max_length=240)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_competitions")
@@ -186,6 +192,21 @@ class RevocationRequest(TimeStampedModel):
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.REVIEW)
 
 
+class RevocationDecision(TimeStampedModel):
+    class Decision(models.TextChoices):
+        APPROVED = "approved", "通过"
+        REJECTED = "rejected", "驳回"
+
+    request = models.ForeignKey(RevocationRequest, on_delete=models.CASCADE, related_name="decisions")
+    department = models.ForeignKey(Department, on_delete=models.PROTECT)
+    decision = models.CharField(max_length=16, choices=Decision.choices)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    comment = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["request", "department"], name="uniq_revocation_department")]
+
+
 class AuditEvent(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
@@ -205,3 +226,16 @@ class Notification(TimeStampedModel):
 class CertificateSequence(models.Model):
     year = models.PositiveIntegerField(unique=True)
     next_value = models.PositiveBigIntegerField(default=1)
+
+
+class SystemSetting(models.Model):
+    key = models.CharField(max_length=80, unique=True)
+    value = models.JSONField(default=dict)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class VerificationAttempt(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip_address = models.GenericIPAddressField()
+    certificate_number = models.CharField(max_length=32, blank=True)
+    successful = models.BooleanField(default=False)
