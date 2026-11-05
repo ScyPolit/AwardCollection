@@ -2,7 +2,7 @@ import axios from "axios";
 import type { App } from "vue";
 
 let config: object = {};
-const { VITE_PUBLIC_PATH } = import.meta.env;
+const VITE_PUBLIC_PATH = import.meta.env.VITE_PUBLIC_PATH || "/";
 
 const setConfig = (cfg?: unknown) => {
   config = Object.assign(config, cfg);
@@ -27,7 +27,7 @@ const getConfig = (key?: string): PlatformConfigs => {
 };
 
 /** 获取项目动态全局配置 */
-export const getPlatformConfig = async (app: App): Promise<undefined> => {
+export const getPlatformConfig = async (app: App): Promise<PlatformConfigs> => {
   app.config.globalProperties.$config = getConfig();
   return axios({
     method: "get",
