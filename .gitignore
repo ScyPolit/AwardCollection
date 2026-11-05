@@ -26,3 +26,4 @@ postgres-data/
 secrets/*
 !secrets/.gitkeep
 artifacts/**/.venv/
+.opencode/
