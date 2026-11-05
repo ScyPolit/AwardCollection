@@ -152,7 +152,9 @@ class WorkflowTests(TestCase):
         response = client.get(f"/api/v1/certificates/{certificate.id}/download/pdf/")
         self.assertEqual(response.status_code, 403)
         client.force_authenticate(self.owner)
-        self.assertEqual(client.get(f"/api/v1/certificates/{certificate.id}/download/pdf/").status_code, 200)
+        response = client.get(f"/api/v1/certificates/{certificate.id}/download/pdf/")
+        self.assertEqual(response.status_code, 200)
+        response.close()
 
     def test_verification_challenge_is_single_use(self):
         certificate = self.create_published_certificate()
