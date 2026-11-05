@@ -1,0 +1,43 @@
+{
+  "signature_count": 2,
+  "signatures": [
+    {
+      "field_name": "DeptA_Signature",
+      "intact": true,
+      "valid": true,
+      "trusted": true,
+      "bottom_line": true,
+      "modification_level": "ModificationLevel.FORM_FILLING",
+      "coverage": "SignatureCoverageLevel.ENTIRE_REVISION",
+      "summary": "INTACT:TRUSTED,EXTENDED_WITH_FORM_FILLING,ACCEPTABLE_MODIFICATIONS"
+    },
+    {
+      "field_name": "DeptB_Signature",
+      "intact": true,
+      "valid": true,
+      "trusted": true,
+      "bottom_line": true,
+      "modification_level": "ModificationLevel.NONE",
+      "coverage": "SignatureCoverageLevel.ENTIRE_FILE",
+      "summary": "INTACT:TRUSTED,UNTOUCHED"
+    }
+  ],
+  "checks": {
+    "two_signatures": true,
+    "all_intact": true,
+    "all_valid": true,
+    "all_trusted_in_test_context": true,
+    "all_bottom_line": true
+  },
+  "artifacts": {
+    "signed-dept-a.pdf": {
+      "sha256": "7b15a916199c056f487ac6a165550637f085f2ed8db34eb1ac5ffc168cad02a1",
+      "bytes": 60676
+    },
+    "signed-final.pdf": {
+      "sha256": "4393b66cd03f975138f18c3b7ad6b6c693a85009ce27ea83ca682040f44f9f31",
+      "bytes": 68636
+    }
+  },
+  "trust_note": "仅在显式信任本次生成的两张自签测试根证书的 ValidationContext 中 trusted；不代表操作系统或 Adobe 默认信任。"
+}
