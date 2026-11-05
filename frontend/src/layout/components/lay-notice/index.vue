@@ -1,14 +1,32 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import { noticesData } from "./data";
+import { ref, computed, onMounted } from "vue";
+import { http } from "@/utils/http";
 import NoticeList from "./components/NoticeList.vue";
 import BellIcon from "~icons/ep/bell";
 
 const noticesNum = ref(0);
-const notices = ref(noticesData);
-const activeKey = ref(noticesData[0]?.key);
+const notices = ref([
+  { key: "1", name: "通知", list: [], emptyText: "暂无通知" },
+  { key: "2", name: "消息", list: [], emptyText: "暂无消息" },
+  { key: "3", name: "待办", list: [], emptyText: "暂无待办" }
+]);
+const activeKey = ref("1");
 
-notices.value.map(v => (noticesNum.value += v.list.length));
+onMounted(async () => {
+  try {
+    const data = await http.get<any[], never>("/api/v1/notifications/");
+    notices.value[0].list = data.map(item => ({
+      avatar: "",
+      title: item.title,
+      description: item.body,
+      datetime: new Date(item.created_at).toLocaleString("zh-CN"),
+      type: "1"
+    }));
+    noticesNum.value = notices.value[0].list.length;
+  } catch {
+    noticesNum.value = 0;
+  }
+});
 
 const getLabel = computed(
   () => item =>
