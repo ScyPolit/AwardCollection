@@ -3,6 +3,9 @@ from .models import AwardBatch, Certificate, Competition, Notification, Seal, Te
 
 
 class CompetitionSerializer(serializers.ModelSerializer):
+    departments = serializers.PrimaryKeyRelatedField(many=True, queryset=Competition._meta.get_field("departments").remote_field.model.objects.all(), required=False, allow_empty=True)
+    collaborators = serializers.PrimaryKeyRelatedField(many=True, queryset=Competition._meta.get_field("collaborators").remote_field.model.objects.all(), required=False, allow_empty=True)
+
     class Meta:
         model = Competition
         fields = ["id", "name", "award_presets", "active", "created_at", "departments", "collaborators"]

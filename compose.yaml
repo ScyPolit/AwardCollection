@@ -28,6 +28,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-192.168.31.12,localhost}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-http://192.168.31.12:18080}
+      SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       DJANGO_SETTINGS_MODULE: config.settings
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
@@ -53,6 +54,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-awardcollection}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-awardcollection}
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       DJANGO_SETTINGS_MODULE: config.settings
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
