@@ -20,7 +20,7 @@ export const batchProgress=(id:number)=>http.get<any,never>(`/api/v1/batches/${i
 export const importAwards=(id:number,file:File,expectedVersion:number)=>{const data=new FormData();data.append("file",file);data.append("expected_version",String(expectedVersion));return http.post<any,FormData>(`/api/v1/batches/${id}/import/`,{data,headers:{"Content-Type":"multipart/form-data"}})};
 export const listApprovals=()=>http.get<Approval[],never>("/api/v1/approvals/");
 export const decideApproval=(id:number,decision:string,comment:string)=>http.post<any,object>(`/api/v1/approvals/${id}/decide/`,{data:{decision,comment}});
-export const listCertificates=()=>http.get<Certificate[],never>("/api/v1/certificates/");
+export const listCertificates=(page=1,pageSize=20,search="")=>http.get<{count:number;results:Certificate[]},never>("/api/v1/certificates/",{params:{page,page_size:pageSize,search}});
 export const revokeCertificate=(id:number,reason:string)=>http.post<any,object>(`/api/v1/certificates/${id}/revoke/`,{data:{reason}});
 export const listRevocations=()=>http.get<any[],never>("/api/v1/revocations/");
 export const decideRevocation=(id:number,department:number,decision:string)=>http.post<any,object>(`/api/v1/revocations/${id}/decide/`,{data:{department,decision}});

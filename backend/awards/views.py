@@ -307,6 +307,29 @@ class CertificateViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return Certificate.objects.filter(award__version__batch__competition__in=accessible_competitions(self.request.user)).select_related("award__version__batch__competition").distinct().order_by("-created_at")
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        keyword = request.query_params.get("search", "").strip()
+        if keyword:
+            queryset = queryset.filter(
+                models.Q(number__icontains=keyword)
+                | models.Q(award__team_name__icontains=keyword)
+                | models.Q(award__version__batch__competition__name__icontains=keyword)
+            )
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+            page_size = min(100, max(1, int(request.query_params.get("page_size", 20))))
+        except ValueError:
+            return Response({"detail": "分页参数无效"}, status=400)
+        count = queryset.count()
+        start = (page - 1) * page_size
+        return Response({
+            "count": count,
+            "page": page,
+            "page_size": page_size,
+            "results": CertificateSerializer(queryset[start:start + page_size], many=True).data,
+        })
+
     @action(detail=False, methods=["get"], url_path="batch/(?P<batch_id>[^/.]+)/archive")
     def archive(self, request, batch_id=None):
         certificates = self.get_queryset().filter(award__version__batch_id=batch_id, published_at__isnull=False)

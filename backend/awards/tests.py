@@ -181,6 +181,16 @@ class WorkflowTests(TestCase):
         self.assertEqual(len(response.data["awards"]), 1)
         self.assertEqual(len(response.data["approvals"]), 2)
 
+    def test_certificate_archive_is_paginated_and_searchable(self):
+        certificate = self.create_published_certificate()
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.get("/api/v1/certificates/?page=1&page_size=20")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(response.data["results"][0]["number"], certificate.number)
+        response = client.get(f"/api/v1/certificates/?search={certificate.number}")
+        self.assertEqual(response.data["count"], 1)
+
     def test_long_text_fits_or_raises_instead_of_truncating(self):
         size, _, lines = fit_text("长作品名" * 30, "Helvetica", 500, 120, 20, 8)
         self.assertGreaterEqual(size, 8)
