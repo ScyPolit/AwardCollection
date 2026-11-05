@@ -1,0 +1,61 @@
+{
+  "font_path": "C:\\Windows\\Fonts\\Deng.ttf",
+  "font_sha256": "e051009b42b454352a90ae0c9b8adb58bbdbcd168768750b35bc3357510de141",
+  "missing_glyphs": [],
+  "boxes": {
+    "work": {
+      "fits": true,
+      "font_size": 21.5,
+      "lines": [
+        "面向多部门协同治理场景的校园竞赛电子证书可信签发、",
+        "长文本自适应排版与可追溯验证关键技术研究及示范应用"
+      ],
+      "leading": 29.025000000000002,
+      "max_width": 537.5,
+      "box": [
+        150,
+        315,
+        542,
+        72
+      ],
+      "used_height": 58.050000000000004
+    },
+    "members": {
+      "fits": true,
+      "font_size": 19.0,
+      "lines": [
+        "张晨曦、李若水、王思远、赵清和、陈星野、周明澈、吴知夏、",
+        "郑云舟、孙景行、何书瑶、林望舒、徐嘉言、高予安、郭青禾、",
+        "罗嘉树、梁清欢、宋知遥、谢临川"
+      ],
+      "leading": 25.650000000000002,
+      "max_width": 532.0,
+      "box": [
+        150,
+        220,
+        542,
+        78
+      ],
+      "used_height": 76.95
+    }
+  },
+  "page_size_pt": [
+    842,
+    595
+  ],
+  "checks": {
+    "font_complete": true,
+    "all_boxes_fit": true,
+    "pdf_pages": 1
+  },
+  "artifacts": {
+    "unsigned.pdf": {
+      "sha256": "425c1444e55b6a7c0734e688191d4c9b0238fa2ca58aa2614133c3cc3148f9b6",
+      "bytes": 52616
+    },
+    "unsigned-preview.png": {
+      "sha256": "0c9b83cd39bd093af773c1ed2f18cdf1039cb9e7da0a67a3bb69271b8cc9f670",
+      "bytes": 108477
+    }
+  }
+}
