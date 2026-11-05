@@ -1,0 +1,7 @@
+<script setup lang="ts">
+import {onMounted,reactive,ref} from "vue";import {ElMessage} from "element-plus";import {createCompetition,listCompetitions,type Competition} from "@/api/business";
+const rows=ref<Competition[]>([]),dialog=ref(false);const form=reactive({name:"",award_presets:[],departments:[],collaborators:[]});
+async function load(){rows.value=await listCompetitions()} async function submit(){await createCompetition(form);dialog.value=false;ElMessage.success("竞赛已创建并立即生效");await load()} onMounted(load);
+</script>
+<template><div class="page"><header><div><h2>竞赛管理</h2><p>维护竞赛、协作负责人和拟盖章部门</p></div><el-button type="primary" @click="dialog=true">新建竞赛</el-button></header><el-table :data="rows" border><el-table-column prop="name" label="竞赛名称"/><el-table-column prop="created_at" label="创建时间"/><el-table-column label="状态" width="100"><template #default><el-tag type="success">生效</el-tag></template></el-table-column></el-table><el-dialog v-model="dialog" title="新建竞赛" width="520"><el-form label-position="top"><el-form-item label="竞赛名称"><el-input v-model="form.name"/></el-form-item></el-form><template #footer><el-button @click="dialog=false">取消</el-button><el-button type="primary" :disabled="!form.name" @click="submit">创建</el-button></template></el-dialog></div></template>
+<style scoped>.page{padding:20px}header{display:flex;justify-content:space-between;margin-bottom:18px}h2{margin:0;font-size:20px;letter-spacing:0}p{color:#73767a}</style>
