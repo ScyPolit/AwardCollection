@@ -1,0 +1,93 @@
+name: awardcollection-v1-test
+services:
+  db:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-awardcollection}
+      POSTGRES_USER: ${POSTGRES_USER:-awardcollection}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-awardcollection} -d ${POSTGRES_DB:-awardcollection}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+    deploy:
+      resources:
+        limits: {memory: 1G}
+
+  api:
+    build: {context: ./backend}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-awardcollection}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-awardcollection}
+      DJANGO_SETTINGS_MODULE: config.settings
+      MEDIA_ROOT: /srv/media
+      BACKUP_ROOT: /srv/backups
+    depends_on:
+      db: {condition: service_healthy}
+    volumes:
+      - media_data:/srv/media
+      - backup_data:/srv/backups
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits: {memory: 1G}
+
+  worker:
+    build: {context: ./backend}
+    restart: unless-stopped
+    command: ["python", "manage.py", "runworker"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-awardcollection}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-awardcollection}
+      DJANGO_SETTINGS_MODULE: config.settings
+      MEDIA_ROOT: /srv/media
+      BACKUP_ROOT: /srv/backups
+      WORKER_CONCURRENCY: "1"
+    depends_on:
+      db: {condition: service_healthy}
+      api: {condition: service_healthy}
+    volumes:
+      - media_data:/srv/media
+      - backup_data:/srv/backups
+    networks: [internal]
+    deploy:
+      resources:
+        limits: {memory: 2G}
+
+  web:
+    build: {context: ./frontend}
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+    ports:
+      - "${APP_PORT:-18080}:8080"
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    deploy:
+      resources:
+        limits: {memory: 256M}
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+volumes:
+  db_data:
+  media_data:
+  backup_data:
+networks:
+  internal:
+    driver: bridge
