@@ -57,7 +57,9 @@ def process_task(task):
             current = GenerationTask.objects.select_for_update().get(pk=task.pk)
             if current.lease_token != lease_token or current.status != GenerationTask.Status.RUNNING:
                 raise RuntimeError("任务租约已失效，旧 worker 停止写入")
-            current.processed = current.version.awards.filter(certificate__published_at__isnull=False).count()
+            current.processed = Certificate.objects.filter(
+                award__version=current.version, published_at__isnull=False
+            ).count()
             current.lease_expires_at = timezone.now() + timedelta(minutes=10)
             current.save(update_fields=["processed", "lease_expires_at", "updated_at"])
     with transaction.atomic():
