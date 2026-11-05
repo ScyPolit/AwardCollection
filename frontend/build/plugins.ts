@@ -41,12 +41,14 @@ export function getPluginsList(
      */
     removeNoMatch(),
     // mock支持
-    vitePluginFakeServer({
-      logger: false,
-      include: "mock",
-      infixName: false,
-      enableProd: true
-    }),
+    lifecycle === "dev" || lifecycle === "serve"
+      ? vitePluginFakeServer({
+          logger: false,
+          include: "mock",
+          infixName: false,
+          enableProd: false
+        })
+      : null,
     // svg组件化支持
     svgLoader(),
     // 自动按需加载图标
