@@ -305,7 +305,10 @@ class CertificateViewSet(ReadOnlyModelViewSet):
     serializer_class = CertificateSerializer
 
     def get_queryset(self):
-        return Certificate.objects.filter(award__version__batch__competition__in=accessible_competitions(self.request.user)).select_related("award__version__batch__competition").distinct().order_by("-created_at")
+        return Certificate.objects.filter(
+            award__version__batch__competition__in=accessible_competitions(self.request.user),
+            published_at__isnull=False,
+        ).select_related("award__version__batch__competition").distinct().order_by("-created_at")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()

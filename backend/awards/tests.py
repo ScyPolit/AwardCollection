@@ -190,6 +190,9 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.data["results"][0]["number"], certificate.number)
         response = client.get(f"/api/v1/certificates/?search={certificate.number}")
         self.assertEqual(response.data["count"], 1)
+        Certificate.objects.create(award=TeamAward.objects.create(version=self.version, source_row=99, members=["待生成"], award_name="测试"), number=allocate_number())
+        response = client.get("/api/v1/certificates/")
+        self.assertEqual(response.data["count"], 1)
 
     def test_long_text_fits_or_raises_instead_of_truncating(self):
         size, _, lines = fit_text("长作品名" * 30, "Helvetica", 500, 120, 20, 8)
