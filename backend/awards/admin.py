@@ -8,5 +8,7 @@ for model in (
     models.ApprovalDecision, models.GenerationTask, models.Certificate,
     models.RevocationRequest, models.AuditEvent, models.Notification,
     models.CertificateSequence,
+    models.LoginProtection, models.RevocationDecision, models.SystemSetting,
+    models.VerificationAttempt,
 ):
     admin.site.register(model)

@@ -8,7 +8,9 @@ from openpyxl import Workbook, load_workbook
 
 from .models import (
     ApprovalDecision, ApprovalDepartment, AwardBatch, BatchVersion,
-    CertificateSequence, DepartmentMembership, GenerationTask,
+    AuditEvent, Certificate, CertificateSequence, DepartmentMembership,
+    GenerationTask, Notification, RevocationDecision, RevocationRequest,
+    TeamAward,
 )
 
 
@@ -61,6 +63,41 @@ def submit_batch(batch_id, actor):
 
 
 @transaction.atomic
+def revise_batch(batch_id, actor, rows, expected_version):
+    batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
+    if batch.current_version != expected_version:
+        raise ValueError("批次已被其他人修改，请刷新后重试")
+    if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED, AwardBatch.Status.REVIEW]:
+        raise ValueError("当前批次状态不允许修改")
+    previous = BatchVersion.objects.select_related("template_version").get(batch=batch, number=expected_version)
+    number = expected_version + 1
+    version = BatchVersion.objects.create(
+        batch=batch,
+        number=number,
+        template_version=previous.template_version,
+        output_formats=previous.output_formats,
+        snapshot=previous.snapshot,
+    )
+    for requirement in previous.required_departments.all():
+        ApprovalDepartment.objects.create(
+            version=version,
+            department=requirement.department,
+            seal_version=requirement.seal_version,
+        )
+    TeamAward.objects.bulk_create([
+        TeamAward(version=version, last_edited_by=actor, **row) for row in rows
+    ])
+    batch.current_version = number
+    batch.status = AwardBatch.Status.DRAFT
+    batch.save(update_fields=["current_version", "status", "updated_at"])
+    AuditEvent.objects.create(
+        actor=actor, action="batch.revised", object_type="AwardBatch",
+        object_id=str(batch.id), detail={"from": expected_version, "to": number},
+    )
+    return version
+
+
+@transaction.atomic
 def decide(requirement_id, actor, decision, comment=""):
     requirement = ApprovalDepartment.objects.select_for_update().select_related("version__batch").get(pk=requirement_id)
     version = requirement.version
@@ -86,6 +123,70 @@ def decide(requirement_id, actor, decision, comment=""):
         batch.save(update_fields=["status", "updated_at"])
         return task
     return None
+
+
+@transaction.atomic
+def request_revocation(certificate_id, actor, reason):
+    certificate = Certificate.objects.select_for_update().select_related("award__version").get(pk=certificate_id)
+    if certificate.status != Certificate.Status.ACTIVE:
+        raise ValueError("证书当前不是有效状态")
+    if certificate.revocation_requests.filter(status=RevocationRequest.Status.REVIEW).exists():
+        raise ValueError("已有待审批的作废申请")
+    request = RevocationRequest.objects.create(certificate=certificate, reason=reason, requested_by=actor)
+    departments = certificate.award.version.required_departments.values_list("department_id", flat=True)
+    admin_ids = DepartmentMembership.objects.filter(
+        department_id__in=departments, role=DepartmentMembership.Role.ADMIN, active=True,
+    ).values_list("user_id", flat=True)
+    Notification.objects.bulk_create([
+        Notification(user_id=user_id, title="证书作废审批", body=f"证书 {certificate.number} 申请作废：{reason}")
+        for user_id in set(admin_ids)
+    ])
+    AuditEvent.objects.create(actor=actor, action="revocation.requested", object_type="Certificate", object_id=str(certificate.id), detail={"reason": reason})
+    return request
+
+
+@transaction.atomic
+def decide_revocation(request_id, department_id, actor, decision, comment=""):
+    request = RevocationRequest.objects.select_for_update().select_related("certificate__award__version").get(pk=request_id)
+    if request.status != RevocationRequest.Status.REVIEW:
+        raise ValueError("作废申请已结束")
+    required_ids = set(request.certificate.award.version.required_departments.values_list("department_id", flat=True))
+    if department_id not in required_ids:
+        raise PermissionError("该部门不在原盖章部门中")
+    if not DepartmentMembership.objects.filter(department_id=department_id, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists():
+        raise PermissionError("无本部门作废审批权限")
+    RevocationDecision.objects.update_or_create(
+        request=request, department_id=department_id,
+        defaults={"decision": decision, "actor": actor, "comment": comment},
+    )
+    if decision == RevocationDecision.Decision.REJECTED:
+        request.status = RevocationRequest.Status.REJECTED
+        request.save(update_fields=["status", "updated_at"])
+    else:
+        approved_ids = set(request.decisions.filter(decision=RevocationDecision.Decision.APPROVED).values_list("department_id", flat=True))
+        if approved_ids == required_ids:
+            request.status = RevocationRequest.Status.APPROVED
+            request.certificate.status = Certificate.Status.VOID
+            request.certificate.save(update_fields=["status", "updated_at"])
+            request.save(update_fields=["status", "updated_at"])
+    AuditEvent.objects.create(actor=actor, action="revocation.decided", object_type="RevocationRequest", object_id=str(request.id), detail={"department": department_id, "decision": decision})
+    return request
+
+
+@transaction.atomic
+def emergency_void(certificate_id, actor, reason, password):
+    if not actor.is_superuser or not actor.check_password(password):
+        raise PermissionError("超管身份或密码复核失败")
+    if not reason.strip():
+        raise ValueError("必须填写应急原因")
+    certificate = Certificate.objects.select_for_update().get(pk=certificate_id)
+    certificate.status = Certificate.Status.VOID
+    certificate.save(update_fields=["status", "updated_at"])
+    AuditEvent.objects.create(actor=actor, action="emergency.void", object_type="Certificate", object_id=str(certificate.id), detail={"reason": reason})
+    related_ids = set(certificate.award.version.batch.competition.collaborators.values_list("id", flat=True))
+    related_ids.update(DepartmentMembership.objects.filter(department__competitions=certificate.award.version.batch.competition, role=DepartmentMembership.Role.ADMIN).values_list("user_id", flat=True))
+    Notification.objects.bulk_create([Notification(user_id=user_id, title="超管应急作废", body=f"证书 {certificate.number} 已应急作废：{reason}") for user_id in related_ids if user_id != actor.id])
+    return certificate
 
 
 @transaction.atomic

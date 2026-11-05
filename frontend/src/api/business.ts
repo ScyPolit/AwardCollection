@@ -1,7 +1,35 @@
 import { http } from "@/utils/http";
-export type Competition = { id:number; name:string; created_at:string };
-export type Batch = { id:number; name:string; status:string; current_version:number; competition:number; competition_name:string };
+
+export type Option = { id: number; name?: string; code?: string; username?: string; label?: string };
+export type Competition = { id:number; name:string; created_at:string; departments:number[]; department_names:string[]; collaborators:number[]; collaborator_names:string[]; award_presets:string[] };
+export type Batch = { id:number; name:string; status:string; current_version:number; competition:number; competition_name:string; team_count:number; approval_summary:{approved:number;total:number} };
+export type Approval = { id:number; batch_id:number; batch_name:string; version_number:number; department:number; department_name:string; competition_name:string; decision:string|null };
+export type Certificate = { id:number; number:string; status:string; competition_name:string; batch_name:string; team_name:string; award_name:string; published_at:string };
+export type Template = { id:number; name:string; department:number; department_name:string; published:boolean; latest_version?:{number:number;canvas:Record<string,unknown>} };
+export type Seal = { id:number; name:string; department:number; department_name:string; active:boolean; versions:Array<{id:number;number:number;sha256:string}> };
+
+export const listDepartments=()=>http.get<Option[],never>("/api/v1/departments/");
+export const listUsers=()=>http.get<Option[],never>("/api/v1/users/");
 export const listCompetitions=()=>http.get<Competition[],never>("/api/v1/competitions/");
 export const createCompetition=(data:object)=>http.post<Competition,object>("/api/v1/competitions/",{data});
 export const listBatches=()=>http.get<Batch[],never>("/api/v1/batches/");
 export const createBatch=(data:object)=>http.post<Batch,object>("/api/v1/batches/",{data});
+export const batchDetail=(id:number)=>http.get<any,never>(`/api/v1/batches/${id}/detail/`);
+export const submitBatch=(id:number)=>http.post<any,object>(`/api/v1/batches/${id}/submit/`,{data:{}});
+export const batchProgress=(id:number)=>http.get<any,never>(`/api/v1/batches/${id}/progress/`);
+export const importAwards=(id:number,file:File,expectedVersion:number)=>{const data=new FormData();data.append("file",file);data.append("expected_version",String(expectedVersion));return http.post<any,FormData>(`/api/v1/batches/${id}/import/`,{data,headers:{"Content-Type":"multipart/form-data"}})};
+export const listApprovals=()=>http.get<Approval[],never>("/api/v1/approvals/");
+export const decideApproval=(id:number,decision:string,comment:string)=>http.post<any,object>(`/api/v1/approvals/${id}/decide/`,{data:{decision,comment}});
+export const listCertificates=()=>http.get<Certificate[],never>("/api/v1/certificates/");
+export const revokeCertificate=(id:number,reason:string)=>http.post<any,object>(`/api/v1/certificates/${id}/revoke/`,{data:{reason}});
+export const listRevocations=()=>http.get<any[],never>("/api/v1/revocations/");
+export const decideRevocation=(id:number,department:number,decision:string)=>http.post<any,object>(`/api/v1/revocations/${id}/decide/`,{data:{department,decision}});
+export const listTemplates=()=>http.get<Template[],never>("/api/v1/templates/");
+export const saveTemplateVersion=(id:number,canvas:object)=>http.post<any,object>(`/api/v1/templates/${id}/save_version/`,{data:{canvas}});
+export const listSeals=()=>http.get<Seal[],never>("/api/v1/seals/");
+export const createSeal=(data:object)=>http.post<Seal,object>("/api/v1/seals/",{data});
+export const updateSeal=(id:number,data:object)=>http.request<Seal>("patch",`/api/v1/seals/${id}/`,{data});
+export const uploadSeal=(id:number,file:File)=>{const data=new FormData();data.append("file",file);return http.post<any,FormData>(`/api/v1/seals/${id}/upload_version/`,{data,headers:{"Content-Type":"multipart/form-data"}})};
+export const getChallenge=()=>http.get<{question:string},never>("/api/v1/verification/challenge/");
+export const publicVerify=(data:object)=>http.post<any,object>("/api/v1/verification/query/",{data});
+export const adminVerify=(number:string)=>http.post<any,object>("/api/v1/verification/admin/",{data:{number}});

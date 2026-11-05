@@ -44,6 +44,41 @@ def font_path():
     raise RuntimeError("未找到随部署提供的中文字体")
 
 
+def wrap_text(text, font_name, size, width):
+    lines, current = [], ""
+    for character in text:
+        candidate = current + character
+        if current and pdfmetrics.stringWidth(candidate, font_name, size) > width:
+            lines.append(current)
+            current = character
+        else:
+            current = candidate
+    if current:
+        lines.append(current)
+    return lines or [""]
+
+
+def fit_text(text, font_name, width, height, maximum, minimum):
+    for size in range(maximum, minimum - 1, -1):
+        lines = wrap_text(text, font_name, size, width)
+        leading = size * 1.35
+        if len(lines) * leading <= height:
+            return size, leading, lines
+    raise ValueError("文本在最小字号下仍然溢出")
+
+
+def draw_fitted(c, text, field, x, y, width, height, maximum, minimum):
+    try:
+        size, leading, lines = fit_text(text, "CertificateCJK", width, height, maximum, minimum)
+    except ValueError as exc:
+        raise ValueError(f"{field}：{exc}") from exc
+    cursor = y + height - leading
+    c.setFont("CertificateCJK", size)
+    for line in lines:
+        c.drawCentredString(x + width / 2, cursor, line)
+        cursor -= leading
+
+
 def department_pfx(department):
     key_dir = Path(settings.MEDIA_ROOT) / "protected" / "signing-keys"
     key_dir.mkdir(parents=True, exist_ok=True)
@@ -84,13 +119,12 @@ def render_unsigned(award, number, output):
     c.drawCentredString(page[0] / 2, 550, "校赛电子证书系统 | 测试专用")
     c.setFont("CertificateCJK", 34)
     c.drawCentredString(page[0] / 2, 465, "获 奖 证 书")
-    c.setFont("CertificateCJK", 20)
     team = award.team_name or "、".join(award.members)
-    c.drawCentredString(page[0] / 2, 370, team[:42])
+    draw_fitted(c, team, "团队名称或成员", 110, 340, 622, 65, 22, 11)
     c.setFont("CertificateCJK", 16)
     c.drawCentredString(page[0] / 2, 315, f"荣获 {award.award_name}")
     if award.work_name:
-        c.drawCentredString(page[0] / 2, 265, award.work_name[:50])
+        draw_fitted(c, award.work_name, "作品名称", 110, 230, 622, 62, 18, 10)
     c.setFont("CertificateCJK", 11)
     c.drawString(72, 75, f"证书编号：{number}")
     c.drawRightString(770, 75, "本文件为系统验收测试产物")
