@@ -33,6 +33,7 @@ def sha256(path):
 def font_path():
     candidates = [
         os.getenv("CERTIFICATE_FONT", ""),
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
         "C:/Windows/Fonts/msyh.ttc",
