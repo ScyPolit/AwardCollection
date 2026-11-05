@@ -49,6 +49,8 @@ class Command(BaseCommand):
         while True:
             task = claim_task()
             if task is None:
+                if options["once"]:
+                    return
                 time.sleep(2)
                 continue
             try:
@@ -57,3 +59,8 @@ class Command(BaseCommand):
                 GenerationTask.objects.filter(pk=task.pk, lease_token=task.lease_token).update(
                     status=GenerationTask.Status.FAILED, error=str(exc)
                 )
+            if options["once"]:
+                return
+
+    def add_arguments(self, parser):
+        parser.add_argument("--once", action="store_true", help="Process at most one queued task and exit")
