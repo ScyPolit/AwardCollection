@@ -175,8 +175,8 @@ class BatchViewSet(ModelViewSet):
         for department, seal in selected:
             ApprovalDepartment.objects.create(version=version, department=department, seal_version=seal)
 
-    @action(detail=True, methods=["get"])
-    def detail(self, request, pk=None):
+    @action(detail=True, methods=["get"], url_path="detail")
+    def overview(self, request, pk=None):
         batch = self.get_object()
         version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
         return Response({
