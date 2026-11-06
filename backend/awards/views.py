@@ -470,7 +470,7 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
         user = self.request.user
         qs = ApprovalDepartment.objects.select_related("department", "version__batch__competition")
         if user.is_superuser:
-            return qs.order_by("-created_at")
+            return qs.filter(version__batch__status=AwardBatch.Status.REVIEW).order_by("-created_at")
         departments = DepartmentMembership.objects.filter(user=user, role=DepartmentMembership.Role.ADMIN, active=True).values_list("department_id", flat=True)
         return qs.filter(department_id__in=departments, version__batch__status=AwardBatch.Status.REVIEW).order_by("-created_at")
 
