@@ -9,6 +9,7 @@ export type Template = { id:number; name:string; department:number; department_n
 export type Seal = { id:number; name:string; department:number; department_name:string; active:boolean; versions:Array<{id:number;number:number;sha256:string}> };
 
 export const listDepartments=()=>http.get<Option[],never>("/api/v1/departments/");
+export const createDepartment=(data:object)=>http.post<Option,object>("/api/v1/departments/",{data});
 export const listUsers=()=>http.get<Option[],never>("/api/v1/users/");
 export const listCompetitions=()=>http.get<Competition[],never>("/api/v1/competitions/");
 export const createCompetition=(data:object)=>http.post<Competition,object>("/api/v1/competitions/",{data});

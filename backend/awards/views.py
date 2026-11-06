@@ -20,7 +20,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from .models import (
-    ApprovalDepartment, AwardBatch, BatchVersion, Certificate, Competition,
+    ApprovalDepartment, AuditEvent, AwardBatch, BatchVersion, Certificate, Competition,
     Department, DepartmentMembership, GenerationTask, LoginProtection, Notification,
     RevocationDecision, RevocationRequest, Seal, SealVersion, SystemSetting,
     TeamAward, Template, TemplateVersion, VerificationAttempt,
@@ -163,6 +163,7 @@ def public_verification_setting(request):
 
 
 @api_view(["GET", "POST"])
+@transaction.atomic
 def account_management(request):
     User = get_user_model()
     if request.method == "GET":
@@ -208,8 +209,14 @@ def account_management(request):
 
 
 @api_view(["POST"])
+@transaction.atomic
 def membership_management(request):
-    user = get_user_model().objects.filter(pk=request.data.get("user")).first()
+    users = get_user_model().objects
+    user = (
+        users.filter(pk=request.data["user"]).first()
+        if request.data.get("user")
+        else users.filter(username=str(request.data.get("username", "")).strip()).first()
+    )
     department = Department.objects.filter(pk=request.data.get("department")).first()
     role = request.data.get("role")
     if not user or not department or role not in DepartmentMembership.Role.values:
@@ -225,11 +232,27 @@ def membership_management(request):
         user=user, department=department, role=role,
         defaults={"active": bool(request.data.get("active", True))},
     )
+    AuditEvent.objects.create(
+        actor=request.user, action="membership.updated", object_type="DepartmentMembership",
+        object_id=str(membership.id),
+        detail={"user": user.id, "department": department.id, "role": role, "active": membership.active},
+    )
     return Response({"id": membership.id, "active": membership.active})
 
 
-class DepartmentViewSet(ReadOnlyModelViewSet):
+class DepartmentViewSet(ModelViewSet):
     serializer_class = DepartmentSerializer
+    http_method_names = ["get", "post", "put", "patch", "head", "options"]
+
+    def perform_create(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("只有超管可以创建部门")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if not self.request.user.is_superuser:
+            raise PermissionDenied("只有超管可以修改部门")
+        serializer.save()
 
     def get_queryset(self):
         if self.request.user.is_superuser:
@@ -492,8 +515,12 @@ class SealViewSet(ModelViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return Seal.objects.all().select_related("department").prefetch_related("versions")
-        departments = DepartmentMembership.objects.filter(user=self.request.user, role=DepartmentMembership.Role.ADMIN, active=True).values_list("department_id", flat=True)
-        return Seal.objects.filter(department_id__in=departments).select_related("department").prefetch_related("versions")
+        memberships = DepartmentMembership.objects.filter(user=self.request.user, active=True)
+        administered = memberships.filter(role=DepartmentMembership.Role.ADMIN).values_list("department_id", flat=True)
+        allowed = models.Q(department_id__in=administered)
+        if self.action in {"list", "retrieve"}:
+            allowed |= models.Q(active=True, department_id__in=memberships.values_list("department_id", flat=True))
+        return Seal.objects.filter(allowed).select_related("department").prefetch_related("versions")
 
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
