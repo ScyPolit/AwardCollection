@@ -599,6 +599,7 @@ class WorkflowTests(TestCase):
         shape={'id':'shape','type':'shape','kind':'freehand','x':20,'y':20,'width':200,'height':100,'stroke':'#123456','fill':'none','strokeWidth':2,'points':[[0,0],[1,1]]}
         bad_layers=[{**shape,'points':[[0,0],[2,1]]},{**shape,'points':[[0,0]]},{**shape,'points':[[0,0]]*1001},{**shape,'stroke':None},{**shape,'kind':'script'},{**shape,'strokeWidth':50},
                     {'id':'t','type':'text','field':'static','text':'证书','x':20,'y':20,'width':200,'height':100,'bold':'yes'}]
+        bad_layers += [{key:value for key,value in shape.items() if key != missing} for missing in ('x','y','width','height','stroke','fill','strokeWidth')]
         for layer in bad_layers:
             response=client.post('/api/v1/templates/layout/',{'canvas':{'page':{'width':842,'height':595},'layers':[layer]}},format='json')
             self.assertEqual(response.status_code,400,response.data)
