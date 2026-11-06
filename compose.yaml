@@ -1,4 +1,9 @@
 name: awardcollection-v1-test
+x-application-logging: &application-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
 services:
   db:
     image: postgres:17.6-alpine
@@ -21,6 +26,7 @@ services:
         limits: {memory: 1G}
 
   api:
+    logging: *application-logging
     build:
       context: ${APP_SOURCE_DIR:-.}/backend
       args:
@@ -54,6 +60,7 @@ services:
         limits: {memory: 1G}
 
   worker:
+    logging: *application-logging
     build:
       context: ${APP_SOURCE_DIR:-.}/backend
       args:
@@ -84,6 +91,7 @@ services:
         limits: {memory: 2G}
 
   web:
+    logging: *application-logging
     build:
       context: ${APP_SOURCE_DIR:-.}/frontend
       args:

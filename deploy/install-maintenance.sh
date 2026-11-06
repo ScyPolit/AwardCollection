@@ -37,3 +37,18 @@ systemd-analyze verify /etc/systemd/system/awardcollection-maintenance.service /
 systemctl daemon-reload
 systemctl enable --now awardcollection-maintenance.timer
 systemctl list-timers awardcollection-maintenance.timer --no-pager
+cat >/etc/logrotate.d/awardcollection <<'ROTATE'
+/opt/awardcollection-v1-test/app/runtime/maintenance.log {
+    weekly
+    maxsize 10M
+    rotate 8
+    compress
+    missingok
+    notifempty
+    copytruncate
+    su root root
+}
+ROTATE
+if command -v logrotate >/dev/null 2>&1; then
+  logrotate --debug /etc/logrotate.d/awardcollection
+fi
