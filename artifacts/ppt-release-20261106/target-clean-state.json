@@ -1,0 +1,23 @@
+{
+  "accounts": 1,
+  "templates": 1,
+  "template_name": "标准模板",
+  "template_version": 4,
+  "canvas_sha256": "5a84ce02e79ac548da11fb419f7df420f316969d4a5d2a2b6fc92f6b2e6a9fed",
+  "business_counts": {
+    "Competition": 0,
+    "AwardBatch": 0,
+    "Certificate": 0,
+    "GenerationTask": 0,
+    "Notification": 0
+  },
+  "formal_seal_unchanged": true,
+  "formal_fonts_unchanged": true,
+  "sequence_preserved": [
+    {
+      "year": 2026,
+      "next_value": 5613
+    }
+  ],
+  "audit_retained": true
+}

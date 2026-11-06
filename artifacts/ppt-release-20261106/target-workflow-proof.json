@@ -1,0 +1,56 @@
+{
+  "postgres_tests": {
+    "passed": 75,
+    "seconds": 663.092,
+    "isolated_database": true
+  },
+  "target_workflow": {
+    "batch_id": 9,
+    "departments": 2,
+    "awards": 2,
+    "output_formats": [
+      "pdf",
+      "png"
+    ],
+    "processed": 2,
+    "total": 2,
+    "status": "done",
+    "archive_bytes": 226702,
+    "native_pdf_signatures_per_file": 2,
+    "all_signatures_intact": true,
+    "all_signatures_valid": true,
+    "self_signed_trust_warning_expected": true
+  },
+  "notifications": {
+    "navigation": "/business/approvals?batch=9&notice=31",
+    "opened_correct_batch": true,
+    "read_saved_on_server": true,
+    "generation_status_updated_without_refresh": true,
+    "read_all_unread_count": 0
+  },
+  "imports": {
+    "pptx": "editable shapes with text, saved version 2",
+    "ppt": "converted by isolated LibreOffice, editable shapes with text, saved version 3",
+    "protected_template_not_edited": true
+  },
+  "converter_seccomp": {
+    "connect_errno": 13,
+    "network_connect_blocked": true
+  },
+  "readme": {
+    "local_links": "passed",
+    "github_images_loaded": 11,
+    "bootstrap_config": "random secrets, matching password, hostname/CSRF, refuses overwrite, Compose config passed"
+  },
+  "deployment": {
+    "revision": "3ca6d3870edd77bee12496fcd358d742b0acce19",
+    "health": "ok",
+    "database": "ok",
+    "db_container_created": "2026-11-05T19:20:01.632110387Z",
+    "original_data_volumes_preserved": true,
+    "public_tls_certificate_status": 200,
+    "http_redirect": "https://192.168.31.12:18443/",
+    "pre_cleanup_backup": "/opt/awardcollection-v1-test/backups/20261106-131309-3Flhsk",
+    "post_cleanup_backup": "/opt/awardcollection-v1-test/backups/20261106-132438-dWcAzt"
+  }
+}

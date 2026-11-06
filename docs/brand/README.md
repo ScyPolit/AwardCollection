@@ -4,9 +4,9 @@
 
 | 文件 | 用途 |
 | --- | --- |
-| [mark.svg](mark.svg) | 正方形图标，128 × 128，可无损放大 |
+| [mark.svg](mark.svg) · [PNG](mark.png) | 正方形图标，SVG 可无损放大；PNG 为 512 × 512 |
 | [logo.svg](logo.svg) | 透明底项目字标，580 × 128 |
-| [hero.svg](hero.svg) | README 与项目介绍封面，1280 × 540 |
+| [hero.svg](hero.svg) · [PNG](hero.png) | README 与项目介绍封面，1280 × 540 |
 
 以上 SVG 为本项目原创，随项目原创部分按 MIT 许可证提供；无外部字体文件、脚本或远程资源。文字使用系统字体回退。项目标识用于开源项目展示，不代表任何学校的授权或背书。
 
