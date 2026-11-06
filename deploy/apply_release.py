@@ -86,6 +86,17 @@ def main():
     if len(roots) != 1 or not (roots[0] / "compose.yaml").is_file():
         raise RuntimeError("Unexpected release archive layout")
     source = roots[0]
+    font_root = source / 'backend/font-assets'
+    font_cache = BASE / 'font-cache'
+    for font in json.loads((font_root / 'manifest.json').read_text(encoding='utf8')):
+        name = font['file']
+        if Path(name).name != name:
+            raise RuntimeError('Invalid built-in font path')
+        cached = font_cache / name
+        if cached.is_file():
+            if hashlib.sha256(cached.read_bytes()).hexdigest() != font['sha256']:
+                raise RuntimeError('Cached font checksum mismatch: ' + font['id'])
+            shutil.copyfile(cached, font_root / name)
     checkpoint = BASE / "rollback" / stamp
     checkpoint.mkdir(parents=True, mode=0o700)
     old_env = (PROJECT / ".env").read_text()

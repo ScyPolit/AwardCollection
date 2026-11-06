@@ -93,6 +93,9 @@ if __name__ == '__main__':
     ROOT.mkdir(parents=True, exist_ok=True)
     manifest_path = ROOT / 'manifest.json'
     expected = {entry['id']: entry for entry in json.loads(manifest_path.read_text(encoding='utf8'))} if manifest_path.exists() else {}
+    if expected and all((ROOT / entry['file']).is_file() and hashlib.sha256((ROOT / entry['file']).read_bytes()).hexdigest() == entry['sha256'] for entry in expected.values()):
+        print(f'{len(expected)} pinned fonts already present and verified; offline build', flush=True)
+        raise SystemExit(0)
     with concurrent.futures.ThreadPoolExecutor(max_workers=5) as pool:
         futures = [pool.submit(package, item) for item in PACKAGES.items()] + [pool.submit(fangsong)]
         entries = [entry for future in futures for entry in future.result()]
