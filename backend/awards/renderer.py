@@ -212,11 +212,10 @@ def render_unsigned(award, number, output, template=None, seals=None):
 
 def append_signature(source, destination, department, index):
     signer = signers.SimpleSigner.load_pkcs12(str(department_pfx(department)), passphrase=KEY_PASSWORD)
-    x1 = 80 + (index % 3) * 230
     field = f"Department_{department.id}_Signature"
     with open(source, "rb") as inf, open(destination, "wb") as outf:
         writer = IncrementalPdfFileWriter(inf)
-        spec = SigFieldSpec(sig_field_name=field, on_page=0, box=(x1, 120, x1 + 190, 170))
+        spec = SigFieldSpec(sig_field_name=field, on_page=0, box=(0, 0, 0, 0))
         metadata = PdfSignatureMetadata(field_name=field, md_algorithm="sha256", reason="测试专用电子证书部门会签", location="校内测试环境")
         PdfSigner(metadata, signer=signer, new_field_spec=spec).sign_pdf(writer, output=outf)
 

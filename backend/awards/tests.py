@@ -86,6 +86,7 @@ class WorkflowTests(TestCase):
                 signatures = PdfFileReader(source).embedded_signatures
                 self.assertEqual(len(signatures), 2)
                 for signature in signatures:
+                    self.assertEqual(list(signature.sig_field["/Rect"]), [0, 0, 0, 0])
                     status = validate_pdf_signature(signature)
                     self.assertTrue(status.intact)
                     self.assertTrue(status.valid)
