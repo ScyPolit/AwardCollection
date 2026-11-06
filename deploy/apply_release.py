@@ -82,6 +82,8 @@ def set_env(text, values):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("revision")
+    parser.add_argument("--archive")
+    parser.add_argument("--archive-sha256")
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.revision):
         raise SystemExit("A full Git commit revision is required")
@@ -101,23 +103,35 @@ def main():
         print(json.dumps({"stage": stage, **details}), flush=True)
 
     archive = release / "source.tar.gz"
-    run(
-        [
-            "curl",
-            "--fail",
-            "--location",
-            "--retry",
-            "2",
-            "--connect-timeout",
-            "15",
-            "--max-time",
-            "180",
-            "-o",
-            str(archive),
-            "https://codeload.github.com/ScyPolit/AwardCollection/tar.gz/"
-            + args.revision,
-        ]
-    )
+    if args.archive:
+        incoming = Path(args.archive).resolve()
+        if not incoming.is_relative_to(BASE / "incoming") or not re.fullmatch(
+            r"[0-9a-f]{64}", args.archive_sha256 or ""
+        ):
+            raise RuntimeError(
+                "Uploaded archive needs a trusted SHA256 and incoming directory"
+            )
+        if hashlib.sha256(incoming.read_bytes()).hexdigest() != args.archive_sha256:
+            raise RuntimeError("Uploaded source checksum mismatch")
+        shutil.copyfile(incoming, archive)
+    else:
+        run(
+            [
+                "curl",
+                "--fail",
+                "--location",
+                "--retry",
+                "2",
+                "--connect-timeout",
+                "15",
+                "--max-time",
+                "180",
+                "-o",
+                str(archive),
+                "https://codeload.github.com/ScyPolit/AwardCollection/tar.gz/"
+                + args.revision,
+            ]
+        )
     with tarfile.open(archive, "r:gz") as bundle:
         bundle.extractall(release, filter="data")
     roots = [p for p in release.iterdir() if p.is_dir()]
