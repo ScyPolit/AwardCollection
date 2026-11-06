@@ -155,7 +155,10 @@ class SealSerializer(serializers.ModelSerializer):
 
 
 class CertificateSerializer(serializers.ModelSerializer):
-    competition_name = serializers.CharField(source="award.version.batch.competition.name", read_only=True)
+    competition_name = serializers.SerializerMethodField()
+
+    def get_competition_name(self,obj):
+        return obj.award.version.snapshot.get("competition",{}).get("name",obj.award.version.batch.competition.name)
     batch_name = serializers.CharField(source="award.version.batch.name", read_only=True)
     team_name = serializers.CharField(source="award.team_name", read_only=True)
     award_name = serializers.CharField(source="award.award_name", read_only=True)

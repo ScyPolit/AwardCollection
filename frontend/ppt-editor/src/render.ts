@@ -40,7 +40,7 @@ function replaceTokens(el:HTMLElement,values:Record<string,string>){
   style.textContent=`@page{size:${canvas.page.width}pt ${canvas.page.height}pt;margin:0}html,body{padding:0;margin:0}#app{width:${doc.viewportSize}px;transform:scale(${canvas.page.width/doc.viewportSize*4/3});transform-origin:0 0}.ProseMirror-static{white-space:break-spaces!important}*{animation:none!important;transition:none!important;print-color-adjust:exact!important;-webkit-print-color-adjust:exact!important}`
   document.head.append(style);await nextTick()
   await Promise.all(payload.fonts.map(async(f:any)=>{await document.fonts.load(`16px "${f.family}"`)}))
-  await Promise.all([...document.images].map(img=>img.complete?Promise.resolve():new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(Error('模板图片无法加载'))})))
+  await Promise.all([...document.images].map(img=>img.complete?(img.naturalWidth?Promise.resolve():Promise.reject(Error('模板图片无法加载'))):new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(Error('模板图片无法加载'))})))
   for(const el of document.querySelectorAll<HTMLElement>('[style]'))if(/AC_/.test(el.style.fontFamily))el.style.fontFamily+=', AC_hei'
   original=[]
   for(const element of slide.value.elements){

@@ -289,6 +289,9 @@ const handleMouseup = () => {
   if (!keep) mainStore.setTextFormatPainter(null)
 }
 
+const flushPending=()=>handleInput.flush()
+window.addEventListener('award-flush-editors',flushPending)
+
 // Prosemirror编辑器的初始化和卸载
 onMounted(() => {
   editorView = initProsemirrorEditor((editorViewRef.value as Element), textContent.value, {
@@ -304,6 +307,8 @@ onMounted(() => {
   if (props.autoFocus) editorView.focus()
 })
 onUnmounted(() => {
+  window.removeEventListener('award-flush-editors',flushPending)
+  handleInput.cancel()
   editorView && editorView.destroy()
 })
 

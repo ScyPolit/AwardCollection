@@ -6,10 +6,12 @@
 
 已完成：PPTist 原生编辑器接入，首行缩进/空格/字体/字段/公章桥接，同一引擎 PDF 渲染；PPTX/PPT/ODP/PDF/图片/JSON/PPTist 导入；权限内 CRUD 与结构化详情；实时 SSE、菜单角标、生成进度、通知深链接及服务端已读；生产依赖漏洞修复、冻结 HMAC、文件摘要校验、隔离 Office 转换器、非 root 运行及免费自签 HTTPS。选型和安全边界见 ppt-editor-assessment.md / security-review-v4.md。
 
-本地已通过 69 项全回归（168.828 秒）及追加生成重试专项 1 项（2.148 秒）。前后两个前端 typecheck / build 通过；生产依赖扫描未检出已知漏洞。13 个页面浅色/深色均巡检，原生编辑器深色主题保留纸面和调色盘原色。
+本地最新完整 74 项回归通过（146.323 秒），包括登录 CSRF、非法输入、图片资源、历史名称冻结及生成重试。原生编辑器另实测首行缩进输入后立即保存、空格保留。前后两个前端 typecheck / build 通过；生产依赖扫描未检出已知漏洞。13 个页面浅色/深色均巡检，原生编辑器深色主题保留纸面和调色盘原色。
 
 待完成：将当前源码提交推送；使用新版 deploy/apply_release.py 备份、构建并部署。新脚本不再依赖测试批次 2，保留原三命名卷和数据库容器，先启 API 完成迁移再启动 worker/web，额外启动无外网转换容器。部署时撤销旧 HTTP 登录会话，重新登录 HTTPS 地址 https://192.168.31.12:18443。自签证书首次需信任。
 
 目标完成全链路和 PostgreSQL 回归后，再备份并执行 clear_demo_business 的 dry run，核对 id=4 SHA 与正式素材范围后 --apply。不得删除卷或重置 CertificateSequence。清理命令保留审计，并精确删除对应证书文件；签名密钥与字体素材不清理。清理后应只有一个超管、一个可见标准模板、零竞赛/批次/证书/任务/通知。最后再备份一次。
 
 实际运行版本、备份路径及目标验收数据尚未在本轮更新到最终状态；不能把“本地通过”描述为“已部署”。私密凭据仅在 C:/Users/SCY-Polit/AppData/Local/AwardCollection/agent-handoff/first-release-20261106-8a1e 中的 DPAPI 文件及浏览器 auth profile 中，不能打印或提交。
+
+当前线上发布正在构建 25db96c2225619409f75e937e18eeef820b98883，检查点 /opt/awardcollection-v1-test/rollback/20261106-110634，备份 /opt/awardcollection-v1-test/backups/20261106-110640-mcVCeT。浏览器/终端会话 award-v4-panel；本地原生编辑器和 API 服务仍在运行。后续尚有已测试的安全/立即保存修正需要提交，并在此构建完成后发布最终源码。不要并行运行两个部署进程。

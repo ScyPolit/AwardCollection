@@ -1,6 +1,8 @@
 """Validation for the pinned PPTist document format used by certificate templates."""
 
 import base64
+import io
+from PIL import Image
 import copy
 import html
 import json
@@ -101,7 +103,7 @@ def _image(value):
         re.I,
     ):
         raise ValueError("不支持此媒体格式")
-    if value.startswith("data:image/svg+xml"):
+    if value.lower().startswith("data:image/svg+xml"):
         try:
             data = base64.b64decode(value.split(",", 1)[1], validate=True)
             if b"<!DOCTYPE" in data.upper() or b"<!ENTITY" in data.upper():
@@ -130,6 +132,17 @@ def _image(value):
                         raise ValueError("SVG包含外部资源")
         except (ET.ParseError, TypeError, base64.binascii.Error) as exc:
             raise ValueError("SVG图像无法解析") from exc
+    elif value.lower().startswith("data:image/"):
+        try:
+            content = base64.b64decode(value.split(",", 1)[1], validate=True)
+            with Image.open(io.BytesIO(content)) as image:
+                if image.width * image.height > 20_000_000 or getattr(
+                    image, "is_animated", False
+                ):
+                    raise ValueError("图片过大或包含动画，请转为静态PNG")
+                image.verify()
+        except (OSError, base64.binascii.Error, Image.DecompressionBombError) as exc:
+            raise ValueError("模板包含损坏的图片") from exc
     return value
 
 

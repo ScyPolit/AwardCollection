@@ -378,3 +378,31 @@ class ManagementSecurityTests(TestCase):
         task.refresh_from_db();self.assertEqual(task.status,'queued')
         task.status='failed';task.save();self.award.award_name='篡改奖项';self.award.save()
         self.assertEqual(self.client.post(url,{},format='json').status_code,400)
+
+    def test_login_rejects_missing_csrf_but_accepts_valid_same_origin_token(self):
+        client=APIClient(enforce_csrf_checks=True)
+        payload={'username':self.owner.username,'password':'Test-Pass-2026'}
+        self.assertEqual(client.post('/api/v1/auth/login/',payload,format='json').status_code,403)
+        csrf=client.get('/api/v1/auth/csrf/').data['csrfToken']
+        response=client.post('/api/v1/auth/login/',payload,format='json',HTTP_X_CSRFTOKEN=csrf)
+        self.assertEqual(response.status_code,200,response.content[:200])
+
+    def test_historical_certificate_keeps_frozen_competition_name(self):
+        from django.utils import timezone
+        self.version.snapshot={'competition':{'id':self.batch.competition_id,'name':'签发时竞赛名称'}};self.version.save()
+        certificate=Certificate.objects.create(award=self.award,number='TEST-FROZEN-NAME',published_at=timezone.now())
+        competition=self.batch.competition;competition.name='之后修改的名称';competition.save()
+        data=self.client.get(f'/api/v1/certificates/{certificate.pk}/').data
+        self.assertEqual(data['competition_name'],'签发时竞赛名称')
+        verified=self.client.post('/api/v1/verification/admin/',{'number':certificate.number},format='json')
+        self.assertEqual(verified.data['competition'],'签发时竞赛名称')
+
+    def test_corrupt_native_images_are_rejected_before_rendering(self):
+        from .presentation import _image
+        with self.assertRaises(ValueError):_image('data:image/png;base64,AAAA')
+        with self.assertRaises(ValueError):_image('data:image/svg+xml;base64,PHN2ZyBvbmxvYWQ9ImFsZXJ0KDEpIiAvPg==')
+
+    def test_malformed_public_inputs_are_validation_errors(self):
+        client=APIClient()
+        self.assertEqual(client.post('/api/v1/auth/login/',{'username':{},'password':[]},format='json').status_code,400)
+        self.assertEqual(client.post('/api/v1/verification/query/',{'number':'x'*1000},format='json').status_code,400)

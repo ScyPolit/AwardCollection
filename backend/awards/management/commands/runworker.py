@@ -23,7 +23,8 @@ def process_task(task):
     for requirement in requirements:
         if not requirement.seal_version.seal.active:
             raise RuntimeError(f"{requirement.department.name} 的选定公章已停用")
-    departments = [{"id": item.department.id, "name": item.department.name} for item in requirements]
+    frozen_names={item["id"]:item["name"] for item in task.version.snapshot.get("department_details",[])}
+    departments = [{"id": item.department.id, "name": frozen_names.get(item.department_id,item.department.name)} for item in requirements]
     seals = [{
         "department_id": item.department_id,
         "seal_version_id": item.seal_version_id,
