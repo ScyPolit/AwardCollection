@@ -1,0 +1,42 @@
+[
+  {
+    "file": "issued-5005.pdf",
+    "sha256": "af55f661f8b29161b6bb060c8625d25ba56cab2390e2771d4d8b3b020d9a527c",
+    "signatures": [
+      {
+        "field": "Department_1_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "field": "Department_2_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "embedded_images": 3,
+    "text": "TEST ONLY 校赛获奖证书\n首版验收甲队\n创新特等奖\n2026-AC-00005005\n测试甲、测试乙\n双部门电子证书回归测试作品\n2026-AC-00005005\n"
+  },
+  {
+    "file": "issued-5006.pdf",
+    "sha256": "244fd9092049bb2c098db7ab4fef8ac836fdc480c83fb589173f4a29f9d4a46e",
+    "signatures": [
+      {
+        "field": "Department_1_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "field": "Department_2_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "embedded_images": 3,
+    "text": "TEST ONLY 校赛获奖证书\n首版验收乙队\n优秀创新奖\n2026-AC-00005006\n测试丙、测试丁、测试戊\n这是用于验证较长作品名称能够自动排版且保留全部内容的测试\n作品名称\n2026-AC-00005006\n"
+  }
+]

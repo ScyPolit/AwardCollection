@@ -1,0 +1,159 @@
+{
+  "release": {
+    "revision": "b136df831171bb6bbb64a948411c41c7b8ad3808",
+    "stage": "done",
+    "started_at": "20261106-022631",
+    "checkpoint": "/opt/awardcollection-v1-test/rollback/20261106-022631",
+    "source": "/opt/awardcollection-v1-test/releases/b136df831171bb6bbb64a948411c41c7b8ad3808-20261106-022631/AwardCollection-b136df831171bb6bbb64a948411c41c7b8ad3808",
+    "backup": "/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx",
+    "historical_batch_preserved": true,
+    "health": {
+      "status": "ok",
+      "database": "ok",
+      "version": "b136df831171bb6bbb64a948411c41c7b8ad3808"
+    }
+  },
+  "containers": {
+    "api": {
+      "created": "2026-11-06T02:27:52.633819987Z",
+      "image": "sha256:43d6c4f02c134577511cee439d71eea87678c29dd875616a058e1e09b581b9d6",
+      "revision": "b136df831171bb6bbb64a948411c41c7b8ad3808",
+      "state": "running",
+      "health": "healthy",
+      "volumes": [
+        "awardcollection-v1-test_media_data",
+        "awardcollection-v1-test_backup_data"
+      ],
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "5",
+          "max-size": "10m"
+        }
+      }
+    },
+    "worker": {
+      "created": "2026-11-06T02:27:55.918435953Z",
+      "image": "sha256:b4a359c1816af570cd035f9f60c897fc1eb240890ef3014c03c8ed180e61b75b",
+      "revision": "b136df831171bb6bbb64a948411c41c7b8ad3808",
+      "state": "running",
+      "health": null,
+      "volumes": [
+        "awardcollection-v1-test_media_data",
+        "awardcollection-v1-test_backup_data"
+      ],
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "5",
+          "max-size": "10m"
+        }
+      }
+    },
+    "web": {
+      "created": "2026-11-06T02:27:55.777420338Z",
+      "image": "sha256:f05ff57ab044579ab20359ae43f16e4a823574284341ab1e79e4bca5c1406d12",
+      "revision": "b136df831171bb6bbb64a948411c41c7b8ad3808",
+      "state": "running",
+      "health": "healthy",
+      "volumes": [],
+      "logging": {
+        "Type": "json-file",
+        "Config": {
+          "max-file": "5",
+          "max-size": "10m"
+        }
+      }
+    },
+    "db": {
+      "created": "2026-11-05T19:20:01.632110387Z",
+      "image": "sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94",
+      "revision": null,
+      "state": "running",
+      "health": "healthy",
+      "volumes": [
+        "awardcollection-v1-test_db_data"
+      ],
+      "logging": {
+        "Type": "json-file",
+        "Config": {}
+      }
+    }
+  },
+  "data": {
+    "debug": false,
+    "historical": {
+      "status": "issued",
+      "records": 5000,
+      "pdf": 5000,
+      "png": 5000,
+      "published": 5000
+    },
+    "samples": [
+      {
+        "number": "2026-AC-00000003",
+        "sha256": "28fa5b926c4ade5bc5d284711863a5a449b18b34f123e25f8e19c5490d5939af",
+        "matches_record": true
+      },
+      {
+        "number": "2026-AC-00002503",
+        "sha256": "515995fa31ba41432d130120c7837c3a02325ac260483e1c8eae6e77412de7fe",
+        "matches_record": true
+      },
+      {
+        "number": "2026-AC-00005002",
+        "sha256": "bc499c6541c2cc7c6cceeb1da42f3736304ae4c263ee3c8b09309aa9ecf83cf5",
+        "matches_record": true
+      }
+    ],
+    "new_batches": [
+      {
+        "id": 3,
+        "status": "issued",
+        "certificates": [
+          {
+            "number": "2026-AC-00005003",
+            "pdf_sha256": "18770f84df4fbeef51471d90f60315224dae87db550211697db39dc070b5c4e1",
+            "published_at": "2026-11-06 02:18:45.518009+00:00"
+          },
+          {
+            "number": "2026-AC-00005004",
+            "pdf_sha256": "e0b55cd28894acca5db196b05d504599a181f38237952a0a6e7abb09aadc372c",
+            "published_at": "2026-11-06 02:18:45.518009+00:00"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "status": "issued",
+        "certificates": [
+          {
+            "number": "2026-AC-00005005",
+            "pdf_sha256": "af55f661f8b29161b6bb060c8625d25ba56cab2390e2771d4d8b3b020d9a527c",
+            "published_at": "2026-11-06 02:34:28.981587+00:00"
+          },
+          {
+            "number": "2026-AC-00005006",
+            "pdf_sha256": "244fd9092049bb2c098db7ab4fef8ac836fdc480c83fb589173f4a29f9d4a46e",
+            "published_at": "2026-11-06 02:34:28.981587+00:00"
+          }
+        ]
+      }
+    ]
+  },
+  "backup": {
+    "path": "/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx",
+    "checksums": "database.dump: OK\nmedia.tar.gz: OK\ndeployment-config.tar.gz.enc: OK",
+    "files": {
+      "SHA256SUMS": 254,
+      "database.dump": 658366,
+      "COMPLETE": 0,
+      "media.tar.gz": 409014917,
+      "deployment-config.tar.gz.enc": 736
+    }
+  },
+  "timer": "active",
+  "timer_enabled": "enabled",
+  "postgres_tests": "Found 32 test(s).\nCreating test database for alias 'default'...\nSystem check identified no issues (0 silenced).\n.....................Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - \"Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\"\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py\", line 31, in find_valid_path\n    async for candidate_path in paths:\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py\", line 689, in __anext__\n    raise PathBuildingError(\npyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate \"Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\" - no issuer matching \"Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\" was found\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py\", line 1182, in handle_certvalidator_errors\n    return CertvalidatorOperationResult(success_result=await coro)\n                                                       ^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py\", line 605, in _check\n    path: ValidationPath = await find_valid_path(\n                           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py\", line 41, in find_valid_path\n    raise InvalidCertificateError(\npyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - \"Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\"\nValidation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - \"Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\"\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py\", line 31, in find_valid_path\n    async for candidate_path in paths:\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py\", line 689, in __anext__\n    raise PathBuildingError(\npyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate \"Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\" - no issuer matching \"Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\" was found\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py\", line 1182, in handle_certvalidator_errors\n    return CertvalidatorOperationResult(success_result=await coro)\n                                                       ^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py\", line 605, in _check\n    path: ValidationPath = await find_valid_path(\n                           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py\", line 41, in find_valid_path\n    raise InvalidCertificateError(\npyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - \"Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN\"\n...........\n----------------------------------------------------------------------\nRan 32 tests in 288.775s\n\nOK\nDestroying test database for alias 'default'...\n",
+  "cleanup": "removed 0 expired temporary files"
+}

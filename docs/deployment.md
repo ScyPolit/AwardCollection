@@ -38,7 +38,7 @@ docker compose -p awardcollection-v1-test up -d --no-build
 
 构建前设置 `APP_BUILD_VERSION` 为待部署提交号。新版本健康接口返回该值，部署后应分别核对 `api` 健康响应和 `api/worker` 镜像标签。涉及后端与前端修改时使用 `docker compose build api worker web` 后再 `docker compose up -d --no-deps api worker web`；不要使用 `down -v`，不要删除或重建 `db_data`、`media_data`、`backup_data`。
 
-当前执行环境已找到原加密面板凭据，正在执行无损更新。最终部署状态以健康接口与三个镜像的版本一致性核对为准。批次 2 及其 5000 对 PDF/PNG 保持原状，不重排任务或重新分配编号。
+已完成无损更新，实际运行提交 `b136df831171bb6bbb64a948411c41c7b8ad3808`。健康接口与 api、worker、web 三个镜像标签一致，DEBUG=false。批次 2 及其 5000 对 PDF/PNG 已核实保持原状，不重排任务或重新分配编号。完整审计见 artifacts/release-20261106/target-final-audit.json。
 
 ## 备份与恢复
 
@@ -63,3 +63,20 @@ apply_release.py 使用完整 Git 提交号定位公开源码。构建来自独�
 maintenance.sh 通过现有数据库容器的 pg_dump 备份，避免客户端版本不兼容。数据库、媒体和加密的部署配置保存于 /opt/awardcollection-v1-test/backups。配置加密口令保存在受限的 app/runtime/backup-encryption.key，不能提交或公开。恢复配置时需要该文件，整机损坏仍属于当前恢复限制。
 
 install-maintenance.sh 安装本项目独立的 systemd 服务和计时器，每日北京时间 02:30 后执行备份与七天前临时文件清理。失败写入 app/runtime/maintenance.log，并尝试向超管发送站内消息。正式证书和业务审计不在清理范围。
+
+## 本轮交付记录
+
+最终部署前备份为 `/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx`，数据库、媒体及加密配置三个文件校验均通过。最后应用回滚检查点为 `/opt/awardcollection-v1-test/rollback/20261106-022631`。现有数据库容器保持运行，三个原命名卷保持不变。
+
+目标 PostgreSQL 32 项测试通过，288.775 秒；最终批次 4 两队签发完成，两个 PDF、两个 PNG 和整批 ZIP 下载接口核实一致，四个 PDF 增量签名完整且数学有效。样张均为 TEST ONLY。
+
+三个应用容器的 json-file 日志限制为每文件 10 MB、最多五份。维护日志由 /etc/logrotate.d/awardcollection 轮换，systemd 计时器已启用并处于 active。
+
+升级已有环境可在目标主机执行：
+
+```bash
+python3 /opt/awardcollection-v1-test/app/runtime/apply-release-current.py <完整提交号>
+cat /opt/awardcollection-v1-test/app/runtime/release-status.json
+```
+
+首次安装应按 .env.example 和 Compose 准备配置；该升级脚本明确依赖当前环境与受保护历史批次 2，并非通用初始化器。文档与测试证据的后续提交不会改变已运行镜像版本。

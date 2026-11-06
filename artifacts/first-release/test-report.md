@@ -1,32 +1,17 @@
-# First Release Test Report
+# First release deployment verification
 
-Date: 2026-11-06 (Asia/Shanghai)
+Date: 2026-11-06 (Asia/Shanghai). Application: http://192.168.31.12:18080 . Deployed source: `b136df831171bb6bbb64a948411c41c7b8ad3808`.
 
-## Deployment
+The deployment rebuilt only api/worker/web. The existing database container and all three named volumes were retained. DEBUG is false. Application logging is bounded, daily local maintenance is enabled, and the last pre-deployment backup `/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx` has COMPLETE and verified checksums.
 
-- URL: `http://192.168.31.12:18080`
-- Host: Ubuntu 24.04 x86_64, Docker 29.1.2
-- Compose: `awardcollection-v1-test`
-- Services: PostgreSQL, Django API, persistent worker, Nginx/Pure Admin
+Final target PostgreSQL run: 32 tests passed in 288.775 seconds. Local complete suite: 32 passed, followed by focused download/signature regression checks. Frontend typecheck, production build and Compose validation passed.
 
-## Passed
+Real browser regression used the owner and two department administrators: shared template copy, new blue background, pointer dragging, font size change, independent TEST ONLY seal uploads, competition and batch creation, XLSX import, preview, parallel department approval and automatic issuance. Partial approval did not issue certificates. Final batch 4 produced two PDFs and two PNGs with one shared publication timestamp and no task error.
 
-- 26 local backend tests and 15 earlier PostgreSQL deployment tests.
-- Pure Admin typecheck and cleanroom production build without Mock APIs.
-- Real browser login, competition/batch views, template/seal pages, certificate archive and public/admin verification.
-- Two real sample certificates with PDF, PNG and two incremental pyHanko signatures each.
-- Local validation now asserts both incremental signatures are mathematically intact and valid; the expected self-signed trust-chain warning remains.
-- Role isolation: unrelated account receives an empty archive and HTTP 403 for direct downloads.
-- Revocation: partial approval keeps the certificate active; all original departments approving changes it to void.
-- One-time captcha: first query succeeds and the reused answer returns HTTP 400.
-- Backup, checksum, isolated restore and full Compose container recreation.
+Certificates 2026-AC-00005005 and 2026-AC-00005006 each contain two incremental PDF signatures. All four are mathematically intact and valid; the self-signed identity is not publicly trusted. Signature fields are invisible and do not overlay the configured seal images. The long work title is preserved. ZIP contents exactly match the four individual files. Public and administrator verification both succeeded in the browser.
 
-## Scale Test
+Historical batch 2 remains issued with 5000 records, 5000 PDFs and 5000 PNGs. Three sampled PDF digests match the stored records and prior deployment snapshots. This is preservation verification, not a rerun of the 5000-team benchmark. Query latency during that historical generation was never measured.
 
-Batch 2, the synthetic 5000-team batch, completed on the target PostgreSQL deployment. The persisted task is `done` with `processed=5000`, `total=5000`, and no error. There are 5000 certificate records, 5000 PDF files, and 5000 PNG files. The wall-clock span from task creation to completion was 2:09:52.557 and includes recovery/retry time. Three sampled PDFs matched their database digests and each contained two signature fields. Query response during generation was not measured and is not claimed as passed.
+The native browser automation download event was canceled on this workstation. The original attachment endpoints were instead read in the same authenticated browser session and validated by file bytes, signatures and ZIP contents. Manual browser saving is not claimed as re-tested. New worker crash/lease takeover load tests and a restore of the final full backup were not added in this round; earlier isolated restore evidence remains historical.
 
-## Remaining Limitation
-
-- The new template renderer, batch resource selection, management screens, emergency UI, dashboard, lease-safe publication, and cleanup command pass local tests/builds but are not yet deployed to the target containers because the encrypted 1Panel credential file is absent on this workstation.
-- The online health endpoint still has the old response shape without the new build-version field, confirming that the target API remains on the prior image.
-- Backups are currently on the same physical server.
+Evidence: target-final-audit.json, postgres-regression-final.txt, signature-verification.json, issued-5005/5006.pdf and .png, batch-4-certificates.zip, browser screenshots and verification scripts in artifacts/release-20261106. Before-fix batch 3 outputs remain separate under before-visual-fix. All fixtures are synthetic TEST ONLY data.
