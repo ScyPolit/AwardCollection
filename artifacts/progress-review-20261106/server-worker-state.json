@@ -1,0 +1,115 @@
+{
+  "render_concurrency": "8",
+  "debug": true,
+  "signing_key_password_configured": true,
+  "source_hashes": {
+    "worker": "af8ffe2ac1f1f6a874647e3e1f5b8323c2674d0a5548c6ccf60aeb647ee5daf4",
+    "renderer": "df3a89997658136a89d181177c8f0b73b4d2d47ec14b27f3b3525fc193e15002",
+    "views": "bb93de577bef66a035618a82f407c1808c14513e837d50acb2b4b877361dc6e0",
+    "serializers": "8f01e5e2b023d833628cfee95cfae7df0b6a91abe17d3eeba8f6a5aa87a20647"
+  },
+  "local_source_matches": {
+    "worker": false,
+    "renderer": false,
+    "serializers": false,
+    "views": false
+  },
+  "local_source_comparison": {
+    "worker": {
+      "raw_matches": false,
+      "lf_normalized_matches": false,
+      "crlf_count": 99
+    },
+    "renderer": {
+      "raw_matches": false,
+      "lf_normalized_matches": false,
+      "crlf_count": 178
+    },
+    "views": {
+      "raw_matches": false,
+      "lf_normalized_matches": false,
+      "crlf_count": 0
+    },
+    "serializers": {
+      "raw_matches": false,
+      "lf_normalized_matches": false,
+      "crlf_count": 0
+    }
+  },
+  "recent_commit_matches": {
+    "worker": [
+      "5242f44",
+      "b64c8f4",
+      "580a6bc",
+      "f9e9348",
+      "7fb686f",
+      "5c45d68",
+      "289fbcc",
+      "c75cf7f",
+      "27f77f1",
+      "88dcdf0",
+      "65b2482",
+      "af6dab5",
+      "76e8eb4"
+    ],
+    "renderer": [
+      "88dcdf0",
+      "65b2482",
+      "af6dab5",
+      "76e8eb4",
+      "94c3e6a"
+    ],
+    "views": [
+      "f9e9348",
+      "7fb686f",
+      "5c45d68",
+      "289fbcc",
+      "c75cf7f",
+      "27f77f1",
+      "88dcdf0",
+      "65b2482",
+      "af6dab5",
+      "76e8eb4",
+      "94c3e6a"
+    ],
+    "serializers": [
+      "2af0ed9",
+      "6547697",
+      "40fcd85",
+      "c713313",
+      "e123377",
+      "5242f44",
+      "b64c8f4",
+      "580a6bc",
+      "f9e9348",
+      "7fb686f",
+      "5c45d68",
+      "289fbcc",
+      "c75cf7f",
+      "27f77f1",
+      "88dcdf0",
+      "65b2482",
+      "af6dab5",
+      "76e8eb4",
+      "94c3e6a"
+    ]
+  },
+  "normalized_source_comparison": {
+    "worker": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    },
+    "renderer": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    },
+    "views": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    },
+    "serializers": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    }
+  }
+}

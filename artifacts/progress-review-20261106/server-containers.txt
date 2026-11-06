@@ -1,0 +1,11 @@
+NAME                               IMAGE                            COMMAND                  SERVICE   CREATED       STATUS
+    PORTS
+awardcollection-v1-test-api-1      awardcollection-v1-test-api      "/app/entrypoint.sh …"   api       5 hours ago   Up 5 hours (healthy)
+awardcollection-v1-test-db-1       postgres:17.6-alpine             "docker-entrypoint.s…"   db        5 hours ago   Up 5 hours (healthy)   5432/tcp
+awardcollection-v1-test-web-1      awardcollection-v1-test-web      "/docker-entrypoint.…"   web       5 hours ago   Up 5 hours (healthy)   80/tcp, 0.0.0.
+0:18080->8080/tcp, [::]:18080->8080/tcp
+awardcollection-v1-test-worker-1   awardcollection-v1-test-worker   "/app/entrypoint.sh …"   worker    5 hours ago   Up 5 hours
+awardcollection-v1-test-worker-1 0.00% 192.4MiB / 2GiB
+awardcollection-v1-test-api-1 0.02% 122MiB / 1GiB
+awardcollection-v1-test-db-1 1.13% 32.04MiB / 1GiB
+awardcollection-v1-test-web-1 0.00% 25.53MiB / 256MiB

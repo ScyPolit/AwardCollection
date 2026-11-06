@@ -6,6 +6,9 @@ clear/
 *.credential.xml
 *.pem
 *.key
+*.p12
+*.pfx
+runtime/
 __pycache__/
 *.py[cod]
 db.sqlite3

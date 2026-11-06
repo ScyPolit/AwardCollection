@@ -5,6 +5,8 @@ import zipfile
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth.password_validation import validate_password
+from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import connection, models, transaction
 from django.http import FileResponse, HttpResponse
@@ -12,14 +14,14 @@ from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from .models import (
     ApprovalDepartment, AwardBatch, BatchVersion, Certificate, Competition,
-    Department, DepartmentMembership, LoginProtection, Notification,
+    Department, DepartmentMembership, GenerationTask, LoginProtection, Notification,
     RevocationDecision, RevocationRequest, Seal, SealVersion, SystemSetting,
     TeamAward, Template, TemplateVersion, VerificationAttempt,
 )
@@ -31,8 +33,9 @@ from .serializers import (
 )
 from .services import (
     decide, decide_revocation, emergency_void, excel_template, parse_excel,
-    request_revocation, revise_batch, submit_batch,
+    emergency_issue, request_revocation, revise_batch, submit_batch,
 )
+from .renderer import render_unsigned
 
 
 def client_ip(request):
@@ -52,7 +55,7 @@ def health(request):
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
         cursor.fetchone()
-    return Response({"status": "ok", "database": "ok"})
+    return Response({"status": "ok", "database": "ok", "version": settings.BUILD_VERSION})
 
 
 @api_view(["GET"])
@@ -108,6 +111,123 @@ def me(request):
     return Response({"username": request.user.username, "name": request.user.get_full_name() or request.user.username, "isSuperuser": request.user.is_superuser})
 
 
+@api_view(["GET"])
+def dashboard(request):
+    competitions = accessible_competitions(request.user)
+    batches = AwardBatch.objects.filter(competition__in=competitions).distinct()
+    if request.user.is_superuser:
+        approvals = ApprovalDepartment.objects.filter(
+            version__batch__status=AwardBatch.Status.REVIEW,
+            decision__isnull=True,
+        )
+    else:
+        department_ids = DepartmentMembership.objects.filter(
+            user=request.user, role=DepartmentMembership.Role.ADMIN, active=True,
+        ).values_list("department_id", flat=True)
+        approvals = ApprovalDepartment.objects.filter(
+            department_id__in=department_ids,
+            version__batch__status=AwardBatch.Status.REVIEW,
+            decision__isnull=True,
+        )
+    month_start = timezone.localdate().replace(day=1)
+    recent = Notification.objects.filter(user=request.user).order_by("-created_at")[:8]
+    return Response({
+        "pendingApprovals": approvals.count(),
+        "runningTasks": GenerationTask.objects.filter(
+            version__batch__in=batches,
+            status__in=[GenerationTask.Status.QUEUED, GenerationTask.Status.RUNNING],
+        ).count(),
+        "issuedThisMonth": Certificate.objects.filter(
+            award__version__batch__in=batches,
+            published_at__date__gte=month_start,
+        ).count(),
+        "unreadNotifications": Notification.objects.filter(user=request.user, read_at__isnull=True).count(),
+        "recent": NotificationSerializer(recent, many=True).data,
+    })
+
+
+@api_view(["GET", "PUT"])
+def public_verification_setting(request):
+    setting, _ = SystemSetting.objects.get_or_create(
+        key="public_verification",
+        defaults={"value": {"show_team": True, "show_members": True, "mask_members": True}},
+    )
+    if request.method == "GET":
+        return Response(setting.value)
+    if not request.user.is_superuser:
+        return Response({"detail": "仅超管可修改全校公开设置"}, status=403)
+    allowed = {"show_team", "show_members", "mask_members"}
+    setting.value = {key: bool(request.data.get(key, setting.value.get(key, True))) for key in allowed}
+    setting.save(update_fields=["value", "updated_at"])
+    return Response(setting.value)
+
+
+@api_view(["GET", "POST"])
+def account_management(request):
+    User = get_user_model()
+    if request.method == "GET":
+        if request.user.is_superuser:
+            users = User.objects.all()
+        else:
+            departments = DepartmentMembership.objects.filter(
+                user=request.user, role=DepartmentMembership.Role.ADMIN, active=True,
+            ).values_list("department_id", flat=True)
+            users = User.objects.filter(departmentmembership__department_id__in=departments).distinct()
+        return Response([{
+            "id": user.id,
+            "username": user.username,
+            "name": user.get_full_name(),
+            "active": user.is_active,
+            "superuser": user.is_superuser,
+            "memberships": list(DepartmentMembership.objects.filter(user=user).values("id", "department_id", "department__name", "role", "active")),
+        } for user in users.order_by("username")])
+    username = str(request.data.get("username", "")).strip()
+    password = str(request.data.get("password", ""))
+    name = str(request.data.get("name", "")).strip()
+    department_id = request.data.get("department")
+    role = request.data.get("role", DepartmentMembership.Role.OWNER)
+    if role not in DepartmentMembership.Role.values:
+        return Response({"detail": "角色无效"}, status=400)
+    department = Department.objects.filter(pk=department_id).first()
+    if not department:
+        return Response({"detail": "请选择部门"}, status=400)
+    can_manage = request.user.is_superuser or DepartmentMembership.objects.filter(
+        user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True,
+    ).exists()
+    if not can_manage or (role == DepartmentMembership.Role.ADMIN and not request.user.is_superuser):
+        return Response({"detail": "无权创建该账号或授权"}, status=403)
+    if User.objects.filter(username=username).exists():
+        return Response({"detail": "账号已存在"}, status=400)
+    try:
+        validate_password(password)
+    except Exception as exc:
+        return Response({"detail": "；".join(exc.messages)}, status=400)
+    user = User.objects.create_user(username=username, password=password, first_name=name)
+    DepartmentMembership.objects.create(user=user, department=department, role=role)
+    return Response({"id": user.id, "username": user.username}, status=201)
+
+
+@api_view(["POST"])
+def membership_management(request):
+    user = get_user_model().objects.filter(pk=request.data.get("user")).first()
+    department = Department.objects.filter(pk=request.data.get("department")).first()
+    role = request.data.get("role")
+    if not user or not department or role not in DepartmentMembership.Role.values:
+        return Response({"detail": "账号、部门或角色无效"}, status=400)
+    can_manage = request.user.is_superuser or (
+        role == DepartmentMembership.Role.OWNER and DepartmentMembership.objects.filter(
+            user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True,
+        ).exists()
+    )
+    if not can_manage:
+        return Response({"detail": "无授权管理权限"}, status=403)
+    membership, _ = DepartmentMembership.objects.update_or_create(
+        user=user, department=department, role=role,
+        defaults={"active": bool(request.data.get("active", True))},
+    )
+    return Response({"id": membership.id, "active": membership.active})
+
+
 class DepartmentViewSet(ReadOnlyModelViewSet):
     serializer_class = DepartmentSerializer
 
@@ -157,20 +277,32 @@ class BatchViewSet(ModelViewSet):
         competition = serializer.validated_data["competition"]
         if not accessible_competitions(self.request.user).filter(pk=competition.pk).exists():
             raise ValidationError("无权访问该竞赛")
-        template = TemplateVersion.objects.filter(template__published=True).order_by("-created_at").first()
+        template = serializer.validated_data.pop("template_version", None)
+        output_formats = serializer.validated_data.pop("output_formats", ["pdf", "png"])
+        requested_seals = serializer.validated_data.pop("seal_versions", {})
+        if template is None:
+            template = TemplateVersion.objects.filter(template__published=True).order_by("-created_at").first()
         if template is None:
             raise ValidationError("请先创建并发布证书模板")
         selected = []
         for department in competition.departments.all():
-            seal = SealVersion.objects.filter(seal__department=department, seal__active=True).order_by("-number").first()
+            requested_id = requested_seals.get(str(department.id))
+            seals = SealVersion.objects.filter(seal__department=department, seal__active=True)
+            seal = seals.filter(pk=requested_id).first() if requested_id else seals.order_by("-number").first()
             if seal is None:
-                raise ValidationError(f"{department.name} 没有启用的公章")
+                raise ValidationError(f"{department.name} 没有选中有效的启用公章")
             selected.append((department, seal))
         batch = serializer.save(created_by=self.request.user)
         version = BatchVersion.objects.create(
             batch=batch, number=1, template_version=template,
-            output_formats=["pdf", "png"],
-            snapshot={"template": template.canvas, "departments": [department.id for department, _ in selected], "seals": [seal.id for _, seal in selected]},
+            output_formats=output_formats,
+            snapshot={
+                "template": template.canvas,
+                "template_version": template.id,
+                "departments": [department.id for department, _ in selected],
+                "seals": [seal.id for _, seal in selected],
+                "output_formats": output_formats,
+            },
         )
         for department, seal in selected:
             ApprovalDepartment.objects.create(version=version, department=department, seal_version=seal)
@@ -183,6 +315,15 @@ class BatchViewSet(ModelViewSet):
             "batch": BatchSerializer(batch).data,
             "awards": list(version.awards.order_by("source_row").values("source_row", "members", "award_name", "team_name", "work_name", "category", "teachers", "note")),
             "approvals": ApprovalSerializer(version.required_departments.select_related("department", "version__batch__competition"), many=True).data,
+            "configuration": {
+                "template_version": version.template_version_id,
+                "template_name": version.template_version.template.name,
+                "output_formats": version.output_formats,
+                "seals": {
+                    str(item.department_id): item.seal_version_id
+                    for item in version.required_departments.all()
+                },
+            },
         })
 
     @action(detail=True, methods=["post"], url_path="import")
@@ -220,6 +361,46 @@ class BatchViewSet(ModelViewSet):
         task = getattr(version, "generation_task", None)
         return Response(None if task is None else {"status": task.status, "processed": task.processed, "total": task.total, "attempts": task.attempts, "error": task.error})
 
+    @action(detail=True, methods=["get"])
+    def preview(self, request, pk=None):
+        batch = self.get_object()
+        version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
+        award = version.awards.order_by("source_row").first()
+        if award is None:
+            return Response({"detail": "请先导入名单"}, status=400)
+        seals = [{
+            "department_id": item.department_id,
+            "seal_version_id": item.seal_version_id,
+            "image": item.seal_version.image.path,
+        } for item in version.required_departments.select_related("seal_version")]
+        output = io.BytesIO()
+        render_unsigned(
+            award,
+            "PREVIEW-ONLY",
+            output,
+            template=version.snapshot.get("template") or version.template_version.canvas,
+            seals=seals,
+        )
+        return HttpResponse(output.getvalue(), content_type="application/pdf", headers={
+            "Content-Disposition": f'inline; filename="batch-{batch.id}-preview.pdf"',
+            "Cache-Control": "no-store",
+        })
+
+    @action(detail=True, methods=["post"], url_path="emergency-issue")
+    def emergency_issue_action(self, request, pk=None):
+        try:
+            task = emergency_issue(
+                self.get_object().id,
+                request.user,
+                request.data.get("reason", ""),
+                request.data.get("password", ""),
+            )
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"task": task.id, "status": task.status})
+
 
 class ApprovalViewSet(ReadOnlyModelViewSet):
     serializer_class = ApprovalSerializer
@@ -247,7 +428,23 @@ class TemplateViewSet(ModelViewSet):
     serializer_class = TemplateSerializer
 
     def get_queryset(self):
-        return Template.objects.filter(published=True).select_related("department").prefetch_related("versions").order_by("-updated_at")
+        queryset = Template.objects.all()
+        if not self.request.user.is_superuser:
+            departments = DepartmentMembership.objects.filter(
+                user=self.request.user,
+                role=DepartmentMembership.Role.ADMIN,
+                active=True,
+            ).values_list("department_id", flat=True)
+            queryset = queryset.filter(models.Q(published=True) | models.Q(department_id__in=departments))
+        return queryset.select_related("department").prefetch_related("versions").distinct().order_by("-updated_at")
+
+    def can_manage(self, template):
+        return self.request.user.is_superuser or DepartmentMembership.objects.filter(
+            user=self.request.user,
+            department=template.department,
+            role=DepartmentMembership.Role.ADMIN,
+            active=True,
+        ).exists()
 
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
@@ -255,6 +452,18 @@ class TemplateViewSet(ModelViewSet):
             raise ValidationError("只能为本部门创建模板")
         template = serializer.save(created_by=self.request.user)
         TemplateVersion.objects.create(template=template, number=1, canvas=self.request.data.get("canvas", {}))
+
+    def perform_update(self, serializer):
+        if not self.can_manage(self.get_object()):
+            raise PermissionDenied("只能维护本部门的模板")
+        serializer.save(department=self.get_object().department, created_by=self.get_object().created_by)
+
+    def perform_destroy(self, instance):
+        if not self.can_manage(instance):
+            raise PermissionDenied("只能删除本部门的模板")
+        if BatchVersion.objects.filter(template_version__template=instance).exists():
+            raise ValidationError("模板已有批次使用，不能删除")
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     def save_version(self, request, pk=None):
@@ -285,6 +494,26 @@ class SealViewSet(ModelViewSet):
             return Seal.objects.all().select_related("department").prefetch_related("versions")
         departments = DepartmentMembership.objects.filter(user=self.request.user, role=DepartmentMembership.Role.ADMIN, active=True).values_list("department_id", flat=True)
         return Seal.objects.filter(department_id__in=departments).select_related("department").prefetch_related("versions")
+
+    def perform_create(self, serializer):
+        department = serializer.validated_data["department"]
+        if not self.request.user.is_superuser and not DepartmentMembership.objects.filter(
+            user=self.request.user,
+            department=department,
+            role=DepartmentMembership.Role.ADMIN,
+            active=True,
+        ).exists():
+            raise ValidationError("只能为本部门创建公章")
+        serializer.save()
+
+    def perform_update(self, serializer):
+        seal = self.get_object()
+        serializer.save(department=seal.department)
+
+    def perform_destroy(self, instance):
+        if ApprovalDepartment.objects.filter(seal_version__seal=instance).exists():
+            raise ValidationError("公章已有批次冻结使用，不能删除；可以停用")
+        instance.delete()
 
     @action(detail=True, methods=["post"])
     def upload_version(self, request, pk=None):
@@ -463,7 +692,9 @@ def admin_verify(request):
 
 @api_view(["GET"])
 def certificate_download(request, certificate_id, kind):
-    certificate = Certificate.objects.select_related("award__version__batch__competition").filter(pk=certificate_id).first()
+    certificate = Certificate.objects.select_related("award__version__batch__competition").filter(
+        pk=certificate_id, published_at__isnull=False,
+    ).first()
     if not certificate or not accessible_competitions(request.user).filter(pk=certificate.award.version.batch.competition_id).exists():
         return Response({"detail": "无下载权限"}, status=403)
     field = certificate.pdf if kind == "pdf" else certificate.image

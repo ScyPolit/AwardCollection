@@ -1,5 +1,8 @@
 import hashlib
+import base64
+import io
 import os
+import time
 from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -18,6 +21,7 @@ from pyhanko.sign.signers import PdfSignatureMetadata, PdfSigner
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 
 
 KEY_PASSWORD = os.getenv("SIGNING_KEY_PASSWORD", "local-test-only-change-before-deploy").encode()
@@ -87,49 +91,122 @@ def department_pfx(department):
     path = key_dir / f"department-{department.id}.p12"
     if path.exists():
         return path
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, "CN"),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AwardCollection TEST ONLY"),
-        x509.NameAttribute(NameOID.COMMON_NAME, f"{department.name} 测试签名"),
-    ])
-    now = datetime.now(dt_timezone.utc)
-    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
-        .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(days=1))
-        .not_valid_after(now + timedelta(days=3650))
-        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-        .sign(key, hashes.SHA256()))
-    data = pkcs12.serialize_key_and_certificates(
-        f"dept-{department.id}".encode(), key, cert, None,
-        serialization.BestAvailableEncryption(KEY_PASSWORD),
-    )
-    temporary = path.with_suffix(f".{os.getpid()}.tmp")
-    temporary.write_bytes(data)
-    temporary.replace(path)
+    lock = path.with_suffix(".lock")
+    acquired = False
+    for _ in range(100):
+        try:
+            lock.mkdir()
+            acquired = True
+            break
+        except FileExistsError:
+            if path.exists():
+                return path
+            time.sleep(0.1)
+    if not acquired:
+        raise RuntimeError(f"无法取得部门 {department.id} 的签名密钥创建锁")
+    try:
+        if path.exists():
+            return path
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        name = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "CN"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AwardCollection TEST ONLY"),
+            x509.NameAttribute(NameOID.COMMON_NAME, f"{department.name} 测试签名"),
+        ])
+        now = datetime.now(dt_timezone.utc)
+        cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=3650))
+            .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+            .sign(key, hashes.SHA256()))
+        data = pkcs12.serialize_key_and_certificates(
+            f"dept-{department.id}".encode(), key, cert, None,
+            serialization.BestAvailableEncryption(KEY_PASSWORD),
+        )
+        temporary = path.with_suffix(f".{os.getpid()}.tmp")
+        temporary.write_bytes(data)
+        temporary.replace(path)
+    finally:
+        lock.rmdir()
     return path
 
 
-def render_unsigned(award, number, output):
+def _data_image(value):
+    if not value:
+        return None
+    if value.startswith("data:"):
+        _, encoded = value.split(",", 1)
+        return ImageReader(io.BytesIO(base64.b64decode(encoded)))
+    path = Path(value)
+    return ImageReader(str(path)) if path.exists() else None
+
+
+def _field_value(award, field, number):
+    values = {
+        "number": number,
+        "members": "、".join(award.members),
+        "team_name": award.team_name or "、".join(award.members),
+        "award_name": award.award_name,
+        "work_name": getattr(award, "work_name", ""),
+        "category": getattr(award, "category", ""),
+        "teachers": "、".join(getattr(award, "teachers", [])),
+    }
+    return values.get(field, "")
+
+
+def _draw_text_layer(c, layer, award, number, page_height):
+    text = layer.get("text") if layer.get("field") == "static" else _field_value(award, layer.get("field"), number)
+    if not text:
+        return
+    x = float(layer.get("x", 80)); top = float(layer.get("y", 80))
+    width = float(layer.get("width", 680)); height = float(layer.get("height", 70))
+    maximum = int(layer.get("fontSize", 24)); minimum = int(layer.get("minFontSize", min(10, maximum)))
+    size, leading, lines = fit_text(str(text), "CertificateCJK", width, height, maximum, minimum)
+    c.setFillColor(layer.get("color", "#1f2937"))
+    c.setFont("CertificateCJK", size)
+    cursor = page_height - top - leading
+    alignment = layer.get("align", "center")
+    for line in lines:
+        if alignment == "left": c.drawString(x, cursor, line)
+        elif alignment == "right": c.drawRightString(x + width, cursor, line)
+        else: c.drawCentredString(x + width / 2, cursor, line)
+        cursor -= leading
+
+
+def render_unsigned(award, number, output, template=None, seals=None):
     font = font_path()
     pdfmetrics.registerFont(TTFont("CertificateCJK", str(font), subfontIndex=0))
-    page = (842, 595)
-    c = canvas.Canvas(str(output), pagesize=page, pageCompression=1)
-    c.setStrokeColorRGB(0.18, 0.27, 0.38)
-    c.setLineWidth(4)
-    c.rect(24, 24, page[0] - 48, page[1] - 48)
-    c.setFont("CertificateCJK", 12)
-    c.drawCentredString(page[0] / 2, 550, "校赛电子证书系统 | 测试专用")
-    c.setFont("CertificateCJK", 34)
-    c.drawCentredString(page[0] / 2, 465, "获 奖 证 书")
-    team = award.team_name or "、".join(award.members)
-    draw_fitted(c, team, "团队名称或成员", 110, 340, 622, 65, 22, 11)
-    c.setFont("CertificateCJK", 16)
-    c.drawCentredString(page[0] / 2, 315, f"荣获 {award.award_name}")
-    if award.work_name:
-        draw_fitted(c, award.work_name, "作品名称", 110, 230, 622, 62, 18, 10)
-    c.setFont("CertificateCJK", 11)
-    c.drawString(72, 75, f"证书编号：{number}")
-    c.drawRightString(770, 75, "本文件为系统验收测试产物")
+    template = template or {}
+    page_config = template.get("page", {})
+    page = (float(page_config.get("width", 842)), float(page_config.get("height", 595)))
+    target = output if hasattr(output, "write") else str(output)
+    c = canvas.Canvas(target, pagesize=page, pageCompression=1)
+    background = _data_image(template.get("background"))
+    if background:
+        c.drawImage(background, 0, 0, width=page[0], height=page[1], preserveAspectRatio=False, mask="auto")
+    layers = template.get("layers") or []
+    if not layers:
+        layers = [
+            {"type": "text", "field": "static", "text": template.get("title", "获 奖 证 书"), "x": 110, "y": 105, "width": 622, "height": 60, "fontSize": template.get("size", 34), "color": template.get("color", "#1f2937")},
+            {"type": "text", "field": "team_name", "x": 110, "y": 190, "width": 622, "height": 65, "fontSize": 22, "minFontSize": 11},
+            {"type": "text", "field": "award_name", "x": 110, "y": 280, "width": 622, "height": 50, "fontSize": 18, "minFontSize": 10},
+            {"type": "text", "field": "work_name", "x": 110, "y": 350, "width": 622, "height": 62, "fontSize": 18, "minFontSize": 10},
+        ]
+        if template.get("number", template.get("showNumber", True)):
+            layers.append({"type": "text", "field": "number", "x": 72, "y": 500, "width": 300, "height": 25, "fontSize": 11, "align": "left"})
+    seal_map = {str(item["department_id"]): item for item in (seals or [])}
+    for layer in layers:
+        if layer.get("type") == "text":
+            _draw_text_layer(c, layer, award, number, page[1])
+        elif layer.get("type") == "seal":
+            item = seal_map.get(str(layer.get("department")))
+            image = _data_image(item.get("image") if item else None)
+            if image:
+                size = float(layer.get("size", 100)); x = float(layer.get("x", 600)); top = float(layer.get("y", 420))
+                c.drawImage(image, x, page[1] - top - size, width=size, height=size, preserveAspectRatio=True, mask="auto")
+    if template.get("watermark", template.get("showWatermark", False)):
+        c.saveState(); c.setFillColorRGB(0.75, 0.75, 0.75); c.setFont("CertificateCJK", 9)
+        c.drawRightString(page[0] - 60, 35, number); c.restoreState()
     c.save()
 
 
@@ -144,12 +221,12 @@ def append_signature(source, destination, department, index):
         PdfSigner(metadata, signer=signer, new_field_spec=spec).sign_pdf(writer, output=outf)
 
 
-def render_certificate(award, number, departments=None):
-    root = Path(settings.MEDIA_ROOT) / "protected" / "certificates" / str(datetime.now().year)
+def render_certificate(award, number, departments=None, template=None, seals=None, output_root=None, make_image=True):
+    root = Path(output_root) if output_root else Path(settings.MEDIA_ROOT) / "protected" / "certificates" / str(datetime.now().year)
     root.mkdir(parents=True, exist_ok=True)
     base = root / number
     unsigned = base.with_suffix(".unsigned.pdf")
-    render_unsigned(award, number, unsigned)
+    render_unsigned(award, number, unsigned, template=template, seals=seals)
     current = unsigned
     departments = departments or [
         requirement.department
@@ -164,15 +241,17 @@ def render_certificate(award, number, departments=None):
     final_pdf = base.with_suffix(".pdf")
     current.replace(final_pdf)
     unsigned.unlink(missing_ok=True)
-    document = fitz.open(final_pdf)
-    pixmap = document[0].get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
-    image = base.with_suffix(".png")
-    pixmap.save(image)
-    document.close()
+    image = None
+    if make_image:
+        document = fitz.open(final_pdf)
+        pixmap = document[0].get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
+        image = base.with_suffix(".png")
+        pixmap.save(image)
+        document.close()
     return final_pdf, image, sha256(final_pdf)
 
 
-def render_certificate_payload(payload, number, department_payloads):
+def render_certificate_payload(payload, number, department_payloads, template=None, seals=None, output_root=None, make_image=True):
     award = SimpleNamespace(**payload)
     departments = [SimpleNamespace(**item) for item in department_payloads]
-    return render_certificate(award, number, departments)
+    return render_certificate(award, number, departments, template, seals, output_root, make_image)

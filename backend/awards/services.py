@@ -51,14 +51,28 @@ def parse_excel(file_obj):
 @transaction.atomic
 def submit_batch(batch_id, actor):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
+    if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED]:
+        raise ValueError("当前批次状态不允许提交")
     version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
     if not version.awards.exists():
         raise ValueError("名单为空")
+    for requirement in version.required_departments.select_related("seal_version__seal"):
+        if not requirement.seal_version.seal.active:
+            raise ValueError(f"{requirement.department.name} 的选定公章已停用")
     version.submitted_by = actor
     version.submitted_at = timezone.now()
     version.save(update_fields=["submitted_by", "submitted_at", "updated_at"])
     batch.status = AwardBatch.Status.REVIEW
     batch.save(update_fields=["status", "updated_at"])
+    admin_ids = DepartmentMembership.objects.filter(
+        department_id__in=version.required_departments.values_list("department_id", flat=True),
+        role=DepartmentMembership.Role.ADMIN,
+        active=True,
+    ).exclude(user=actor).values_list("user_id", flat=True)
+    Notification.objects.bulk_create([
+        Notification(user_id=user_id, title="获奖名单待审批", body=f"批次“{batch.name}”已提交部门会签")
+        for user_id in set(admin_ids)
+    ])
     return version
 
 
@@ -99,6 +113,8 @@ def revise_batch(batch_id, actor, rows, expected_version):
 
 @transaction.atomic
 def decide(requirement_id, actor, decision, comment=""):
+    if decision not in ApprovalDecision.Decision.values:
+        raise ValueError("审批决定无效")
     requirement = ApprovalDepartment.objects.select_for_update().select_related("version__batch").get(pk=requirement_id)
     version = requirement.version
     batch = AwardBatch.objects.select_for_update().get(pk=version.batch_id)
@@ -114,6 +130,11 @@ def decide(requirement_id, actor, decision, comment=""):
     if decision == ApprovalDecision.Decision.RETURNED:
         batch.status = AwardBatch.Status.RETURNED
         batch.save(update_fields=["status", "updated_at"])
+        collaborator_ids = set(batch.competition.collaborators.values_list("id", flat=True))
+        Notification.objects.bulk_create([
+            Notification(user_id=user_id, title="获奖名单已退回", body=f"批次“{batch.name}”被退回：{comment or '请查看审批意见'}")
+            for user_id in collaborator_ids if user_id != actor.id
+        ])
         return None
     required = version.required_departments.count()
     approved = ApprovalDecision.objects.filter(requirement__version=version, decision=ApprovalDecision.Decision.APPROVED).count()
@@ -123,6 +144,49 @@ def decide(requirement_id, actor, decision, comment=""):
         batch.save(update_fields=["status", "updated_at"])
         return task
     return None
+
+
+@transaction.atomic
+def emergency_issue(batch_id, actor, reason, password):
+    if not actor.is_superuser or not actor.check_password(password):
+        raise PermissionError("超管身份或密码复核失败")
+    if not reason.strip():
+        raise ValueError("必须填写应急原因")
+    batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
+    if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED, AwardBatch.Status.REVIEW, AwardBatch.Status.FAILED]:
+        raise ValueError("当前批次状态不允许应急签发")
+    version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
+    if not version.awards.exists():
+        raise ValueError("名单为空")
+    for requirement in version.required_departments.select_related("seal_version__seal"):
+        if not requirement.seal_version.seal.active:
+            raise ValueError(f"{requirement.department.name} 的选定公章已停用")
+    task, _ = GenerationTask.objects.get_or_create(version=version, defaults={"total": version.awards.count()})
+    if task.status == GenerationTask.Status.DONE:
+        raise ValueError("该版本已经签发")
+    if task.status == GenerationTask.Status.RUNNING and task.lease_expires_at and task.lease_expires_at >= timezone.now():
+        raise ValueError("该版本正在生成，不能重复应急签发")
+    task.status = GenerationTask.Status.QUEUED
+    task.error = ""
+    task.lease_token = None
+    task.lease_expires_at = None
+    task.total = version.awards.count()
+    task.save(update_fields=["status", "error", "lease_token", "lease_expires_at", "total", "updated_at"])
+    batch.status = AwardBatch.Status.QUEUED
+    batch.save(update_fields=["status", "updated_at"])
+    AuditEvent.objects.create(
+        actor=actor, action="emergency.issue", object_type="AwardBatch",
+        object_id=str(batch.id), detail={"reason": reason, "version": version.number},
+    )
+    related_ids = set(batch.competition.collaborators.values_list("id", flat=True))
+    related_ids.update(DepartmentMembership.objects.filter(
+        department__competitions=batch.competition, role=DepartmentMembership.Role.ADMIN, active=True,
+    ).values_list("user_id", flat=True))
+    Notification.objects.bulk_create([
+        Notification(user_id=user_id, title="超管应急签发", body=f"批次“{batch.name}”已应急进入签发队列：{reason}")
+        for user_id in related_ids if user_id != actor.id
+    ])
+    return task
 
 
 @transaction.atomic
@@ -147,6 +211,8 @@ def request_revocation(certificate_id, actor, reason):
 
 @transaction.atomic
 def decide_revocation(request_id, department_id, actor, decision, comment=""):
+    if decision not in RevocationDecision.Decision.values:
+        raise ValueError("作废审批决定无效")
     request = RevocationRequest.objects.select_for_update().select_related("certificate__award__version").get(pk=request_id)
     if request.status != RevocationRequest.Status.REVIEW:
         raise ValueError("作废申请已结束")

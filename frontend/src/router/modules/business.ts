@@ -13,6 +13,8 @@ export default {
     { path: "/business/seals", name: "Seals", component: () => import("@/views/business/seals.vue"), meta: { title: "公章管理" } },
     { path: "/business/approvals", name: "Approvals", component: () => import("@/views/business/approvals.vue"), meta: { title: "会签待办" } },
     { path: "/business/certificates", name: "Certificates", component: () => import("@/views/business/certificates.vue"), meta: { title: "证书档案" } },
+    { path: "/business/administration", name: "Administration", component: () => import("@/views/business/administration.vue"), meta: { title: "账号与公开设置" } },
+    { path: "/business/emergency", name: "Emergency", component: () => import("@/views/business/emergency.vue"), meta: { title: "超管应急" } },
     { path: "/business/verification", name: "Verification", component: () => import("@/views/business/verification.vue"), meta: { title: "编号查验" } }
   ]
 } satisfies RouteConfigsTable;

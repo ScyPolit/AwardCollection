@@ -1,6 +1,8 @@
 import io
+import base64
 import tempfile
 from pathlib import Path
+from PIL import Image
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
 from django.test import TestCase, override_settings
@@ -8,15 +10,16 @@ from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 from pyhanko.pdf_utils.reader import PdfFileReader
+from pyhanko.sign.validation import validate_pdf_signature
 from .models import (
     ApprovalDepartment, AwardBatch, BatchVersion, Competition, Department,
-    Certificate, RevocationRequest, DepartmentMembership, Seal, SealVersion,
-    TeamAward, Template, TemplateVersion,
+    Certificate, GenerationTask, RevocationRequest, DepartmentMembership,
+    Seal, SealVersion, SystemSetting, TeamAward, Template, TemplateVersion,
 )
 from .renderer import fit_text, render_certificate
 from .services import (
     allocate_number, decide, decide_revocation, emergency_void, excel_template,
-    parse_excel, request_revocation, revise_batch, submit_batch,
+    emergency_issue, parse_excel, request_revocation, revise_batch, submit_batch,
 )
 
 
@@ -79,7 +82,12 @@ class WorkflowTests(TestCase):
             self.assertTrue(image.exists())
             self.assertEqual(len(digest), 64)
             with open(pdf, "rb") as source:
-                self.assertEqual(len(PdfFileReader(source).embedded_signatures), 2)
+                signatures = PdfFileReader(source).embedded_signatures
+                self.assertEqual(len(signatures), 2)
+                for signature in signatures:
+                    status = validate_pdf_signature(signature)
+                    self.assertTrue(status.intact)
+                    self.assertTrue(status.valid)
 
     def test_return_and_revise_invalidates_old_approval(self):
         submit_batch(self.batch.id, self.owner)
@@ -200,3 +208,121 @@ class WorkflowTests(TestCase):
         self.assertEqual("".join(lines), "长作品名" * 30)
         with self.assertRaises(ValueError):
             fit_text("超长文本" * 500, "Helvetica", 30, 10, 10, 10)
+
+    def test_issued_batch_cannot_be_submitted_again(self):
+        self.batch.status = AwardBatch.Status.ISSUED
+        self.batch.save(update_fields=["status"])
+        with self.assertRaisesRegex(ValueError, "不允许提交"):
+            submit_batch(self.batch.id, self.owner)
+
+    def test_outsider_cannot_create_or_change_department_resources(self):
+        client = APIClient(); client.force_authenticate(self.outsider)
+        response = client.post("/api/v1/seals/", {
+            "name": "越权公章", "department": self.departments[0].id, "active": True,
+        }, format="json")
+        self.assertEqual(response.status_code, 400)
+        template = self.version.template_version.template
+        response = client.patch(f"/api/v1/templates/{template.id}/", {"name": "越权修改"}, format="json")
+        self.assertIn(response.status_code, [403, 404])
+        template.refresh_from_db()
+        self.assertEqual(template.name, "测试模板")
+
+    def test_batch_creation_freezes_selected_template_seals_and_formats(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        seals = {
+            str(item.department_id): item.seal_version_id
+            for item in self.version.required_departments.all()
+        }
+        response = client.post("/api/v1/batches/", {
+            "competition": self.batch.competition_id,
+            "name": "显式配置批次",
+            "template_version": self.version.template_version_id,
+            "output_formats": ["pdf"],
+            "seal_versions": seals,
+        }, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+        created = AwardBatch.objects.get(pk=response.data["id"])
+        version = created.versions.get(number=1)
+        self.assertEqual(version.output_formats, ["pdf"])
+        self.assertEqual(version.template_version_id, self.version.template_version_id)
+        self.assertEqual(
+            {str(item.department_id): item.seal_version_id for item in version.required_departments.all()},
+            seals,
+        )
+
+    def test_template_background_and_seal_change_rendered_output(self):
+        def data_image(color):
+            output = io.BytesIO()
+            Image.new("RGB", (20, 20), color).save(output, format="PNG")
+            return "data:image/png;base64," + base64.b64encode(output.getvalue()).decode()
+
+        seal_image = Path(self.media_directory.name) / "seal.png"
+        Image.new("RGBA", (40, 40), (220, 20, 30, 255)).save(seal_image)
+        template = {
+            "page": {"width": 842, "height": 595},
+            "background": data_image((230, 245, 255)),
+            "layers": [
+                {"type": "text", "field": "team_name", "x": 100, "y": 160, "width": 640, "height": 80, "fontSize": 28},
+                {"type": "seal", "department": self.departments[0].id, "x": 620, "y": 410, "size": 100},
+            ],
+            "watermark": True,
+        }
+        with tempfile.TemporaryDirectory() as directory, override_settings(MEDIA_ROOT=Path(directory)):
+            pdf, image, digest = render_certificate(
+                self.award,
+                allocate_number(),
+                template=template,
+                seals=[{"department_id": self.departments[0].id, "image": str(seal_image)}],
+            )
+            self.assertTrue(pdf.exists())
+            self.assertTrue(image.exists())
+            self.assertEqual(len(digest), 64)
+
+    def test_unpublished_certificate_cannot_be_downloaded_directly(self):
+        certificate = Certificate.objects.create(
+            award=self.award, number=allocate_number(),
+            pdf=ContentFile(b"pdf", name="unpublished.pdf"),
+        )
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.get(f"/api/v1/certificates/{certificate.id}/download/pdf/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_emergency_issue_requires_superuser_password_and_reason(self):
+        with self.assertRaises(PermissionError):
+            emergency_issue(self.batch.id, self.outsider, "紧急", "Test-Pass-2026")
+        with self.assertRaises(PermissionError):
+            emergency_issue(self.batch.id, self.superuser, "紧急", "wrong")
+        with self.assertRaises(ValueError):
+            emergency_issue(self.batch.id, self.superuser, "", "Test-Pass-2026")
+        task = emergency_issue(self.batch.id, self.superuser, "测试专用紧急签发", "Test-Pass-2026")
+        self.batch.refresh_from_db()
+        self.assertEqual(task.status, GenerationTask.Status.QUEUED)
+        self.assertEqual(self.batch.status, AwardBatch.Status.QUEUED)
+
+    def test_public_settings_are_superuser_managed(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.put("/api/v1/settings/public-verification/", {"show_team": False}, format="json")
+        self.assertEqual(response.status_code, 403)
+        client.force_authenticate(self.superuser)
+        response = client.put("/api/v1/settings/public-verification/", {
+            "show_team": False, "show_members": True, "mask_members": False,
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SystemSetting.objects.get(key="public_verification").value["show_team"])
+
+    def test_department_admin_can_create_owner_but_not_admin(self):
+        client = APIClient(); client.force_authenticate(self.admin_a)
+        payload = {"username": "new_owner", "name": "新负责人", "password": "Owner-Pass-2026", "department": self.departments[0].id, "role": "owner"}
+        response = client.post("/api/v1/management/accounts/", payload, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+        payload.update(username="new_admin", role="admin")
+        response = client.post("/api/v1/management/accounts/", payload, format="json")
+        self.assertEqual(response.status_code, 403)
+
+    def test_batch_preview_uses_frozen_configuration_without_issuing(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.get(f"/api/v1/batches/{self.batch.id}/preview/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertFalse(Certificate.objects.filter(award=self.award).exists())

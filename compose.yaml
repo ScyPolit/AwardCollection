@@ -21,7 +21,10 @@ services:
         limits: {memory: 1G}
 
   api:
-    build: {context: ./backend}
+    build:
+      context: ${APP_SOURCE_DIR:-.}/backend
+      args:
+        APP_BUILD_VERSION: ${APP_BUILD_VERSION:-development}
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-awardcollection}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-awardcollection}
@@ -31,6 +34,8 @@ services:
       SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       CERTIFICATE_FONT: ${CERTIFICATE_FONT:-/srv/media/fonts/wqy-zenhei.ttc}
       DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      APP_BUILD_VERSION: ${APP_BUILD_VERSION:-development}
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
     depends_on:
@@ -49,7 +54,10 @@ services:
         limits: {memory: 1G}
 
   worker:
-    build: {context: ./backend}
+    build:
+      context: ${APP_SOURCE_DIR:-.}/backend
+      args:
+        APP_BUILD_VERSION: ${APP_BUILD_VERSION:-development}
     restart: unless-stopped
     command: ["python", "manage.py", "runworker"]
     environment:
@@ -58,6 +66,8 @@ services:
       SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       CERTIFICATE_FONT: ${CERTIFICATE_FONT:-/srv/media/fonts/wqy-zenhei.ttc}
       DJANGO_SETTINGS_MODULE: config.settings
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      APP_BUILD_VERSION: ${APP_BUILD_VERSION:-development}
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
       WORKER_CONCURRENCY: "1"
@@ -74,7 +84,10 @@ services:
         limits: {memory: 2G}
 
   web:
-    build: {context: ./frontend}
+    build:
+      context: ${APP_SOURCE_DIR:-.}/frontend
+      args:
+        APP_BUILD_VERSION: ${APP_BUILD_VERSION:-development}
     restart: unless-stopped
     depends_on:
       api: {condition: service_healthy}

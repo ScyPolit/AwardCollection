@@ -11,6 +11,8 @@ COPY . .
 RUN pnpm build
 
 FROM nginx:stable-alpine as production-stage
+ARG APP_BUILD_VERSION=development
+LABEL org.opencontainers.image.revision=$APP_BUILD_VERSION
 
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
