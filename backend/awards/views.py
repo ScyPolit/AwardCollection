@@ -1,6 +1,7 @@
 import hashlib
 import io
 import random
+import tempfile
 import zipfile
 from datetime import timedelta
 
@@ -594,7 +595,7 @@ class CertificateViewSet(ReadOnlyModelViewSet):
         certificates = self.get_queryset().filter(award__version__batch_id=batch_id, published_at__isnull=False)
         if not certificates.exists():
             return Response({"detail": "没有可归档文件"}, status=404)
-        output = io.BytesIO()
+        output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
             for certificate in certificates:
                 if certificate.pdf:
@@ -727,4 +728,5 @@ def certificate_download(request, certificate_id, kind):
     field = certificate.pdf if kind == "pdf" else certificate.image
     if not field:
         return Response({"detail": "文件尚未生成"}, status=404)
-    return FileResponse(field.open("rb"), as_attachment=True, filename=f"{certificate.number}.{kind}", content_type="application/pdf" if kind == "pdf" else "image/png")
+    extension = "pdf" if kind == "pdf" else "png"
+    return FileResponse(field.open("rb"), as_attachment=True, filename=f"{certificate.number}.{extension}", content_type="application/pdf" if kind == "pdf" else "image/png")
