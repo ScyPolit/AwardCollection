@@ -519,12 +519,11 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertFalse(Template.objects.filter(name='坏模板').exists())
 
-    def test_font_import_requires_administrator_and_license_confirmation(self):
+    def test_font_import_requires_login_and_license_confirmation(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .fonts import font_file
+        self.assertEqual(APIClient().post('/api/v1/fonts/',{},format='multipart').status_code,403)
         client = APIClient(); client.force_authenticate(self.owner)
-        self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,403)
-        client.force_authenticate(self.superuser)
         self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
         file=SimpleUploadedFile('licensed.ttf',font_file('liberationserif-regular').read_bytes())
         response=client.post('/api/v1/fonts/',{'file':file,'name':'授权英文字体测试','license_confirmed':'true'},format='multipart')
@@ -537,6 +536,14 @@ class WorkflowTests(TestCase):
         with self.assertNumQueries(0), resolved_font_files(files):
             layout=layout_text('荣誉证书 AWARD',{'fontFamily':response.data['id'],'fontSize':24,'minFontSize':10,'width':500,'height':100})
             self.assertTrue(layout['lines'])
+        for user in (self.admin_a, self.outsider, self.superuser):
+            client.force_authenticate(user)
+            self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
+            duplicate=client.post('/api/v1/fonts/',{'file':SimpleUploadedFile('licensed.ttf',font_file('liberationserif-regular').read_bytes()),'license_confirmed':'true'},format='multipart')
+            self.assertEqual(duplicate.status_code,200,duplicate.data)
+            self.assertEqual(duplicate.data['id'],response.data['id'])
+        client.force_authenticate(self.owner)
+        self.assertEqual(client.post('/api/v1/fonts/',{'file':SimpleUploadedFile('bad.ttf',b'not a font'),'license_confirmed':'true'},format='multipart').status_code,400)
 
 
     def test_only_superuser_can_manage_font_without_changing_historical_bytes(self):
@@ -563,6 +570,40 @@ class WorkflowTests(TestCase):
         self.assertTrue(layout_text('历史证书 AWARD', {'fontFamily': font_id})['lines'])
         self.assertEqual(client.patch(url, {'active': True}, format='json').status_code, 200)
         self.assertEqual(client.patch('/api/v1/fonts/hei/', {'active': False}, format='json').status_code, 400)
+
+    def test_styled_text_and_shapes_are_rendered_and_remain_extractable(self):
+        import fitz
+        from .fonts import validate_canvas
+        from .renderer import render_unsigned
+        title={'id':'title','type':'text','field':'static','text':'荣誉证书 AWARD','x':80,'y':50,'width':650,'height':100,'fontFamily':'fangsong','fontSize':36,'minFontSize':10,'bold':True,'italic':True,'underline':True}
+        shapes=[
+            {'id':'box','type':'shape','kind':'rect','x':80,'y':200,'width':120,'height':80,'stroke':'#123456','fill':'#e5edff','strokeWidth':2},
+            {'id':'oval','type':'shape','kind':'ellipse','x':300,'y':200,'width':140,'height':90,'stroke':'#cc3333','fill':'none','strokeWidth':3},
+            {'id':'line','type':'shape','kind':'line','x':100,'y':400,'width':500,'height':5,'stroke':'#336699','fill':'none','strokeWidth':2,'points':[[0,0],[1,1]]},
+            {'id':'pen','type':'shape','kind':'freehand','x':500,'y':200,'width':180,'height':100,'stroke':'#00aa33','fill':'none','strokeWidth':4,'points':[[0,0],[.2,.8],[.5,.3],[1,1]]},
+        ]
+        template=validate_canvas({'page':{'width':842,'height':595},'layers':[title,*shapes]})
+        output=io.BytesIO();render_unsigned(self.award,'TEST-STYLES',output,template=template)
+        document=fitz.open(stream=output.getvalue(),filetype='pdf');page=document[0]
+        self.assertIn('荣誉证书 AWARD',page.get_text())
+        self.assertGreaterEqual(len(page.get_drawings()),5)
+        self.assertTrue(any(span['type']==1 for span in page.get_texttrace()),'Bold outlines must be present in the PDF')
+        pixel=page.get_pixmap().pixel(120,240)
+        self.assertTrue(all(abs(a-b)<=1 for a,b in zip(pixel,(229,237,255))))
+        plain=io.BytesIO();render_unsigned(self.award,'TEST-STYLES',plain,template={'page':{'width':842,'height':595},'layers':[{**title,'bold':False,'italic':False,'underline':False}]})
+        original=fitz.open(stream=plain.getvalue(),filetype='pdf')
+        self.assertNotEqual(page.get_pixmap().samples,original[0].get_pixmap().samples)
+
+    def test_template_rejects_invalid_shapes_and_non_boolean_text_styles(self):
+        client=APIClient();client.force_authenticate(self.admin_a)
+        shape={'id':'shape','type':'shape','kind':'freehand','x':20,'y':20,'width':200,'height':100,'stroke':'#123456','fill':'none','strokeWidth':2,'points':[[0,0],[1,1]]}
+        bad_layers=[{**shape,'points':[[0,0],[2,1]]},{**shape,'points':[[0,0]]},{**shape,'points':[[0,0]]*1001},{**shape,'stroke':None},{**shape,'kind':'script'},{**shape,'strokeWidth':50},
+                    {'id':'t','type':'text','field':'static','text':'证书','x':20,'y':20,'width':200,'height':100,'bold':'yes'}]
+        for layer in bad_layers:
+            response=client.post('/api/v1/templates/layout/',{'canvas':{'page':{'width':842,'height':595},'layers':[layer]}},format='json')
+            self.assertEqual(response.status_code,400,response.data)
+        too_many=[{**shape,'id':str(i),'points':[[0,0]]*900} for i in range(6)]
+        self.assertEqual(client.post('/api/v1/templates/layout/',{'canvas':{'page':{'width':842,'height':595},'layers':too_many}},format='json').status_code,400)
 
     def test_audit_details_are_scoped_to_actor_for_department_admin(self):
         from .models import AuditEvent

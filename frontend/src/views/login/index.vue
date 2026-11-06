@@ -36,7 +36,7 @@ async function submit() {
 <template>
   <main class="login-shell">
     <section class="login-panel">
-      <div class="brand-mark">证</div>
+      <img class="brand-mark" src="/school-emblem.svg" alt="学校校徽" />
       <h1>校赛电子证书系统</h1>
       <p>使用学校分配的独立账号登录</p>
       <el-form
@@ -96,9 +96,9 @@ async function submit() {
   height: 48px;
   display: grid;
   place-items: center;
-  background: #1f4b73;
+  background: transparent;
   color: #fff;
-  border-radius: 6px;
+  border-radius: 50%;
   font-size: 24px;
   font-weight: 700;
 }

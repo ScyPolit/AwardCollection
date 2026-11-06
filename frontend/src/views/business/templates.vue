@@ -11,6 +11,7 @@ import { useRoute, useRouter } from "vue-router";
 import { useResizeObserver } from "@vueuse/core";
 import { ElMessage, type UploadFile } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
+import CertificateShape from "@/components/CertificateShape.vue";
 import { useBusinessAccess } from "@/utils/businessAccess";
 import {
   copyTemplate,
@@ -41,6 +42,9 @@ type TextLayer = {
   lineHeight: number;
   color: string;
   align: string;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
 };
 type SealLayer = {
   id: string;
@@ -50,7 +54,29 @@ type SealLayer = {
   y: number;
   size: number;
 };
-type Layer = TextLayer | SealLayer;
+type ShapeKind = "rect" | "ellipse" | "line" | "freehand";
+type ShapeLayer = {
+  id: string;
+  type: "shape";
+  kind: ShapeKind;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  stroke: string;
+  fill: string;
+  strokeWidth: number;
+  points?: number[][];
+};
+type Layer = TextLayer | SealLayer | ShapeLayer;
+const shapeLabels: Record<ShapeKind, string> = {
+  rect: "矩形",
+  ellipse: "椭圆",
+  line: "直线",
+  freehand: "自由绘制"
+};
+const drawingKind = ref<"line" | "freehand">();
+const drawingPoints = ref<number[][]>([]);
 type CanvasModel = {
   page: { width: number; height: number };
   background: string;
@@ -214,6 +240,7 @@ watch(
   }
 );
 watch(selectedTemplate, item => {
+  cancelDrawing();
   canvas.value = normalize(item?.latest_version?.canvas);
   selectedLayerId.value = canvas.value.layers[0]?.id || "";
 });
@@ -274,6 +301,7 @@ async function refreshLayout(id: number) {
 }
 watch(canvas, scheduleLayout, { deep: true });
 onBeforeUnmount(() => {
+  cancelDrawing();
   clearTimeout(timer);
   requestId++;
 });
@@ -330,6 +358,145 @@ function addSeal() {
   canvas.value.layers.push(layer);
   selectedLayerId.value = layer.id;
 }
+function addShape(kind: ShapeKind) {
+  if (!canManage.value) return;
+  if (kind === "line" || kind === "freehand") {
+    drawingKind.value = kind;
+    drawingPoints.value = [];
+    return;
+  }
+  const layer: ShapeLayer = {
+    id: layerId(),
+    type: "shape",
+    kind,
+    x: 120,
+    y: 180,
+    width: 200,
+    height: 100,
+    stroke: "#1f2937",
+    fill: "none",
+    strokeWidth: 2
+  };
+  canvas.value.layers.push(layer);
+  selectedLayerId.value = layer.id;
+}
+function layerLabel(layer: Layer) {
+  return layer.type === "shape"
+    ? shapeLabels[layer.kind]
+    : layer.type === "seal"
+      ? "公章位"
+      : fieldLabels[layer.field];
+}
+function moveOrder(delta: number) {
+  const index = canvas.value.layers.findIndex(
+      l => l.id === selectedLayerId.value
+    ),
+    target = index + delta;
+  if (
+    !canManage.value ||
+    index < 0 ||
+    target < 0 ||
+    target >= canvas.value.layers.length
+  )
+    return;
+  [canvas.value.layers[index], canvas.value.layers[target]] = [
+    canvas.value.layers[target],
+    canvas.value.layers[index]
+  ];
+}
+function setShapeFill(value: string | null) {
+  if (selectedLayer.value?.type === "shape")
+    selectedLayer.value.fill = value || "none";
+}
+function setLayerColor(value: string | null) {
+  const layer = selectedLayer.value;
+  if (layer?.type === "shape") layer.stroke = value || "#1f2937";
+  else if (layer?.type === "text") layer.color = value || "#1f2937";
+}
+let drawingTarget: HTMLElement | undefined;
+let drawingPointer: number | undefined;
+function canvasPoint(event: PointerEvent) {
+  const rect = drawingTarget!.getBoundingClientRect();
+  return [
+    Math.max(
+      2,
+      Math.min(
+        canvas.value.page.width - 2,
+        (event.clientX - rect.left) / scale.value
+      )
+    ),
+    Math.max(
+      2,
+      Math.min(
+        canvas.value.page.height - 2,
+        (event.clientY - rect.top) / scale.value
+      )
+    )
+  ];
+}
+function startDrawing(event: PointerEvent) {
+  if (!drawingKind.value || !canManage.value || event.button !== 0) return;
+  event.preventDefault();
+  drawingTarget = event.currentTarget as HTMLElement;
+  drawingPointer = event.pointerId;
+  drawingTarget.setPointerCapture(event.pointerId);
+  drawingPoints.value = [canvasPoint(event)];
+}
+function updateDrawing(event: PointerEvent) {
+  if (drawingPointer !== event.pointerId) return;
+  const point = canvasPoint(event);
+  if (drawingKind.value === "line")
+    drawingPoints.value = [drawingPoints.value[0], point];
+  else if (drawingPoints.value.length < 1000) drawingPoints.value.push(point);
+}
+function finishDrawing(event: PointerEvent) {
+  if (drawingPointer !== event.pointerId) return;
+  updateDrawing(event);
+  if (drawingTarget?.hasPointerCapture(event.pointerId))
+    drawingTarget.releasePointerCapture(event.pointerId);
+  if (drawingPoints.value.length >= 2) {
+    const xs = drawingPoints.value.map(p => p[0]),
+      ys = drawingPoints.value.map(p => p[1]);
+    const x = Math.min(...xs) - 1,
+      y = Math.min(...ys) - 1;
+    const width = Math.max(4, Math.max(...xs) - x + 1),
+      height = Math.max(4, Math.max(...ys) - y + 1);
+    const layer: ShapeLayer = {
+      id: layerId(),
+      type: "shape",
+      kind: drawingKind.value!,
+      x,
+      y,
+      width: Math.min(width, canvas.value.page.width - x),
+      height: Math.min(height, canvas.value.page.height - y),
+      stroke: "#1f2937",
+      fill: "none",
+      strokeWidth: 2,
+      points: drawingPoints.value.map(p => [
+        Math.max(0, Math.min(1, (p[0] - x - 1) / Math.max(1, width - 2))),
+        Math.max(0, Math.min(1, (p[1] - y - 1) / Math.max(1, height - 2)))
+      ])
+    };
+    canvas.value.layers.push(layer);
+    selectedLayerId.value = layer.id;
+  }
+  drawingPointer = undefined;
+  drawingTarget = undefined;
+  drawingPoints.value = [];
+  drawingKind.value = undefined;
+}
+function cancelDrawing() {
+  if (
+    drawingTarget &&
+    drawingPointer !== undefined &&
+    drawingTarget.hasPointerCapture(drawingPointer)
+  )
+    drawingTarget.releasePointerCapture(drawingPointer);
+  drawingPointer = undefined;
+  drawingTarget = undefined;
+  drawingPoints.value = [];
+  drawingKind.value = undefined;
+}
 function remove() {
   canvas.value.layers = canvas.value.layers.filter(
     l => l.id !== selectedLayerId.value
@@ -367,7 +534,7 @@ async function uploadFont() {
     data.append("license_confirmed", String(fontForm.license_confirmed));
     const font = await importFont(data);
     fonts.value = await listFonts();
-    if (selectedLayer.value?.type === "text")
+    if (canManage.value && font.active && selectedLayer.value?.type === "text")
       selectedLayer.value.fontFamily = font.id;
     fontDialog.value = false;
     ElMessage.success("字体已导入，可用于模板和 PDF");
@@ -393,12 +560,21 @@ function showInfo() {
             位置: [l.x, l.y],
             尺寸: [l.width, l.height]
           }
-        : {
-            类型: "公章",
-            部门: departments.value.find(d => d.id === l.department)?.name,
-            位置: [l.x, l.y],
-            尺寸: l.size
-          }
+        : l.type === "seal"
+          ? {
+              类型: "公章",
+              部门: departments.value.find(d => d.id === l.department)?.name,
+              位置: [l.x, l.y],
+              尺寸: l.size
+            }
+          : {
+              类型: shapeLabels[l.kind],
+              位置: [l.x, l.y],
+              尺寸: [l.width, l.height],
+              线条: l.stroke,
+              填充: l.fill,
+              线宽: l.strokeWidth
+            }
     )
   };
   info.value = true;
@@ -419,6 +595,7 @@ function moveLayer(layer: Layer, x: number, y: number) {
   layer.y = Math.round(Math.max(0, Math.min(canvas.value.page.height - h, y)));
 }
 function startDrag(layer: Layer, event: PointerEvent) {
+  if (drawingKind.value) return;
   selectedLayerId.value = layer.id;
   if (!canManage.value || event.button !== 0) return;
   const target = event.currentTarget as HTMLElement;
@@ -501,6 +678,27 @@ onMounted(load);
         ><el-button :disabled="!canManage" @click="addSeal"
           >添加公章位</el-button
         >
+        <el-button :disabled="!canManage" @click="addShape('rect')"
+          >添加矩形</el-button
+        >
+        <el-button :disabled="!canManage" @click="addShape('ellipse')"
+          >添加椭圆</el-button
+        >
+        <el-button
+          :disabled="!canManage"
+          :type="drawingKind === 'line' ? 'primary' : 'default'"
+          @click="addShape('line')"
+          >绘制直线</el-button
+        >
+        <el-button
+          :disabled="!canManage"
+          :type="drawingKind === 'freehand' ? 'primary' : 'default'"
+          @click="addShape('freehand')"
+          >自由绘制</el-button
+        >
+        <el-button v-if="drawingKind" @click="cancelDrawing"
+          >取消绘制</el-button
+        >
       </div>
       <div class="layers">
         <button
@@ -509,12 +707,15 @@ onMounted(load);
           :class="{ active: selectedLayerId === layer.id }"
           @click="selectedLayerId = layer.id"
         >
-          {{ layer.type === "seal" ? "公章位" : fieldLabels[layer.field] }}
+          {{ layerLabel(layer) }}
         </button>
       </div>
     </aside>
     <main ref="previewHost">
       <div class="preview-status">
+        <p v-if="drawingKind">
+          在画布上按住拖动绘制{{ shapeLabels[drawingKind] }}，释放完成。
+        </p>
         <span v-if="layoutBusy">加载字体与排版…</span
         ><span v-else>与 PDF 共用字体和排版坐标</span
         ><el-alert
@@ -533,6 +734,11 @@ onMounted(load);
       >
         <div
           class="canvas"
+          :class="{ drawing: drawingKind }"
+          @pointerdown="startDrawing"
+          @pointermove="updateDrawing"
+          @pointerup="finishDrawing"
+          @pointercancel="cancelDrawing"
           :style="{
             width: canvas.page.width + 'px',
             height: canvas.page.height + 'px',
@@ -548,10 +754,11 @@ onMounted(load);
             class="layer"
             :class="{
               selected: selectedLayerId === layer.id,
-              seal: layer.type === 'seal'
+              seal: layer.type === 'seal',
+              shape: layer.type === 'shape'
             }"
             :style="
-              layer.type === 'text'
+              layer.type !== 'seal'
                 ? {
                     left: layer.x + 'px',
                     top: layer.y + 'px',
@@ -572,11 +779,7 @@ onMounted(load);
             @keydown="moveByKey(layer, $event)"
             tabindex="0"
             role="button"
-            :aria-label="
-              layer.type === 'seal'
-                ? '公章图层'
-                : fieldLabels[layer.field] + '图层'
-            "
+            :aria-label="layerLabel(layer) + '图层'"
           >
             <svg v-if="layer.type === 'text'" width="100%" height="100%">
               <g
@@ -586,17 +789,34 @@ onMounted(load);
                 <text
                   v-for="(run, j) in line.runs"
                   :key="j"
-                  :x="run.x"
-                  :y="line.baseline"
+                  :transform="`translate(${run.x} ${line.baseline}) skewX(${layer.italic ? -12 : 0})`"
                   :font-size="layouts[layer.id].fontSize"
                   :font-family="run.fontName"
                   :fill="layer.color"
+                  :stroke="layer.bold ? layer.color : 'none'"
+                  :stroke-width="
+                    layer.bold ? layouts[layer.id].fontSize * 0.025 : 0
+                  "
                   style="font-kerning: none; font-variant-ligatures: none"
                 >
                   {{ run.text }}
                 </text>
+                <line
+                  v-if="layer.underline && line.runs.length"
+                  :x1="line.runs[0].x"
+                  :x2="line.runs.at(-1).x + line.runs.at(-1).width"
+                  :y1="line.baseline + layouts[layer.id].fontSize * 0.12"
+                  :y2="line.baseline + layouts[layer.id].fontSize * 0.12"
+                  :stroke="layer.color"
+                  :stroke-width="
+                    Math.max(0.5, layouts[layer.id].fontSize * 0.04)
+                  "
+                />
               </g></svg
-            ><span v-else>公章</span>
+            ><CertificateShape
+              v-else-if="layer.type === 'shape'"
+              :shape="layer"
+            /><span v-else>公章</span>
           </div>
           <svg
             v-if="canvas.watermark"
@@ -615,14 +835,35 @@ onMounted(load);
               2026-AC-00000001
             </text>
           </svg>
+          <svg
+            v-if="drawingPoints.length"
+            class="drawing-preview"
+            :width="canvas.page.width"
+            :height="canvas.page.height"
+          >
+            <polyline
+              :points="drawingPoints.map(p => p.join(',')).join(' ')"
+              fill="none"
+              stroke="#409eff"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </svg>
         </div>
       </div>
     </main>
     <aside class="properties">
       <h3>属性</h3>
+      <el-button class="full" @click="fontDialog = true"
+        >导入授权字体</el-button
+      >
       <el-alert
         v-if="!canManage"
-        title="共享模板可查看；请复制到自己的部门后编辑。"
+        :title="
+          isAdmin
+            ? '共享模板可查看；请复制到管理部门后编辑。'
+            : '模板参数由管理员维护；可导入授权字体供模板选用。'
+        "
         type="info"
         :closable="false"
       /><el-form
@@ -654,9 +895,16 @@ onMounted(load);
                 v-for="font in fonts"
                 :key="font.id"
                 :label="font.name"
-                :value="font.id" /></el-select></el-form-item
-          ><el-button v-if="isAdmin" class="full" @click="fontDialog = true"
-            >导入授权字体</el-button
+                :value="font.id" /></el-select
+          ></el-form-item>
+          <el-form-item label="文字样式"
+            ><div class="text-styles">
+              <el-checkbox v-model="selectedLayer.bold">加粗</el-checkbox
+              ><el-checkbox v-model="selectedLayer.italic">斜体</el-checkbox
+              ><el-checkbox v-model="selectedLayer.underline"
+                >下划线</el-checkbox
+              >
+            </div></el-form-item
           >
           <el-form-item label="字号"
             ><el-input-number
@@ -676,7 +924,9 @@ onMounted(load);
               :step="0.05"
               :precision="2" /></el-form-item
           ><el-form-item label="颜色"
-            ><el-color-picker v-model="selectedLayer.color" /></el-form-item
+            ><el-color-picker
+              :model-value="selectedLayer.color"
+              @change="setLayerColor" /></el-form-item
           ><el-form-item label="对齐"
             ><el-segmented
               v-model="selectedLayer.align"
@@ -697,6 +947,49 @@ onMounted(load);
                 v-model="selectedLayer.width"
                 :min="1"
               /><el-input-number v-model="selectedLayer.height" :min="1" /></div
+          ></el-form-item> </template
+        ><template v-else-if="selectedLayer.type === 'shape'">
+          <el-form-item label="图形类型"
+            ><el-tag>{{
+              shapeLabels[selectedLayer.kind]
+            }}</el-tag></el-form-item
+          >
+          <el-form-item label="线条颜色"
+            ><el-color-picker
+              :model-value="selectedLayer.stroke"
+              @change="setLayerColor"
+          /></el-form-item>
+          <el-form-item label="线宽"
+            ><el-input-number
+              v-model="selectedLayer.strokeWidth"
+              :min="0"
+              :max="Math.min(20, selectedLayer.width, selectedLayer.height)"
+              :step="0.5"
+          /></el-form-item>
+          <el-form-item
+            v-if="['rect', 'ellipse'].includes(selectedLayer.kind)"
+            label="填充颜色（清除为透明）"
+            ><el-color-picker
+              :model-value="
+                selectedLayer.fill === 'none' ? null : selectedLayer.fill
+              "
+              @change="setShapeFill"
+          /></el-form-item>
+          <el-form-item label="位置与尺寸"
+            ><div class="coords">
+              <el-input-number
+                v-model="selectedLayer.x"
+                :min="0"
+              /><el-input-number
+                v-model="selectedLayer.y"
+                :min="0"
+              /><el-input-number
+                v-model="selectedLayer.width"
+                :min="Math.max(1, selectedLayer.strokeWidth)"
+              /><el-input-number
+                v-model="selectedLayer.height"
+                :min="Math.max(1, selectedLayer.strokeWidth)"
+              /></div
           ></el-form-item> </template
         ><template v-else
           ><el-form-item label="对应部门"
@@ -719,6 +1012,10 @@ onMounted(load);
                 :min="10"
               /></div></el-form-item
         ></template>
+        <div class="layer-order">
+          <el-button @click="moveOrder(-1)">下移一层</el-button
+          ><el-button @click="moveOrder(1)">上移一层</el-button>
+        </div>
         <el-button type="danger" plain class="full" @click="remove"
           >删除图层</el-button
         > </el-form
@@ -804,10 +1101,12 @@ onMounted(load);
 .editor {
   display: grid;
   grid-template-columns: 220px minmax(260px, 1fr) 280px;
-  min-height: calc(100vh - 125px);
+  height: calc(100vh - 125px);
+  min-height: 650px;
   background: var(--el-fill-color-light);
 }
 .editor aside {
+  min-height: 0;
   background: var(--el-bg-color);
   padding: 18px;
   overflow: auto;
@@ -879,6 +1178,35 @@ h3 {
   outline: 1px dashed #409eff;
   background: #409eff08;
 }
+.canvas.drawing {
+  cursor: crosshair;
+  touch-action: none;
+}
+.canvas.drawing .layer {
+  pointer-events: none;
+}
+.drawing-preview {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.text-styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.text-styles :deep(.el-checkbox) {
+  margin-right: 0;
+}
+.layer-order {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+.layer-order :deep(.el-button) {
+  margin: 0;
+}
 .layer svg {
   display: block;
 }
@@ -935,6 +1263,9 @@ h3 {
 @media (max-width: 1120px) {
   .editor {
     grid-template-columns: 190px minmax(260px, 1fr);
+    grid-template-rows: 620px auto;
+    height: auto;
+    min-height: 0;
   }
   .properties {
     grid-column: 1/-1;
@@ -946,6 +1277,10 @@ h3 {
 @media (max-width: 700px) {
   .editor {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+  }
+  .editor aside:first-child {
+    max-height: 420px;
   }
   .properties {
     grid-column: auto;

@@ -863,8 +863,6 @@ def fonts_view(request):
         if include_inactive and not request.user.is_superuser:
             raise PermissionDenied('只有超级管理员可以管理完整字体库')
         return Response(font_catalog(include_inactive=include_inactive))
-    if not is_department_admin(request.user):
-        raise PermissionDenied('只有管理员可以导入字体')
     if request.data.get('license_confirmed') not in (True, 'true', '1'):
         raise ValidationError('请确认字体具备本系统使用、格式转换、嵌入和展示授权')
     uploaded = request.FILES.get('file')

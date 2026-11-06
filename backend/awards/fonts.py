@@ -19,6 +19,10 @@ FIELDS = {'static', 'team_name', 'members', 'award_name', 'work_name', 'category
 _resolved_files = ContextVar('certificate_font_files', default={})
 
 
+def is_color(value):
+    return isinstance(value, str) and re.fullmatch(r'#[0-9a-fA-F]{6}', value)
+
+
 @contextmanager
 def resolved_font_files(files):
     token = _resolved_files.set(files or {})
@@ -90,22 +94,29 @@ def layout_text(text, layer):
     if not (6 <= minimum <= maximum <= 120 and 1 <= line_height <= 3 and 1 <= width <= 2400 and 1 <= height <= 2400):
         raise ValueError('字号、行距或文本区域超出允许范围')
     for size in range(maximum, minimum - 1, -1):
+        names = {item[2] for item in chars}
+        bold_pad = size * .0125 if layer.get('bold') else 0
+        italic_pad = .21255656 * max((pdfmetrics.getAscent(name, size) for name in names), default=size) if layer.get('italic') else 0
+        available_width = width - bold_pad * 2 - italic_pad
         lines, current, used = [], [], 0.0
         for ch, family, name in chars:
             delta = advance(ch, name, size) if ch != '\n' else 0
-            if delta > width:
+            if delta > available_width:
                 break
-            if ch == '\n' or (current and used + delta > width + 0.001):
+            if ch == '\n' or (current and used + delta > available_width + 0.001):
                 lines.append((current, used)); current, used = [], 0.0
             if ch != '\n':
                 current.append((ch, family, name, delta)); used += delta
         else:
             lines.append((current, used))
             leading = size * line_height
-            if len(lines) * leading <= height + 0.001:
+            descent = max((-pdfmetrics.getDescent(name, size) for name in names), default=0)
+            if layer.get('underline'):
+                descent = max(descent, size * .12 + max(.5, size * .04) / 2)
+            if len(lines) * leading + descent <= height + 0.001:
                 result = []
                 for index, (line, length) in enumerate(lines):
-                    x = {'left': 0, 'center': (width - length) / 2, 'right': width - length}.get(layer.get('align', 'center'), 0)
+                    x = bold_pad + {'left': 0, 'center': (available_width - length) / 2, 'right': available_width - length}.get(layer.get('align', 'center'), 0)
                     runs = []
                     for ch, family, name, delta in line:
                         if runs and runs[-1]['fontId'] == family:
@@ -136,7 +147,7 @@ def validate_canvas(canvas):
     if not isinstance(layers, list) or len(layers) > 80:
         raise ValueError('模板最多 80 个图层')
     for layer in layers:
-        if not isinstance(layer, dict) or layer.get('type') not in ('text', 'seal'):
+        if not isinstance(layer, dict) or layer.get('type') not in ('text', 'seal', 'shape'):
             raise ValueError('图层类型无效')
         number(layer.get('x', 0), 0, page['width'])
         number(layer.get('y', 0), 0, page['height'])
@@ -146,18 +157,41 @@ def validate_canvas(canvas):
             number(layer.get('fontSize', 24), 6, 120)
             number(layer.get('minFontSize', 10), 6, layer.get('fontSize', 24))
             number(layer.get('lineHeight', 1.35), 1, 3)
-            if not re.fullmatch(r'#[0-9a-fA-F]{6}', layer.get('color', '#1f2937')):
+            for flag in ('bold', 'italic', 'underline'):
+                if flag in layer and not isinstance(layer[flag], bool):
+                    raise ValueError('文字样式必须为布尔值')
+            if not is_color(layer.get('color', '#1f2937')):
                 raise ValueError('文字颜色无效')
             font_file(layer.get('fontFamily') or 'hei')
             width, height = layer.get('width', 680), layer.get('height', 70)
             number(width, 1, page['width']); number(height, 1, page['height'])
             if len(str(layer.get('text', ''))) > 10000:
                 raise ValueError('固定文本过长')
-        else:
+        elif layer['type'] == 'seal':
             width = height = layer.get('size', 100)
             number(width, 10, min(page.values()))
+        else:
+            if layer.get('kind') not in ('rect', 'ellipse', 'line', 'freehand'):
+                raise ValueError('图形类型无效')
+            width, height = layer.get('width', 200), layer.get('height', 100)
+            number(width, 1, page['width']); number(height, 1, page['height'])
+            number(layer.get('strokeWidth', 2), 0, min(20, width, height))
+            if not is_color(layer.get('stroke', '#1f2937')):
+                raise ValueError('图形线条颜色无效')
+            if layer.get('fill', 'none') != 'none' and not is_color(layer.get('fill', 'none')):
+                raise ValueError('图形填充颜色无效')
+            if layer['kind'] in ('line', 'freehand'):
+                points = layer.get('points', [])
+                if not isinstance(points, list) or not 2 <= len(points) <= 1000 or (layer['kind'] == 'line' and len(points) != 2):
+                    raise ValueError('线条需要有效的绘制点（每条最多 1000 点）')
+                for point in points:
+                    if not isinstance(point, (list, tuple)) or len(point) != 2:
+                        raise ValueError('绘制点无效')
+                    number(point[0], 0, 1); number(point[1], 0, 1)
         if layer.get('x', 0) + width > page['width'] + 0.001 or layer.get('y', 0) + height > page['height'] + 0.001:
             raise ValueError('图层超出画布，请调整位置或尺寸')
+    if sum(len(layer.get('points', [])) for layer in layers if layer.get('type') == 'shape' and layer.get('kind') in ('line', 'freehand')) > 5000:
+        raise ValueError('模板绘制点总数不能超过 5000')
     return canvas
 
 

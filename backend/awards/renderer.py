@@ -164,11 +164,48 @@ def _draw_text_layer(c, layer, award, number, page_height):
         layout = layout_text(str(text), layer)
     except ValueError as exc:
         raise ValueError(f"{layer.get('field', '文本')}：{exc}") from exc
+    c.saveState()
     c.setFillColor(layer.get("color", "#1f2937"))
+    c.setStrokeColor(layer.get("color", "#1f2937"))
+    c.setLineWidth(layout['fontSize'] * .025)
     for line in layout["lines"]:
         for run in line["runs"]:
-            c.setFont(run["fontName"], layout["fontSize"])
-            c.drawString(x + run["x"], page_height - top - line["baseline"], run["text"])
+            text_object = c.beginText()
+            text_object.setTextTransform(1, 0, .21255656 if layer.get('italic') else 0, 1, x + run['x'], page_height - top - line['baseline'])
+            text_object.setFont(run['fontName'], layout['fontSize'])
+            text_object.setTextRenderMode(2 if layer.get('bold') else 0)
+            text_object.textOut(run['text'])
+            c.drawText(text_object)
+        if layer.get('underline') and line['runs']:
+            c.setLineWidth(max(.5, layout['fontSize'] * .04))
+            underline_y = page_height - top - line['baseline'] - layout['fontSize'] * .12
+            c.line(x + line['runs'][0]['x'], underline_y, x + line['runs'][-1]['x'] + line['runs'][-1]['width'], underline_y)
+    c.restoreState()
+
+
+def _draw_shape_layer(c, layer, page_height):
+    c.saveState()
+    x, top = float(layer['x']), float(layer['y'])
+    width, height = float(layer['width']), float(layer['height'])
+    stroke_width = float(layer.get('strokeWidth', 2))
+    pad = stroke_width / 2
+    c.setStrokeColor(layer.get('stroke', '#1f2937'))
+    c.setLineWidth(stroke_width)
+    c.setLineJoin(1); c.setLineCap(1)
+    fill = layer.get('fill', 'none') != 'none'
+    if fill: c.setFillColor(layer['fill'])
+    if layer['kind'] == 'rect':
+        c.rect(x + pad, page_height - top - height + pad, width - pad * 2, height - pad * 2, stroke=int(stroke_width > 0), fill=int(fill))
+    elif layer['kind'] == 'ellipse':
+        c.ellipse(x + pad, page_height - top - height + pad, x + width - pad, page_height - top - pad, stroke=int(stroke_width > 0), fill=int(fill))
+    elif stroke_width > 0:
+        path = c.beginPath()
+        for index, point in enumerate(layer['points']):
+            px = x + pad + point[0] * (width - pad * 2)
+            py = page_height - top - pad - point[1] * (height - pad * 2)
+            (path.moveTo if index == 0 else path.lineTo)(px, py)
+        c.drawPath(path, stroke=1, fill=0)
+    c.restoreState()
 
 
 def render_unsigned(award, number, output, template=None, seals=None):
@@ -196,6 +233,8 @@ def render_unsigned(award, number, output, template=None, seals=None):
     for layer in layers:
         if layer.get("type") == "text":
             _draw_text_layer(c, layer, award, number, page[1])
+        elif layer.get('type') == 'shape':
+            _draw_shape_layer(c, layer, page[1])
         elif layer.get("type") == "seal":
             item = seal_map.get(str(layer.get("department")))
             image = _data_image(item.get("image") if item else None)
