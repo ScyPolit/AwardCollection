@@ -22,7 +22,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
-from .fonts import layout_text
+from .fonts import layout_text, resolved_font_files
 
 
 KEY_PASSWORD = os.getenv("SIGNING_KEY_PASSWORD", "local-test-only-change-before-deploy").encode()
@@ -248,7 +248,8 @@ def render_certificate(award, number, departments=None, template=None, seals=Non
     return final_pdf, image, sha256(final_pdf)
 
 
-def render_certificate_payload(payload, number, department_payloads, template=None, seals=None, output_root=None, make_image=True):
+def render_certificate_payload(payload, number, department_payloads, template=None, seals=None, output_root=None, make_image=True, font_files=None):
     award = SimpleNamespace(**payload)
     departments = [SimpleNamespace(**item) for item in department_payloads]
-    return render_certificate(award, number, departments, template, seals, output_root, make_image)
+    with resolved_font_files(font_files):
+        return render_certificate(award, number, departments, template, seals, output_root, make_image)

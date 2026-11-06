@@ -532,6 +532,12 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.data['name'],'授权英文字体测试')
         file_response=client.get(response.data['url'])
         self.assertGreater(len(b''.join(file_response.streaming_content)),1000)
+        from .fonts import resolved_font_files, layout_text
+        files={response.data['id']:str(font_file(response.data['id'])),'hei':str(font_file('hei'))}
+        with self.assertNumQueries(0), resolved_font_files(files):
+            layout=layout_text('荣誉证书 AWARD',{'fontFamily':response.data['id'],'fontSize':24,'minFontSize':10,'width':500,'height':100})
+            self.assertTrue(layout['lines'])
+
 
     def test_audit_details_are_scoped_to_actor_for_department_admin(self):
         from .models import AuditEvent

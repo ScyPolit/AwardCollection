@@ -6,11 +6,12 @@ from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
 from datetime import timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
-from django.db import transaction
+from django.db import transaction, connections
 from django.utils import timezone
 from awards.models import AwardBatch, Certificate, DepartmentMembership, GenerationTask, Notification
 from awards.renderer import render_certificate_payload
 from awards.services import allocate_number, claim_task
+from awards.fonts import font_file
 
 
 def process_task(task):
@@ -26,6 +27,10 @@ def process_task(task):
         "image": item.seal_version.image.path,
     } for item in requirements]
     template = task.version.snapshot.get("template") or task.version.template_version.canvas
+    font_ids = {'hei'} | {layer.get('fontFamily') or 'hei' for layer in template.get('layers', []) if layer.get('type') == 'text'}
+    # Resolve uploaded fonts before forking; render children must not use ORM
+    # or inherit a live PostgreSQL connection from the parent.
+    font_files = {font_id: str(font_file(font_id)) for font_id in font_ids}
     make_image = "png" in task.version.output_formats
     attempt_root = Path(settings.MEDIA_ROOT) / "temporary" / "generation" / str(task.id) / str(lease_token)
     attempt_root.mkdir(parents=True, exist_ok=True)
@@ -50,9 +55,10 @@ def process_task(task):
             "work_name": award.work_name,
             "category": award.category,
             "teachers": award.teachers,
-        }, certificate.number, departments, template, seals, str(attempt_root), make_image, certificate.id)
+        }, certificate.number, departments, template, seals, str(attempt_root), make_image, font_files, certificate.id)
 
     jobs = [payload(item) for item in pending]
+    connections.close_all()
     with ProcessPoolExecutor(max_workers=concurrency) as executor:
         futures = {
             executor.submit(render_certificate_payload, *job[:-1]): job
