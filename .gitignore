@@ -30,3 +30,6 @@ secrets/*
 !secrets/.gitkeep
 artifacts/**/.venv/
 .opencode/
+
+# Built from pinned upstream archives and SHA256-verified inside Docker.
+/backend/font-assets/*.ttf

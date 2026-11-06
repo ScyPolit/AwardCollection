@@ -1,0 +1,65 @@
+[
+  {
+    "id": "hei",
+    "name": "黑体 · 文泉驿正黑",
+    "file": "hei.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-wqy-zenhei/fonts-wqy-zenhei_0.9.45-8_all.deb",
+    "source_sha256": "cfed2c29164ff2f133e40ed2046610b172b8618d174840936ac4ec9b6fd668e7",
+    "sha256": "6ef8bb2033298e1d2e9798db19a84e0d7cae6fbe7faf529c6f3c47f5491e8be9",
+    "license": "LICENSE-fonts-wqy-zenhei.txt"
+  },
+  {
+    "id": "song",
+    "name": "宋体 · 文鼎明体",
+    "file": "song.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-arphic-uming/fonts-arphic-uming_0.2.20080216.2-11_all.deb",
+    "source_sha256": "2676b21b90df94f23418610291b71b43720c95cdccb420b97ab56edfd3ce4cf5",
+    "sha256": "d676266572d11ec7b59ec2925c08f176ff198163cd32c3ec33f765b8e7302eb8",
+    "license": "LICENSE-fonts-arphic-uming.txt"
+  },
+  {
+    "id": "kai",
+    "name": "楷体 · 文鼎楷体",
+    "file": "kai.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-arphic-ukai/fonts-arphic-ukai_0.2.20080216.2-5_all.deb",
+    "source_sha256": "b9db73184895b067f7911f9adbf3b137df99c2d4ec5425b4ad779a9834b7110b",
+    "sha256": "ee1cfe44ea6a9e086849bb53d2b80806670fe8ecd36aac8c8361cc121155aaae",
+    "license": "LICENSE-fonts-arphic-ukai.txt"
+  },
+  {
+    "id": "liberationmono-regular",
+    "name": "Liberation Mono",
+    "file": "liberationmono-regular.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-liberation2/fonts-liberation2_2.1.5-1_all.deb",
+    "source_sha256": "35ffaa54f117e633e89a5da89af235a073b34dbe582726fbf6989568f7fd9bda",
+    "sha256": "6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c",
+    "license": "LICENSE-fonts-liberation2.txt"
+  },
+  {
+    "id": "liberationsans-regular",
+    "name": "Liberation Sans",
+    "file": "liberationsans-regular.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-liberation2/fonts-liberation2_2.1.5-1_all.deb",
+    "source_sha256": "35ffaa54f117e633e89a5da89af235a073b34dbe582726fbf6989568f7fd9bda",
+    "sha256": "8d91388f1d3604b3b8ae0e3ee2d140e50cd6122f9214514f4aca772540a4076d",
+    "license": "LICENSE-fonts-liberation2.txt"
+  },
+  {
+    "id": "liberationserif-regular",
+    "name": "Liberation Serif",
+    "file": "liberationserif-regular.ttf",
+    "source": "https://deb.debian.org/debian/pool/main/f/fonts-liberation2/fonts-liberation2_2.1.5-1_all.deb",
+    "source_sha256": "35ffaa54f117e633e89a5da89af235a073b34dbe582726fbf6989568f7fd9bda",
+    "sha256": "29d12439831b7f59194efec85872f24f54eff05738933f9a860220d2abff88ba",
+    "license": "LICENSE-fonts-liberation2.txt"
+  },
+  {
+    "id": "fangsong",
+    "name": "仿宋 · 朱雀仿宋（公文风格）",
+    "file": "fangsong.ttf",
+    "source": "https://github.com/TrionesType/zhuque/releases/download/v0.212/ZhuqueFangsong-v0.212.zip",
+    "source_sha256": "bb8b661a7643d2296a72d9d10530a00949419c4e527fb61783f73c2ba1a8c062",
+    "sha256": "558c62730844fe54ba220146ed62f859d4e2880188d92d985f8921c6e3743bc4",
+    "license": "LICENSE-zhuque.txt"
+  }
+]

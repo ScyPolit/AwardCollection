@@ -1,47 +1,229 @@
 import { http } from "@/utils/http";
 
-export type Option = { id: number; name?: string; code?: string; username?: string; label?: string };
-export type Competition = { id:number; name:string; created_at:string; departments:number[]; department_names:string[]; collaborators:number[]; collaborator_names:string[]; award_presets:string[] };
-export type Batch = { id:number; name:string; status:string; current_version:number; competition:number; competition_name:string; team_count:number; approval_summary:{approved:number;total:number} };
-export type Approval = { id:number; batch_id:number; batch_name:string; version_number:number; department:number; department_name:string; competition_name:string; decision:string|null };
-export type Certificate = { id:number; number:string; status:string; competition_name:string; batch_name:string; team_name:string; award_name:string; published_at:string };
-export type Template = { id:number; name:string; department:number; department_name:string; published:boolean; latest_version?:{id:number;number:number;canvas:Record<string,unknown>} };
-export type Seal = { id:number; name:string; department:number; department_name:string; active:boolean; versions:Array<{id:number;number:number;sha256:string}> };
+export type Option = {
+  id: number;
+  name?: string;
+  code?: string;
+  username?: string;
+  label?: string;
+};
+export type Competition = {
+  id: number;
+  name: string;
+  active: boolean;
+  created_at: string;
+  created_by_name: string;
+  departments: number[];
+  department_names: string[];
+  collaborators: number[];
+  collaborator_names: string[];
+  award_presets: string[];
+};
+export type Batch = {
+  id: number;
+  name: string;
+  status: string;
+  current_version: number;
+  competition: number;
+  competition_name: string;
+  team_count: number;
+  approval_summary: { approved: number; total: number };
+};
+export type Approval = {
+  id: number;
+  batch_id: number;
+  batch_name: string;
+  version_number: number;
+  department: number;
+  department_name: string;
+  competition_name: string;
+  decision: string | null;
+};
+export type Certificate = {
+  id: number;
+  number: string;
+  status: string;
+  competition_name: string;
+  batch_name: string;
+  team_name: string;
+  award_name: string;
+  published_at: string;
+};
+export type Template = {
+  id: number;
+  name: string;
+  department: number;
+  department_name: string;
+  published: boolean;
+  latest_version?: {
+    id: number;
+    number: number;
+    canvas: {
+      page?: { width: number; height: number };
+      layers?: Array<Record<string, unknown>>;
+      [key: string]: unknown;
+    };
+  };
+};
+export type Seal = {
+  id: number;
+  name: string;
+  department: number;
+  department_name: string;
+  active: boolean;
+  versions: Array<{
+    id: number;
+    number: number;
+    sha256: string;
+    created_at: string;
+  }>;
+};
 
-export const listDepartments=()=>http.get<Option[],never>("/api/v1/departments/");
-export const createDepartment=(data:object)=>http.post<Option,object>("/api/v1/departments/",{data});
-export const listUsers=()=>http.get<Option[],never>("/api/v1/users/");
-export const listCompetitions=()=>http.get<Competition[],never>("/api/v1/competitions/");
-export const createCompetition=(data:object)=>http.post<Competition,object>("/api/v1/competitions/",{data});
-export const listBatches=()=>http.get<Batch[],never>("/api/v1/batches/");
-export const createBatch=(data:object)=>http.post<Batch,object>("/api/v1/batches/",{data});
-export const batchDetail=(id:number)=>http.get<any,never>(`/api/v1/batches/${id}/detail/`);
-export const submitBatch=(id:number)=>http.post<any,object>(`/api/v1/batches/${id}/submit/`,{data:{}});
-export const batchProgress=(id:number)=>http.get<any,never>(`/api/v1/batches/${id}/progress/`);
-export const importAwards=(id:number,file:File,expectedVersion:number)=>{const data=new FormData();data.append("file",file);data.append("expected_version",String(expectedVersion));return http.post<any,FormData>(`/api/v1/batches/${id}/import/`,{data,headers:{"Content-Type":"multipart/form-data"}})};
-export const listApprovals=()=>http.get<Approval[],never>("/api/v1/approvals/");
-export const decideApproval=(id:number,decision:string,comment:string)=>http.post<any,object>(`/api/v1/approvals/${id}/decide/`,{data:{decision,comment}});
-export const listCertificates=(page=1,pageSize=20,search="")=>http.get<{count:number;results:Certificate[]},never>("/api/v1/certificates/",{params:{page,page_size:pageSize,search}});
-export const revokeCertificate=(id:number,reason:string)=>http.post<any,object>(`/api/v1/certificates/${id}/revoke/`,{data:{reason}});
-export const listRevocations=()=>http.get<any[],never>("/api/v1/revocations/");
-export const decideRevocation=(id:number,department:number,decision:string)=>http.post<any,object>(`/api/v1/revocations/${id}/decide/`,{data:{department,decision}});
-export const listTemplates=()=>http.get<Template[],never>("/api/v1/templates/");
-export const createTemplate=(data:object)=>http.post<Template,object>("/api/v1/templates/",{data});
-export const copyTemplate=(id:number,data:object)=>http.post<Template,object>(`/api/v1/templates/${id}/copy/`,{data});
-export const publishTemplate=(id:number)=>http.request<Template>("patch",`/api/v1/templates/${id}/`,{data:{published:true}});
-export const saveTemplateVersion=(id:number,canvas:object)=>http.post<any,object>(`/api/v1/templates/${id}/save_version/`,{data:{canvas}});
-export const listSeals=()=>http.get<Seal[],never>("/api/v1/seals/");
-export const createSeal=(data:object)=>http.post<Seal,object>("/api/v1/seals/",{data});
-export const updateSeal=(id:number,data:object)=>http.request<Seal>("patch",`/api/v1/seals/${id}/`,{data});
-export const uploadSeal=(id:number,file:File)=>{const data=new FormData();data.append("file",file);return http.post<any,FormData>(`/api/v1/seals/${id}/upload_version/`,{data,headers:{"Content-Type":"multipart/form-data"}})};
-export const getChallenge=()=>http.get<{question:string},never>("/api/v1/verification/challenge/");
-export const publicVerify=(data:object)=>http.post<any,object>("/api/v1/verification/query/",{data});
-export const adminVerify=(number:string)=>http.post<any,object>("/api/v1/verification/admin/",{data:{number}});
-export const dashboard=()=>http.get<any,never>("/api/v1/dashboard/");
-export const getPublicSettings=()=>http.get<any,never>("/api/v1/settings/public-verification/");
-export const updatePublicSettings=(data:object)=>http.request<any>("put","/api/v1/settings/public-verification/",{data});
-export const listAccounts=()=>http.get<any[],never>("/api/v1/management/accounts/");
-export const createAccount=(data:object)=>http.post<any,object>("/api/v1/management/accounts/",{data});
-export const updateMembership=(data:object)=>http.post<any,object>("/api/v1/management/memberships/",{data});
-export const emergencyIssue=(id:number,data:object)=>http.post<any,object>(`/api/v1/batches/${id}/emergency-issue/`,{data});
-export const emergencyVoid=(id:number,data:object)=>http.post<any,object>(`/api/v1/certificates/${id}/emergency_void/`,{data});
+export const listDepartments = () =>
+  http.get<Option[], never>("/api/v1/departments/");
+export const createDepartment = (data: object) =>
+  http.post<Option, object>("/api/v1/departments/", { data });
+export const listUsers = () => http.get<Option[], never>("/api/v1/users/");
+export const listCompetitions = () =>
+  http.get<Competition[], never>("/api/v1/competitions/");
+export const createCompetition = (data: object) =>
+  http.post<Competition, object>("/api/v1/competitions/", { data });
+export const updateCompetition = (id: number, data: object) =>
+  http.request<Competition>("patch", `/api/v1/competitions/${id}/`, { data });
+export const currentUser = () =>
+  http.get<
+    {
+      username: string;
+      isSuperuser: boolean;
+      roles: string[];
+      managedDepartmentIds: number[];
+    },
+    never
+  >("/api/v1/auth/me/");
+export type CertificateFont = {
+  id: string;
+  name: string;
+  url: string;
+  builtin: boolean;
+  license: string;
+  sha256: string;
+};
+export const listFonts = () =>
+  http.get<CertificateFont[], never>("/api/v1/fonts/");
+export const importFont = (data: FormData) =>
+  http.post<CertificateFont, FormData>("/api/v1/fonts/", {
+    data,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+export const layoutTemplate = (canvas: object) =>
+  http.post<any, object>("/api/v1/templates/layout/", {
+    data: { canvas },
+    headers: { "X-Quiet-Errors": "1" }
+  });
+export const certificateDetail = (id: number) =>
+  http.get<any, never>(`/api/v1/certificates/${id}/`);
+export const listLogs = (page = 1, search = "") =>
+  http.get<any, never>("/api/v1/logs/", { params: { page, search } });
+export const logDetail = (id: number) =>
+  http.get<any, never>(`/api/v1/logs/${id}/`);
+export const markNotificationRead = (id: number) =>
+  http.request<any>("patch", `/api/v1/notifications/${id}/`, {
+    data: { read_at: new Date().toISOString() }
+  });
+export const listBatches = () => http.get<Batch[], never>("/api/v1/batches/");
+export const createBatch = (data: object) =>
+  http.post<Batch, object>("/api/v1/batches/", { data });
+export const batchDetail = (id: number) =>
+  http.get<any, never>(`/api/v1/batches/${id}/detail/`);
+export const submitBatch = (id: number) =>
+  http.post<any, object>(`/api/v1/batches/${id}/submit/`, { data: {} });
+export const batchProgress = (id: number) =>
+  http.get<any, never>(`/api/v1/batches/${id}/progress/`);
+export const importAwards = (
+  id: number,
+  file: File,
+  expectedVersion: number
+) => {
+  const data = new FormData();
+  data.append("file", file);
+  data.append("expected_version", String(expectedVersion));
+  return http.post<any, FormData>(`/api/v1/batches/${id}/import/`, {
+    data,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+};
+export const listApprovals = () =>
+  http.get<Approval[], never>("/api/v1/approvals/");
+export const decideApproval = (id: number, decision: string, comment: string) =>
+  http.post<any, object>(`/api/v1/approvals/${id}/decide/`, {
+    data: { decision, comment }
+  });
+export const listCertificates = (page = 1, pageSize = 20, search = "") =>
+  http.get<{ count: number; results: Certificate[] }, never>(
+    "/api/v1/certificates/",
+    { params: { page, page_size: pageSize, search } }
+  );
+export const revokeCertificate = (id: number, reason: string) =>
+  http.post<any, object>(`/api/v1/certificates/${id}/revoke/`, {
+    data: { reason }
+  });
+export const listRevocations = () =>
+  http.get<any[], never>("/api/v1/revocations/");
+export const decideRevocation = (
+  id: number,
+  department: number,
+  decision: string
+) =>
+  http.post<any, object>(`/api/v1/revocations/${id}/decide/`, {
+    data: { department, decision }
+  });
+export const listTemplates = () =>
+  http.get<Template[], never>("/api/v1/templates/");
+export const createTemplate = (data: object) =>
+  http.post<Template, object>("/api/v1/templates/", { data });
+export const copyTemplate = (id: number, data: object) =>
+  http.post<Template, object>(`/api/v1/templates/${id}/copy/`, { data });
+export const publishTemplate = (id: number) =>
+  http.request<Template>("patch", `/api/v1/templates/${id}/`, {
+    data: { published: true }
+  });
+export const saveTemplateVersion = (id: number, canvas: object) =>
+  http.post<any, object>(`/api/v1/templates/${id}/save_version/`, {
+    data: { canvas }
+  });
+export const listSeals = () => http.get<Seal[], never>("/api/v1/seals/");
+export const createSeal = (data: object) =>
+  http.post<Seal, object>("/api/v1/seals/", { data });
+export const updateSeal = (id: number, data: object) =>
+  http.request<Seal>("patch", `/api/v1/seals/${id}/`, { data });
+export const uploadSeal = (id: number, file: File) => {
+  const data = new FormData();
+  data.append("file", file);
+  return http.post<any, FormData>(`/api/v1/seals/${id}/upload_version/`, {
+    data,
+    headers: { "Content-Type": "multipart/form-data" }
+  });
+};
+export const getChallenge = () =>
+  http.get<{ question: string }, never>("/api/v1/verification/challenge/");
+export const publicVerify = (data: object) =>
+  http.post<any, object>("/api/v1/verification/query/", { data });
+export const adminVerify = (number: string) =>
+  http.post<any, object>("/api/v1/verification/admin/", { data: { number } });
+export const dashboard = () => http.get<any, never>("/api/v1/dashboard/");
+export const getPublicSettings = () =>
+  http.get<any, never>("/api/v1/settings/public-verification/");
+export const updatePublicSettings = (data: object) =>
+  http.request<any>("put", "/api/v1/settings/public-verification/", { data });
+export const listAccounts = () =>
+  http.get<any[], never>("/api/v1/management/accounts/");
+export const createAccount = (data: object) =>
+  http.post<any, object>("/api/v1/management/accounts/", { data });
+export const updateMembership = (data: object) =>
+  http.post<any, object>("/api/v1/management/memberships/", { data });
+export const emergencyIssue = (id: number, data: object) =>
+  http.post<any, object>(`/api/v1/batches/${id}/emergency-issue/`, { data });
+export const emergencyVoid = (id: number, data: object) =>
+  http.post<any, object>(`/api/v1/certificates/${id}/emergency_void/`, {
+    data
+  });

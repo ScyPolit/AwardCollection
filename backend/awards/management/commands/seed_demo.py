@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from PIL import Image, ImageDraw
 from awards.models import Department, DepartmentMembership, Seal, SealVersion, Template, TemplateVersion
+from awards.permissions import grant_owner
 
 
 USERS = [
@@ -37,11 +38,11 @@ class Command(BaseCommand):
             user.save()
             users[username] = user
         departments = []
+        grant_owner(users["owner"])
         for code, name in [("TEST-A", "测试专用甲部门"), ("TEST-B", "测试专用乙部门"), ("TEST-X", "测试专用无关部门")]:
             department, _ = Department.objects.get_or_create(code=code, defaults={"name": name})
             departments.append(department)
         for index, department in enumerate(departments[:2]):
-            DepartmentMembership.objects.get_or_create(department=department, user=users["owner"], role=DepartmentMembership.Role.OWNER)
             for suffix in (1, 2):
                 DepartmentMembership.objects.get_or_create(department=department, user=users[f"dept_{'a' if index == 0 else 'b'}_admin{suffix}"], role=DepartmentMembership.Role.ADMIN)
             seal, _ = Seal.objects.get_or_create(department=department, name="测试专用公章")

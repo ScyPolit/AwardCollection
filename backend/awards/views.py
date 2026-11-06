@@ -2,14 +2,18 @@ import hashlib
 import io
 import random
 import tempfile
+import os
+from pathlib import Path
 import zipfile
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from PIL import Image, ImageDraw
 from django.conf import settings
 from django.core.files.base import ContentFile
-from django.db import connection, models, transaction
+from django.db import connection, models, transaction, IntegrityError
 from django.http import FileResponse, HttpResponse
 from django.middleware.csrf import get_token
 from django.utils import timezone
@@ -24,7 +28,7 @@ from .models import (
     ApprovalDepartment, AuditEvent, AwardBatch, BatchVersion, Certificate, Competition,
     Department, DepartmentMembership, GenerationTask, LoginProtection, Notification,
     RevocationDecision, RevocationRequest, Seal, SealVersion, SystemSetting,
-    TeamAward, Template, TemplateVersion, VerificationAttempt,
+    TeamAward, Template, TemplateVersion, VerificationAttempt, CertificateFont,
 )
 from .serializers import (
     ApprovalSerializer, BatchSerializer, CertificateSerializer,
@@ -36,7 +40,9 @@ from .services import (
     decide, decide_revocation, emergency_void, excel_template, parse_excel,
     emergency_issue, request_revocation, revise_batch, submit_batch,
 )
-from .renderer import render_unsigned
+from .renderer import render_unsigned, _field_value
+from .permissions import OWNER_GROUP, grant_owner, is_owner, is_department_admin, user_roles
+from .fonts import font_catalog, font_file, import_font, layout_text, validate_canvas
 
 
 def client_ip(request):
@@ -46,8 +52,8 @@ def client_ip(request):
 def accessible_competitions(user):
     if user.is_superuser:
         return Competition.objects.all()
-    department_ids = DepartmentMembership.objects.filter(user=user, active=True).values_list("department_id", flat=True)
-    return Competition.objects.filter(models.Q(collaborators=user) | models.Q(departments__in=department_ids)).distinct()
+    department_ids = DepartmentMembership.objects.filter(user=user, role="admin", active=True).values_list("department_id", flat=True)
+    return Competition.objects.filter(models.Q(created_by=user) | models.Q(collaborators=user) | models.Q(departments__in=department_ids)).distinct()
 
 
 @api_view(["GET"])
@@ -88,9 +94,7 @@ def login_view(request):
     protection.locked_until = None
     protection.save()
     login(request, authenticated)
-    roles = list(DepartmentMembership.objects.filter(user=authenticated, active=True).values_list("role", flat=True).distinct())
-    if authenticated.is_superuser:
-        roles.append("super")
+    roles = user_roles(authenticated)
     expires = timezone.now() + timedelta(hours=8)
     return Response({"success": True, "data": {
         "username": authenticated.username,
@@ -109,7 +113,8 @@ def logout_view(request):
 
 @api_view(["GET"])
 def me(request):
-    return Response({"username": request.user.username, "name": request.user.get_full_name() or request.user.username, "isSuperuser": request.user.is_superuser})
+    managed = Department.objects.all().values_list('id', flat=True) if request.user.is_superuser else DepartmentMembership.objects.filter(user=request.user, role='admin', active=True).values_list('department_id', flat=True)
+    return Response({"username": request.user.username, "name": request.user.get_full_name() or request.user.username, "isSuperuser": request.user.is_superuser, "roles": user_roles(request.user), "managedDepartmentIds": list(managed)})
 
 
 @api_view(["GET"])
@@ -163,82 +168,93 @@ def public_verification_setting(request):
     return Response(setting.value)
 
 
+def account_data(user):
+    return {
+        "id": user.id, "username": user.username, "name": user.get_full_name(),
+        "active": user.is_active, "superuser": user.is_superuser, "roles": user_roles(user),
+        "joined_at": user.date_joined, "last_login": user.last_login,
+        "memberships": list(DepartmentMembership.objects.filter(user=user, role="admin").values("id", "department_id", "department__name", "role", "active")),
+    }
+
+
 @api_view(["GET", "POST"])
 @transaction.atomic
 def account_management(request):
+    if not is_department_admin(request.user):
+        raise PermissionDenied("需要管理员权限")
     User = get_user_model()
     if request.method == "GET":
-        if request.user.is_superuser:
-            users = User.objects.all()
-        else:
-            departments = DepartmentMembership.objects.filter(
-                user=request.user, role=DepartmentMembership.Role.ADMIN, active=True,
-            ).values_list("department_id", flat=True)
-            users = User.objects.filter(departmentmembership__department_id__in=departments).distinct()
-        return Response([{
-            "id": user.id,
-            "username": user.username,
-            "name": user.get_full_name(),
-            "active": user.is_active,
-            "superuser": user.is_superuser,
-            "memberships": list(DepartmentMembership.objects.filter(user=user).values("id", "department_id", "department__name", "role", "active")),
-        } for user in users.order_by("username")])
+        users = User.objects.all()
+        if not request.user.is_superuser:
+            departments = DepartmentMembership.objects.filter(user=request.user, role="admin", active=True).values_list("department_id", flat=True)
+            users = users.filter(models.Q(groups__name=OWNER_GROUP) | models.Q(departmentmembership__department_id__in=departments, departmentmembership__role="admin")).distinct()
+        return Response([account_data(user) for user in users.order_by("username")])
     username = str(request.data.get("username", "")).strip()
     password = str(request.data.get("password", ""))
     name = str(request.data.get("name", "")).strip()
-    department_id = request.data.get("department")
-    role = request.data.get("role", DepartmentMembership.Role.OWNER)
-    if role not in DepartmentMembership.Role.values:
-        return Response({"detail": "角色无效"}, status=400)
-    department = Department.objects.filter(pk=department_id).first()
-    if not department:
-        return Response({"detail": "请选择部门"}, status=400)
-    can_manage = request.user.is_superuser or DepartmentMembership.objects.filter(
-        user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True,
-    ).exists()
-    if not can_manage or (role == DepartmentMembership.Role.ADMIN and not request.user.is_superuser):
-        return Response({"detail": "无权创建该账号或授权"}, status=403)
-    if User.objects.filter(username=username).exists():
-        return Response({"detail": "账号已存在"}, status=400)
+    role = request.data.get("role", "owner")
+    if role not in ("admin", "owner"):
+        raise ValidationError("角色无效")
+    if not username or len(username) > 150 or len(name) > 150:
+        raise ValidationError("账号或姓名为空或超过长度限制")
+    candidate = User(username=username, first_name=name)
     try:
-        validate_password(password)
-    except Exception as exc:
-        return Response({"detail": "；".join(exc.messages)}, status=400)
-    user = User.objects.create_user(username=username, password=password, first_name=name)
-    DepartmentMembership.objects.create(user=user, department=department, role=role)
-    return Response({"id": user.id, "username": user.username}, status=201)
+        User._meta.get_field("username").run_validators(username)
+        validate_password(password, candidate)
+    except DjangoValidationError as exc:
+        raise ValidationError("；".join(exc.messages))
+    department = None
+    if role == "admin":
+        if not request.user.is_superuser:
+            raise PermissionDenied("只有超管可以创建部门管理员")
+        department = Department.objects.filter(pk=request.data.get("department")).first()
+        if not department:
+            raise ValidationError("部门管理员需要选择管理部门")
+    try:
+        with transaction.atomic():
+            user = User.objects.create_user(username=username, password=password, first_name=name)
+            if role == "owner":
+                grant_owner(user)
+            else:
+                DepartmentMembership.objects.create(user=user, department=department, role="admin")
+            AuditEvent.objects.create(actor=request.user, action="account.created", object_type="User", object_id=str(user.pk), detail={"username": username, "role": role, "department": department.id if department else None})
+    except IntegrityError:
+        raise ValidationError("账号已存在，请使用其他账号名")
+    return Response(account_data(user), status=201)
 
 
 @api_view(["POST"])
 @transaction.atomic
 def membership_management(request):
+    if not is_department_admin(request.user):
+        raise PermissionDenied("需要管理员权限")
     users = get_user_model().objects
-    user = (
-        users.filter(pk=request.data["user"]).first()
-        if request.data.get("user")
-        else users.filter(username=str(request.data.get("username", "")).strip()).first()
-    )
-    department = Department.objects.filter(pk=request.data.get("department")).first()
+    user = users.filter(pk=request.data["user"]).first() if request.data.get("user") else users.filter(username=str(request.data.get("username", "")).strip()).first()
     role = request.data.get("role")
-    if not user or not department or role not in DepartmentMembership.Role.values:
-        return Response({"detail": "账号、部门或角色无效"}, status=400)
-    can_manage = request.user.is_superuser or (
-        role == DepartmentMembership.Role.OWNER and DepartmentMembership.objects.filter(
-            user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True,
-        ).exists()
-    )
-    if not can_manage:
-        return Response({"detail": "无授权管理权限"}, status=403)
-    membership, _ = DepartmentMembership.objects.update_or_create(
-        user=user, department=department, role=role,
-        defaults={"active": bool(request.data.get("active", True))},
-    )
-    AuditEvent.objects.create(
-        actor=request.user, action="membership.updated", object_type="DepartmentMembership",
-        object_id=str(membership.id),
-        detail={"user": user.id, "department": department.id, "role": role, "active": membership.active},
-    )
-    return Response({"id": membership.id, "active": membership.active})
+    if not user or role not in ("admin", "owner"):
+        raise ValidationError("账号或角色无效")
+    active = request.data.get("active", True)
+    if not isinstance(active, bool):
+        raise ValidationError("启用状态必须为布尔值")
+    if role == "owner":
+        if not active and not request.user.is_superuser:
+            raise PermissionDenied("只有超管可以撤销全局负责人角色")
+        if active:
+            grant_owner(user)
+        else:
+            user.groups.remove(*user.groups.filter(name=OWNER_GROUP))
+        object_type, object_id = "User", user.pk
+        department = None
+    else:
+        if not request.user.is_superuser:
+            raise PermissionDenied("只有超管可以授予部门管理员权限")
+        department = Department.objects.filter(pk=request.data.get("department")).first()
+        if not department:
+            raise ValidationError("请选择管理部门")
+        membership, _ = DepartmentMembership.objects.update_or_create(user=user, department=department, role="admin", defaults={"active": active})
+        object_type, object_id = "DepartmentMembership", membership.pk
+    AuditEvent.objects.create(actor=request.user, action="membership.updated", object_type=object_type, object_id=str(object_id), detail={"user": user.id, "department": department.id if department else None, "role": role, "active": active})
+    return Response({"id": object_id, "active": active})
 
 
 class DepartmentViewSet(ModelViewSet):
@@ -256,9 +272,9 @@ class DepartmentViewSet(ModelViewSet):
         serializer.save()
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
+        if self.request.user.is_superuser or is_owner(self.request.user):
             return Department.objects.all().order_by("name")
-        return Department.objects.filter(departmentmembership__user=self.request.user, departmentmembership__active=True).distinct().order_by("name")
+        return Department.objects.filter(departmentmembership__user=self.request.user, departmentmembership__role="admin", departmentmembership__active=True).distinct().order_by("name")
 
 
 class UserOptionViewSet(ReadOnlyModelViewSet):
@@ -267,8 +283,9 @@ class UserOptionViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return get_user_model().objects.filter(is_active=True).order_by("username")
-        departments = DepartmentMembership.objects.filter(user=self.request.user, active=True).values_list("department_id", flat=True)
-        return get_user_model().objects.filter(departmentmembership__department_id__in=departments, is_active=True).distinct().order_by("username")
+        if is_owner(self.request.user) or is_department_admin(self.request.user):
+            return get_user_model().objects.filter(groups__name=OWNER_GROUP, is_active=True).distinct().order_by("username")
+        return get_user_model().objects.none()
 
 
 class CompetitionViewSet(ModelViewSet):
@@ -277,17 +294,35 @@ class CompetitionViewSet(ModelViewSet):
     def get_queryset(self):
         return accessible_competitions(self.request.user).prefetch_related("departments", "collaborators").order_by("-created_at")
 
+    @transaction.atomic
     def perform_create(self, serializer):
-        departments = serializer.validated_data.get("departments", [])
-        if not departments:
-            raise ValidationError({"departments": "至少选择一个拟盖章部门"})
         user = self.request.user
-        if not user.is_superuser:
-            allowed = set(DepartmentMembership.objects.filter(user=user, active=True).values_list("department_id", flat=True))
-            if not set(item.id for item in departments).issubset(allowed):
-                raise ValidationError({"departments": "包含未授权部门"})
-        competition = serializer.save(created_by=user)
+        if not (is_department_admin(user) or is_owner(user)):
+            raise PermissionDenied("需要管理员或负责人权限")
+        if not serializer.validated_data.get("departments"):
+            raise ValidationError("至少选择一个拟盖章部门")
+        competition = serializer.save(created_by=user, active=True)
         competition.collaborators.add(user)
+        AuditEvent.objects.create(actor=user, action="competition.created", object_type="Competition", object_id=str(competition.pk), detail={"name": competition.name})
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        competition = self.get_object()
+        requested = serializer.validated_data
+        if 'departments' in requested and not requested['departments']:
+            raise ValidationError('至少选择一个拟盖章部门')
+        if "active" in requested and not self.request.user.is_superuser:
+            raise PermissionDenied("只有超管可以启用或废止竞赛")
+        if requested.get("active") is False and competition.batches.filter(status=AwardBatch.Status.QUEUED).exists():
+            raise ValidationError("仍有生成中的批次，请待任务完成后废止")
+        if not self.request.user.is_superuser and (not competition.active or "departments" in requested):
+            raise PermissionDenied("修改废止竞赛或盖章部门需要超管权限")
+        previous = competition.active
+        saved = serializer.save()
+        AuditEvent.objects.create(actor=self.request.user, action="competition.updated", object_type="Competition", object_id=str(saved.pk), detail={"name": saved.name, "previous_active": previous, "active": saved.active})
+
+    def perform_destroy(self, instance):
+        raise ValidationError("请使用废止功能，竞赛及历史数据不能删除")
 
 
 class BatchViewSet(ModelViewSet):
@@ -301,6 +336,8 @@ class BatchViewSet(ModelViewSet):
         competition = serializer.validated_data["competition"]
         if not accessible_competitions(self.request.user).filter(pk=competition.pk).exists():
             raise ValidationError("无权访问该竞赛")
+        if not competition.active:
+            raise ValidationError("竞赛已废止，不能新建批次")
         template = serializer.validated_data.pop("template_version", None)
         output_formats = serializer.validated_data.pop("output_formats", ["pdf", "png"])
         requested_seals = serializer.validated_data.pop("seal_versions", {})
@@ -470,12 +507,17 @@ class TemplateViewSet(ModelViewSet):
             active=True,
         ).exists()
 
+    @transaction.atomic
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
         if not self.request.user.is_superuser and not DepartmentMembership.objects.filter(user=self.request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             raise ValidationError("只能为本部门创建模板")
+        try:
+            canvas = validate_canvas(self.request.data.get("canvas", {}))
+        except ValueError as exc:
+            raise ValidationError(str(exc))
         template = serializer.save(created_by=self.request.user)
-        TemplateVersion.objects.create(template=template, number=1, canvas=self.request.data.get("canvas", {}))
+        TemplateVersion.objects.create(template=template, number=1, canvas=canvas)
 
     def perform_update(self, serializer):
         if not self.can_manage(self.get_object()):
@@ -490,13 +532,62 @@ class TemplateViewSet(ModelViewSet):
         instance.delete()
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def save_version(self, request, pk=None):
         template = self.get_object()
         if not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=template.department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             return Response({"detail": "只能维护本部门发布的模板"}, status=403)
+        Template.objects.select_for_update().get(pk=template.pk)
+        try:
+            canvas = validate_canvas(request.data.get("canvas", {}))
+        except ValueError as exc:
+            raise ValidationError(str(exc))
         number = (template.versions.aggregate(models.Max("number"))["number__max"] or 0) + 1
-        version = TemplateVersion.objects.create(template=template, number=number, canvas=request.data.get("canvas", {}))
+        version = TemplateVersion.objects.create(template=template, number=number, canvas=canvas)
+        AuditEvent.objects.create(actor=request.user, action="template.version_saved", object_type="Template", object_id=str(template.id), detail={"name": template.name, "version": number})
         return Response({"id": version.id, "number": version.number}, status=201)
+
+    @action(detail=False, methods=["post"])
+    def layout(self, request):
+        try:
+            canvas = validate_canvas(request.data.get("canvas", {}))
+            sample = type("Sample", (), {"team_name": "测试专用团队", "members": ["张三", "李四"], "award_name": "一等奖", "work_name": "测试专用作品", "category": "创新类", "teachers": ["王老师"]})()
+            result = {}
+            for layer in canvas.get("layers", []):
+                if layer["type"] == "text":
+                    text = layer.get("text", "") if layer.get("field") == "static" else _field_value(sample, layer["field"], "2026-AC-00000001")
+                    result[layer["id"]] = layout_text(text, layer)
+            return Response(result)
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValidationError(str(exc))
+
+    @action(detail=True, methods=["get"])
+    def thumbnail(self, request, pk=None):
+        import fitz
+        from django.conf import settings
+        template = self.get_object()
+        versions = template.versions.all()
+        version = versions.filter(pk=request.query_params['version']).first() if request.query_params.get('version') else versions.order_by('-number').first()
+        if not version:
+            raise ValidationError('模板没有可预览的版本')
+        root = Path(settings.MEDIA_ROOT) / 'temporary' / 'template-thumbnails'
+        root.mkdir(parents=True, exist_ok=True)
+        target = root / f'{version.pk}-{settings.BUILD_VERSION[:12]}.png'
+        if not target.exists():
+            sample = type('Sample', (), {'team_name': '示例团队', 'members': ['张三', '李四'], 'award_name': '一等奖', 'work_name': '示例作品', 'category': '创新类', 'teachers': ['王老师']})()
+            output = io.BytesIO()
+            try:
+                render_unsigned(sample, 'PREVIEW-ONLY', output, template=version.canvas)
+                with fitz.open(stream=output.getvalue(), filetype='pdf') as document:
+                    page = document[0]
+                    pixmap = page.get_pixmap(matrix=fitz.Matrix(640 / page.rect.width, 640 / page.rect.width))
+                    with tempfile.NamedTemporaryFile(dir=root, suffix='.png', delete=False) as temporary:
+                        temporary.write(pixmap.tobytes('png'))
+                        temporary_name = temporary.name
+                    os.replace(temporary_name, target)
+            except ValueError as exc:
+                raise ValidationError(str(exc))
+        return FileResponse(target.open('rb'), content_type='image/png', headers={'Cache-Control': 'private, max-age=300'})
 
     @action(detail=True, methods=["post"])
     def copy(self, request, pk=None):
@@ -519,8 +610,8 @@ class SealViewSet(ModelViewSet):
         memberships = DepartmentMembership.objects.filter(user=self.request.user, active=True)
         administered = memberships.filter(role=DepartmentMembership.Role.ADMIN).values_list("department_id", flat=True)
         allowed = models.Q(department_id__in=administered)
-        if self.action in {"list", "retrieve"}:
-            allowed |= models.Q(active=True, department_id__in=memberships.values_list("department_id", flat=True))
+        if self.action in {"list", "retrieve", "preview"} and is_owner(self.request.user):
+            allowed |= models.Q(active=True)
         return Seal.objects.filter(allowed).select_related("department").prefetch_related("versions")
 
     def perform_create(self, serializer):
@@ -555,11 +646,44 @@ class SealViewSet(ModelViewSet):
         number = (seal.versions.aggregate(models.Max("number"))["number__max"] or 0) + 1
         version = SealVersion(seal=seal, number=number, sha256=hashlib.sha256(content).hexdigest())
         version.image.save(uploaded.name, ContentFile(content), save=True)
+        AuditEvent.objects.create(actor=request.user, action="seal.uploaded", object_type="Seal", object_id=str(seal.id), detail={"name": seal.name, "version": number, "sha256": version.sha256})
         return Response({"id": version.id, "number": number}, status=201)
+
+    @action(detail=True, methods=["get"])
+    def preview(self, request, pk=None):
+        seal = self.get_object()
+        versions = seal.versions.all()
+        version = versions.filter(pk=request.query_params['version']).first() if request.query_params.get('version') else versions.order_by('-number').first()
+        if not version:
+            raise ValidationError("没有可预览的公章版本")
+        with version.image.open('rb') as source:
+            try:
+                image = Image.open(source).convert('RGBA')
+                image.thumbnail((480, 480))
+            except Exception:
+                raise ValidationError("该版本不是可预览的图片")
+        if not is_department_admin(request.user, seal.department):
+            draw = ImageDraw.Draw(image)
+            draw.text((12, max(12, image.height // 2)), 'PREVIEW ONLY', fill=(110, 110, 110, 210), stroke_width=1)
+        output = io.BytesIO(); image.save(output, 'PNG')
+        return HttpResponse(output.getvalue(), content_type='image/png', headers={'Cache-Control': 'private, no-store'})
 
 
 class CertificateViewSet(ReadOnlyModelViewSet):
     serializer_class = CertificateSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        certificate = self.get_object()
+        award = certificate.award
+        data = CertificateSerializer(certificate).data
+        data.update({"members": award.members, "work_name": award.work_name, "category": award.category,
+                     "teachers": award.teachers, "note": award.note, "pdf_sha256": certificate.pdf_sha256,
+                     "template": award.version.template_version.template.name,
+                     "template_version": award.version.template_version.number,
+                     "departments": list(award.version.required_departments.values_list("department__name", flat=True)),
+                     "pdf_url": f"/api/v1/certificates/{certificate.pk}/download/pdf/?inline=1",
+                     "image_url": f"/api/v1/certificates/{certificate.pk}/download/image/?inline=1" if certificate.image else None})
+        return Response(data)
 
     def get_queryset(self):
         return Certificate.objects.filter(
@@ -729,4 +853,66 @@ def certificate_download(request, certificate_id, kind):
     if not field:
         return Response({"detail": "文件尚未生成"}, status=404)
     extension = "pdf" if kind == "pdf" else "png"
-    return FileResponse(field.open("rb"), as_attachment=True, filename=f"{certificate.number}.{extension}", content_type="application/pdf" if kind == "pdf" else "image/png")
+    return FileResponse(field.open("rb"), as_attachment=request.query_params.get("inline") != "1", filename=f"{certificate.number}.{extension}", content_type="application/pdf" if kind == "pdf" else "image/png")
+
+
+@api_view(["GET", "POST"])
+def fonts_view(request):
+    if request.method == 'GET':
+        return Response(font_catalog())
+    if not is_department_admin(request.user):
+        raise PermissionDenied('只有管理员可以导入字体')
+    if request.data.get('license_confirmed') not in (True, 'true', '1'):
+        raise ValidationError('请确认字体具备本系统使用、格式转换、嵌入和展示授权')
+    uploaded = request.FILES.get('file')
+    if not uploaded:
+        raise ValidationError('请选择 TTF/TTC 字体文件')
+    try:
+        content, detected_name, digest = import_font(uploaded.read(40 * 1024 * 1024 + 1))
+    except ValueError as exc:
+        raise ValidationError(str(exc))
+    name = str(request.data.get('name', '')).strip() or detected_name
+    if len(name) > 160:
+        raise ValidationError('字体名称过长')
+    with transaction.atomic():
+        font, created = CertificateFont.objects.get_or_create(sha256=digest, defaults={
+            'name': name, 'file': ContentFile(content, name=digest + '.ttf'),
+            'license_note': str(request.data.get('license_note', '管理员确认具备系统使用授权'))[:240], 'created_by': request.user,
+        })
+        if created:
+            AuditEvent.objects.create(actor=request.user, action='font.imported', object_type='CertificateFont', object_id=digest, detail={'name': name, 'sha256': digest})
+    return Response(next(item for item in font_catalog() if item['id'] == font.pk), status=201 if created else 200)
+
+
+@api_view(["GET"])
+def font_download(request, font_id):
+    try:
+        path = font_file(font_id)
+    except ValueError as exc:
+        raise ValidationError(str(exc))
+    return FileResponse(path.open('rb'), content_type='font/ttf', headers={'Cache-Control': 'private, max-age=31536000, immutable'})
+
+
+@api_view(["GET"])
+def audit_logs(request, event_id=None):
+    if not is_department_admin(request.user):
+        raise PermissionDenied('需要管理员权限')
+    events = AuditEvent.objects.select_related('actor').order_by('-created_at')
+    if not request.user.is_superuser:
+        events = events.filter(actor=request.user)
+    def serialize(event):
+        return {'id': event.id, 'created_at': event.created_at, 'actor': event.actor.username if event.actor else '系统/主机管理员',
+                'action': event.action, 'object_type': event.object_type, 'object_id': event.object_id, 'detail': event.detail}
+    if event_id is not None:
+        event = events.filter(pk=event_id).first()
+        if not event:
+            return Response({'detail': '无此日志或无权限'}, status=404)
+        return Response(serialize(event))
+    try:
+        page = max(1, int(request.query_params.get('page', 1)))
+    except ValueError:
+        raise ValidationError('页码无效')
+    keyword = request.query_params.get('search', '').strip()
+    if keyword:
+        events = events.filter(models.Q(action__icontains=keyword) | models.Q(object_id__icontains=keyword) | models.Q(actor__username__icontains=keyword))
+    return Response({'count': events.count(), 'results': [serialize(event) for event in events[(page - 1) * 30:page * 30]]})
