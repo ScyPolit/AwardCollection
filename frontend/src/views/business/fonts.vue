@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type UploadFile } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -152,9 +153,12 @@ onMounted(load);
     <el-table v-loading="busy" :data="visible" border class="font-table">
       <el-table-column label="字体名称" min-width="260"
         ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row)">{{
-            s.row.name
-          }}</el-button></template
+          ><el-button
+            link
+            type="primary"
+            @click="show(s.row as CertificateFont)"
+            >{{ s.row.name }}</el-button
+          ></template
         ></el-table-column
       >
       <el-table-column label="来源" width="110"
@@ -177,15 +181,25 @@ onMounted(load);
         min-width="200"
         show-overflow-tooltip
       />
-      <el-table-column label="操作" width="240"
+      <el-table-column label="操作" width="310"
         ><template #default="s"
-          ><el-button link @click="show(s.row)">预览与详情</el-button
-          ><template v-if="isSuper && !s.row.builtin"
-            ><el-button link @click="rename(s.row)">重命名</el-button
+          ><el-button link @click="show(s.row as CertificateFont)"
+            >预览与详情</el-button
+          ><ManagementActions
+            v-if="isSuper && !s.row.builtin"
+            :url="`/api/v1/fonts/${s.row.id}/`"
+            :data="s.row"
+            :name="s.row.name"
+            :can-edit="false"
+            :fields="[]"
+            @changed="load"
+          /><template v-if="isSuper && !s.row.builtin"
+            ><el-button link @click="rename(s.row as CertificateFont)"
+              >重命名</el-button
             ><el-button
               link
               :type="s.row.active ? 'danger' : 'success'"
-              @click="toggle(s.row)"
+              @click="toggle(s.row as CertificateFont)"
               >{{ s.row.active ? "停用" : "启用" }}</el-button
             ></template
           ></template
@@ -245,7 +259,29 @@ onMounted(load);
           previewError ||
           "预览中不受此字体支持的字形由浏览器回退显示；证书生成前另有字形覆盖校验。"
         }}
-      </p></RecordDetail
+      </p>
+      <template #actions
+        ><ManagementActions
+          v-if="selected && isSuper && !selected.builtin"
+          :url="`/api/v1/fonts/${selected.id}/`"
+          :data="selected"
+          :name="selected.name"
+          :fields="[
+            { key: 'name', label: '字体名称', required: true },
+            { key: 'active', label: '启用', type: 'boolean' }
+          ]"
+          @changed="
+            preview = false;
+            load();
+          "
+        /><el-button
+          @click="
+            preview = false;
+            openImport();
+          "
+          >导入其他字体</el-button
+        ></template
+      ></RecordDetail
     >
   </div>
 </template>

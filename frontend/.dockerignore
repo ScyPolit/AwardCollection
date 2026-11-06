@@ -19,3 +19,7 @@ tests/**/coverage/
 *.njsproj
 *.sln
 tsconfig.tsbuildinfo
+
+**/node_modules
+**/dist
+**/*.tsbuildinfo

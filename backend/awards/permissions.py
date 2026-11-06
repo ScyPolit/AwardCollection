@@ -7,7 +7,7 @@ OWNER_GROUP = "competition_owners"
 def is_department_admin(user, department=None):
     if user.is_superuser:
         return True
-    qs = DepartmentMembership.objects.filter(user=user, role="admin", active=True)
+    qs = DepartmentMembership.objects.filter(user=user, role="admin", active=True, department__deleted_at__isnull=True)
     return qs.filter(department=department).exists() if department is not None else qs.exists()
 
 

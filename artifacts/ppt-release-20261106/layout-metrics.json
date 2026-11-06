@@ -1,0 +1,236 @@
+[
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "welcome",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/competitions",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/batches",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/template-library",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/templates",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/fonts",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/seals",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/approvals",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/certificates",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/administration",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/logs",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/emergency",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "light",
+    "theme": false,
+    "width": 1600,
+    "path": "business/verification",
+    "mode": "light"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "welcome",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/competitions",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/batches",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/template-library",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/templates",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/fonts",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/seals",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/approvals",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/certificates",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/administration",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/logs",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/emergency",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "navigationTheme": "default",
+    "theme": true,
+    "width": 1600,
+    "path": "business/verification",
+    "mode": "dark"
+  }
+]

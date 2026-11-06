@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, type FormInstance } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -41,6 +42,7 @@ const linkDialog = ref(false),
     department: undefined as number | undefined,
     role: "owner"
   });
+const accountRow = ref<any>();
 const detail = ref(false),
   selected = ref<Record<string, unknown>>({});
 const roleOptions = computed(() =>
@@ -73,6 +75,7 @@ function openCreate() {
   dialog.value = true;
 }
 function showAccount(row: any) {
+  accountRow.value = row;
   selected.value = {
     账号: row.username,
     姓名: row.name,
@@ -212,14 +215,43 @@ onMounted(load);
             </div></template
           ></el-table-column
         >
-        <el-table-column label="操作" width="90"
+        <el-table-column label="操作" width="210"
           ><template #default="s"
-            ><el-button link @click="showAccount(s.row)"
-              >查看</el-button
-            ></template
-          ></el-table-column
-        >
+            ><el-button link @click="showAccount(s.row)">查看</el-button
+            ><ManagementActions
+              :url="`/api/v1/management/accounts/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.username"
+              :can-edit="s.row.can_edit"
+              :can-delete="s.row.can_delete"
+              :fields="[
+                { key: 'username', label: '账号', required: true },
+                { key: 'name', label: '姓名' },
+                { key: 'email', label: '邮箱' },
+                { key: 'password', label: '重置密码', type: 'password' },
+                { key: 'active', label: '启用', type: 'boolean' }
+              ]"
+              @changed="load" /></template
+        ></el-table-column>
       </el-table>
+    </section>
+    <section v-if="isSuper">
+      <h3>部门管理</h3>
+      <el-table :data="departments" border
+        ><el-table-column prop="name" label="部门名称" /><el-table-column
+          prop="code"
+          label="部门代码" /><el-table-column label="操作" width="180"
+          ><template #default="s"
+            ><ManagementActions
+              :url="`/api/v1/departments/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.name"
+              :fields="[
+                { key: 'name', label: '部门名称', required: true },
+                { key: 'code', label: '部门代码', required: true }
+              ]"
+              @changed="load" /></template></el-table-column
+      ></el-table>
     </section>
     <section v-if="isSuper">
       <h3>公开查验字段</h3>
@@ -363,7 +395,26 @@ onMounted(load);
         ></template
       ></el-dialog
     >
-    <RecordDetail v-model="detail" title="账号详情" :data="selected" />
+    <RecordDetail v-model="detail" title="账号详情" :data="selected"
+      ><ManagementActions
+        v-if="accountRow"
+        :url="`/api/v1/management/accounts/${accountRow.id}/`"
+        :data="accountRow"
+        :name="accountRow.username"
+        :can-edit="accountRow.can_edit"
+        :can-delete="accountRow.can_delete"
+        :fields="[
+          { key: 'username', label: '账号', required: true },
+          { key: 'name', label: '姓名' },
+          { key: 'email', label: '邮箱' },
+          { key: 'password', label: '重置密码', type: 'password' },
+          { key: 'active', label: '启用', type: 'boolean' }
+        ]"
+        @changed="
+          detail = false;
+          load();
+        "
+    /></RecordDetail>
   </div>
 </template>
 <style scoped>

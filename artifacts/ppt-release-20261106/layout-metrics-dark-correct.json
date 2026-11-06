@@ -1,0 +1,119 @@
+[
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "welcome",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/competitions",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/batches",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/template-library",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(255, 255, 255)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/templates",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/fonts",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/seals",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/approvals",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/certificates",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/administration",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/logs",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(229, 234, 243)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/emergency",
+    "mode": "dark"
+  },
+  {
+    "bodyWidth": 1600,
+    "documentWidth": 1600,
+    "textColor": "rgb(255, 255, 255)",
+    "theme": true,
+    "width": 1600,
+    "path": "business/verification",
+    "mode": "dark"
+  }
+]

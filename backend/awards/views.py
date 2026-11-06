@@ -15,6 +15,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import connection, models, transaction, IntegrityError
 from django.http import FileResponse, HttpResponse
+from django.shortcuts import get_object_or_404
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -28,7 +29,7 @@ from .models import (
     ApprovalDepartment, AuditEvent, AwardBatch, BatchVersion, Certificate, Competition,
     Department, DepartmentMembership, GenerationTask, LoginProtection, Notification,
     RevocationDecision, RevocationRequest, Seal, SealVersion, SystemSetting,
-    TeamAward, Template, TemplateVersion, VerificationAttempt, CertificateFont,
+    TeamAward, Template, TemplateVersion, VerificationAttempt, CertificateFont, AccountProfile,
 )
 from .serializers import (
     ApprovalSerializer, BatchSerializer, CertificateSerializer,
@@ -43,6 +44,7 @@ from .services import (
 from .renderer import render_unsigned, _field_value
 from .permissions import OWNER_GROUP, grant_owner, is_owner, is_department_admin, user_roles
 from .fonts import font_catalog, font_file, import_font, layout_text, validate_canvas
+from .management_api import account_permissions, archive, can_manage_batch, assert_batch_idle
 
 
 def client_ip(request):
@@ -168,9 +170,10 @@ def public_verification_setting(request):
     return Response(setting.value)
 
 
-def account_data(user):
+def account_data(user, actor=None):
     return {
-        "id": user.id, "username": user.username, "name": user.get_full_name(),
+        "id": user.id, "username": user.username, "name": user.get_full_name(), "email": user.email,
+        **(account_permissions(actor, user) if actor else {}),
         "active": user.is_active, "superuser": user.is_superuser, "roles": user_roles(user),
         "joined_at": user.date_joined, "last_login": user.last_login,
         "memberships": list(DepartmentMembership.objects.filter(user=user, role="admin").values("id", "department_id", "department__name", "role", "active")),
@@ -184,11 +187,11 @@ def account_management(request):
         raise PermissionDenied("需要管理员权限")
     User = get_user_model()
     if request.method == "GET":
-        users = User.objects.all()
+        users = User.objects.filter(management_profile__deleted_at__isnull=True)
         if not request.user.is_superuser:
             departments = DepartmentMembership.objects.filter(user=request.user, role="admin", active=True).values_list("department_id", flat=True)
             users = users.filter(models.Q(groups__name=OWNER_GROUP) | models.Q(departmentmembership__department_id__in=departments, departmentmembership__role="admin")).distinct()
-        return Response([account_data(user) for user in users.order_by("username")])
+        return Response([account_data(user, request.user) for user in users.order_by("username")])
     username = str(request.data.get("username", "")).strip()
     password = str(request.data.get("password", ""))
     name = str(request.data.get("name", "")).strip()
@@ -213,6 +216,7 @@ def account_management(request):
     try:
         with transaction.atomic():
             user = User.objects.create_user(username=username, password=password, first_name=name)
+            AccountProfile.objects.create(user=user, created_by=request.user)
             if role == "owner":
                 grant_owner(user)
             else:
@@ -220,7 +224,7 @@ def account_management(request):
             AuditEvent.objects.create(actor=request.user, action="account.created", object_type="User", object_id=str(user.pk), detail={"username": username, "role": role, "department": department.id if department else None})
     except IntegrityError:
         raise ValidationError("账号已存在，请使用其他账号名")
-    return Response(account_data(user), status=201)
+    return Response(account_data(user, request.user), status=201)
 
 
 @api_view(["POST"])
@@ -258,8 +262,9 @@ def membership_management(request):
 
 
 class DepartmentViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = DepartmentSerializer
-    http_method_names = ["get", "post", "put", "patch", "head", "options"]
+    http_method_names = ["get", "post", "put", "patch", "delete", "head", "options"]
 
     def perform_create(self, serializer):
         if not self.request.user.is_superuser:
@@ -273,11 +278,18 @@ class DepartmentViewSet(ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.is_superuser or is_owner(self.request.user):
-            return Department.objects.all().order_by("name")
-        return Department.objects.filter(departmentmembership__user=self.request.user, departmentmembership__role="admin", departmentmembership__active=True).distinct().order_by("name")
+            return Department.objects.filter(deleted_at__isnull=True).order_by("name")
+        return Department.objects.filter(deleted_at__isnull=True, departmentmembership__user=self.request.user, departmentmembership__role="admin", departmentmembership__active=True).distinct().order_by("name")
+
+
+    def perform_destroy(self, instance):
+        if not self.request.user.is_superuser: raise PermissionDenied("只有超管可以删除部门")
+        if instance.competitions.filter(active=True, deleted_at__isnull=True).exists(): raise ValidationError("部门仍参与启用竞赛，请先调整竞赛盖章部门")
+        archive(self.request.user, instance)
 
 
 class UserOptionViewSet(ReadOnlyModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = UserOptionSerializer
 
     def get_queryset(self):
@@ -289,10 +301,11 @@ class UserOptionViewSet(ReadOnlyModelViewSet):
 
 
 class CompetitionViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = CompetitionSerializer
 
     def get_queryset(self):
-        return accessible_competitions(self.request.user).prefetch_related("departments", "collaborators").order_by("-created_at")
+        return accessible_competitions(self.request.user).filter(deleted_at__isnull=True).prefetch_related("departments", "collaborators").order_by("-created_at")
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -322,33 +335,35 @@ class CompetitionViewSet(ModelViewSet):
         AuditEvent.objects.create(actor=self.request.user, action="competition.updated", object_type="Competition", object_id=str(saved.pk), detail={"name": saved.name, "previous_active": previous, "active": saved.active})
 
     def perform_destroy(self, instance):
-        raise ValidationError("请使用废止功能，竞赛及历史数据不能删除")
+        if instance.batches.filter(status=AwardBatch.Status.QUEUED).exists(): raise ValidationError("仍有生成中的批次")
+        archive(self.request.user, instance)
 
 
 class BatchViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = BatchSerializer
 
     def get_queryset(self):
-        return AwardBatch.objects.filter(competition__in=accessible_competitions(self.request.user)).select_related("competition").distinct().order_by("-created_at")
+        return AwardBatch.objects.filter(deleted_at__isnull=True, competition__in=accessible_competitions(self.request.user)).select_related("competition").distinct().order_by("-created_at")
 
     @transaction.atomic
     def perform_create(self, serializer):
         competition = serializer.validated_data["competition"]
         if not accessible_competitions(self.request.user).filter(pk=competition.pk).exists():
             raise ValidationError("无权访问该竞赛")
-        if not competition.active:
-            raise ValidationError("竞赛已废止，不能新建批次")
+        if not competition.active or competition.deleted_at:
+            raise ValidationError("竞赛已废止或删除，不能新建批次")
         template = serializer.validated_data.pop("template_version", None)
         output_formats = serializer.validated_data.pop("output_formats", ["pdf", "png"])
         requested_seals = serializer.validated_data.pop("seal_versions", {})
         if template is None:
-            template = TemplateVersion.objects.filter(template__published=True).order_by("-created_at").first()
+            template = TemplateVersion.objects.filter(template__published=True, template__deleted_at__isnull=True).order_by("-created_at").first()
         if template is None:
             raise ValidationError("请先创建并发布证书模板")
         selected = []
         for department in competition.departments.all():
             requested_id = requested_seals.get(str(department.id))
-            seals = SealVersion.objects.filter(seal__department=department, seal__active=True)
+            seals = SealVersion.objects.filter(seal__department=department, seal__active=True, seal__deleted_at__isnull=True)
             seal = seals.filter(pk=requested_id).first() if requested_id else seals.order_by("-number").first()
             if seal is None:
                 raise ValidationError(f"{department.name} 没有选中有效的启用公章")
@@ -359,6 +374,8 @@ class BatchViewSet(ModelViewSet):
             output_formats=output_formats,
             snapshot={
                 "template": template.canvas,
+                "competition": {"id": competition.id, "name": competition.name},
+                "issue_date": timezone.localdate().isoformat(),
                 "template_version": template.id,
                 "departments": [department.id for department, _ in selected],
                 "seals": [seal.id for _, seal in selected],
@@ -367,6 +384,44 @@ class BatchViewSet(ModelViewSet):
         )
         for department, seal in selected:
             ApprovalDepartment.objects.create(version=version, department=department, seal_version=seal)
+
+    def perform_update(self, serializer):
+        batch = self.get_object()
+        if not can_manage_batch(self.request.user, batch): raise PermissionDenied("无权修改批次")
+        if set(serializer.validated_data) - {'name'}: raise ValidationError("此处只能修改批次名称，名单请在批次详情修订")
+        saved=serializer.save()
+        AuditEvent.objects.create(actor=self.request.user, action='batch.updated', object_type='AwardBatch', object_id=str(saved.pk), detail={'name':saved.name})
+
+    def perform_destroy(self, instance):
+        if not can_manage_batch(self.request.user, instance): raise PermissionDenied("无权删除批次")
+        assert_batch_idle(instance)
+        archive(self.request.user, instance)
+
+    @action(detail=True, methods=['post'])
+    def rows(self, request, pk=None):
+        batch=self.get_object()
+        if not can_manage_batch(request.user,batch): raise PermissionDenied('无权修订名单')
+        if batch.status not in ('draft','returned'): raise ValidationError('只能编辑草稿或已退回批次的名单')
+        version=batch.versions.get(number=batch.current_version)
+        from .serializers import AwardSerializer
+        rows=list(AwardSerializer(version.awards.order_by('source_row'),many=True).data)
+        operation=request.data.get('operation'); source=request.data.get('source_row')
+        if operation not in ('create','update','delete'): raise ValidationError('名单操作无效')
+        if operation=='create':
+            row=dict(request.data.get('row',{}));row['source_row']=max([r['source_row'] for r in rows]+[1])+1
+            parsed=AwardSerializer(data=row);parsed.is_valid(raise_exception=True);rows.append(dict(parsed.validated_data))
+        else:
+            index=next((i for i,r in enumerate(rows) if r['source_row']==source),None)
+            if index is None: raise ValidationError('名单行不存在')
+            if operation=='delete': rows.pop(index)
+            else:
+                row={**rows[index],**request.data.get('row',{}),'source_row':source}
+                parsed=AwardSerializer(data=row);parsed.is_valid(raise_exception=True);rows[index]=dict(parsed.validated_data)
+        for row in rows:
+            if not row['members'] or not row['award_name'].strip():raise ValidationError('成员和奖项不能为空')
+        try: updated=revise_batch(batch.pk,request.user,rows,int(request.data.get('expected_version',-1)))
+        except ValueError as exc: raise ValidationError(str(exc))
+        return Response({'version':updated.number,'count':len(rows)})
 
     @action(detail=True, methods=["get"], url_path="detail")
     def overview(self, request, pk=None):
@@ -388,20 +443,26 @@ class BatchViewSet(ModelViewSet):
         })
 
     @action(detail=True, methods=["post"], url_path="import")
+    @transaction.atomic
     def import_awards(self, request, pk=None):
         batch = self.get_object()
+        if not can_manage_batch(request.user,batch): raise PermissionDenied("无权修订名单")
+        if batch.status not in ("draft","returned"): raise ValidationError("只能编辑草稿或已退回批次的名单")
         uploaded = request.FILES.get("file")
         if not uploaded:
             return Response({"detail": "请选择 XLSX 文件"}, status=400)
         rows, errors = parse_excel(uploaded)
         if errors:
             return Response({"errors": errors}, status=400)
-        expected = int(request.data.get("expected_version", batch.current_version))
+        try:expected = int(request.data.get("expected_version", batch.current_version))
+        except (ValueError,TypeError):raise ValidationError("名单版本无效")
         try:
             if batch.versions.get(number=batch.current_version).awards.exists():
                 version = revise_batch(batch.id, request.user, rows, expected)
             else:
-                version = batch.versions.get(number=batch.current_version)
+                locked=AwardBatch.objects.select_for_update().get(pk=batch.pk)
+                if locked.current_version!=expected or locked.status not in ("draft","returned"):raise ValueError("版本或状态已变化，请重新载入")
+                version = locked.versions.get(number=locked.current_version)
                 TeamAward.objects.bulk_create([TeamAward(version=version, last_edited_by=request.user, **row) for row in rows])
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=409)
@@ -409,11 +470,30 @@ class BatchViewSet(ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def submit(self, request, pk=None):
+        batch=self.get_object()
+        if not can_manage_batch(request.user,batch):raise PermissionDenied("无权提交该批次")
         try:
-            version = submit_batch(self.get_object().id, request.user)
+            version = submit_batch(batch.id, request.user)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"status": "review", "version": version.number})
+
+    @action(detail=True,methods=['post'])
+    @transaction.atomic
+    def retry_generation(self,request,pk=None):
+        batch=self.get_object()
+        if not can_manage_batch(request.user,batch):raise PermissionDenied('无权重试此批次')
+        version=batch.versions.get(number=batch.current_version)
+        task=GenerationTask.objects.select_for_update().filter(version=version,status='failed').first()
+        if not task:raise ValidationError('只有失败的生成任务可以重试')
+        from .integrity import verify
+        try:verify(version)
+        except ValueError as exc:raise ValidationError(str(exc))
+        if version.required_departments.exclude(decision__decision='approved').exists():raise ValidationError('缺少完整部门会签')
+        task.status='queued';task.error='';task.lease_token=None;task.lease_expires_at=None;task.save()
+        batch.status='queued';batch.save(update_fields=['status','updated_at'])
+        AuditEvent.objects.create(actor=request.user,action='generation.retried',object_type='AwardBatch',object_id=str(batch.pk))
+        return Response({'status':'queued'})
 
     @action(detail=True, methods=["get"])
     def progress(self, request, pk=None):
@@ -434,6 +514,8 @@ class BatchViewSet(ModelViewSet):
             "seal_version_id": item.seal_version_id,
             "image": item.seal_version.image.path,
         } for item in version.required_departments.select_related("seal_version")]
+        award.competition_name=version.snapshot.get("competition",{}).get("name",batch.competition.name)
+        award.issue_date=version.snapshot.get("issue_date","")
         output = io.BytesIO()
         render_unsigned(
             award,
@@ -464,11 +546,12 @@ class BatchViewSet(ModelViewSet):
 
 
 class ApprovalViewSet(ReadOnlyModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = ApprovalSerializer
 
     def get_queryset(self):
         user = self.request.user
-        qs = ApprovalDepartment.objects.select_related("department", "version__batch__competition")
+        qs = ApprovalDepartment.objects.filter(version__batch__deleted_at__isnull=True).select_related("department", "version__batch__competition")
         if user.is_superuser:
             return qs.filter(version__batch__status=AwardBatch.Status.REVIEW).order_by("-created_at")
         departments = DepartmentMembership.objects.filter(user=user, role=DepartmentMembership.Role.ADMIN, active=True).values_list("department_id", flat=True)
@@ -486,10 +569,11 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
 
 
 class TemplateViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = TemplateSerializer
 
     def get_queryset(self):
-        queryset = Template.objects.all()
+        queryset = Template.objects.filter(deleted_at__isnull=True)
         if not self.request.user.is_superuser:
             departments = DepartmentMembership.objects.filter(
                 user=self.request.user,
@@ -525,11 +609,10 @@ class TemplateViewSet(ModelViewSet):
         serializer.save(department=self.get_object().department, created_by=self.get_object().created_by)
 
     def perform_destroy(self, instance):
-        if not self.can_manage(instance):
-            raise PermissionDenied("只能删除本部门的模板")
-        if BatchVersion.objects.filter(template_version__template=instance).exists():
-            raise ValidationError("模板已有批次使用，不能删除")
-        instance.delete()
+        if not self.can_manage(instance): raise PermissionDenied("只能删除管理范围内的模板")
+        if BatchVersion.objects.filter(template_version__template=instance, batch__status__in=['review','queued'], batch__deleted_at__isnull=True).exists():
+            raise ValidationError("模板仍被审批或生成中的批次使用")
+        archive(self.request.user, instance)
 
     @action(detail=True, methods=["post"])
     @transaction.atomic
@@ -542,10 +625,22 @@ class TemplateViewSet(ModelViewSet):
             canvas = validate_canvas(request.data.get("canvas", {}))
         except ValueError as exc:
             raise ValidationError(str(exc))
-        number = (template.versions.aggregate(models.Max("number"))["number__max"] or 0) + 1
+        latest_number = template.versions.aggregate(models.Max("number"))["number__max"] or 0
+        if request.data.get("expected_version") is not None and request.data["expected_version"] != latest_number:
+            return Response({"detail":"模板已被其他人修改，请重新载入后编辑"},status=409)
+        number = latest_number + 1
         version = TemplateVersion.objects.create(template=template, number=number, canvas=canvas)
         AuditEvent.objects.create(actor=request.user, action="template.version_saved", object_type="Template", object_id=str(template.id), detail={"name": template.name, "version": number})
         return Response({"id": version.id, "number": version.number}, status=201)
+
+    @action(detail=False, methods=["post"])
+    def import_file(self, request):
+        if not is_department_admin(request.user):raise PermissionDenied("需要模板管理权限")
+        uploaded=request.FILES.get('file')
+        if not uploaded:raise ValidationError('请选择模板文件')
+        from .template_import import import_file
+        try:return Response(import_file(uploaded))
+        except ValueError as exc:raise ValidationError(str(exc))
 
     @action(detail=False, methods=["post"])
     def layout(self, request):
@@ -563,7 +658,7 @@ class TemplateViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def thumbnail(self, request, pk=None):
-        import fitz
+        import pymupdf as fitz
         from django.conf import settings
         template = self.get_object()
         versions = template.versions.all()
@@ -592,7 +687,7 @@ class TemplateViewSet(ModelViewSet):
     @action(detail=True, methods=["post"])
     def copy(self, request, pk=None):
         source = self.get_object()
-        department = Department.objects.get(pk=request.data.get("department"))
+        department = get_object_or_404(Department,pk=request.data.get("department"),deleted_at__isnull=True)
         if not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             return Response({"detail": "无目标部门权限"}, status=403)
         target = Template.objects.create(name=request.data.get("name") or f"{source.name} - 副本", department=department, created_by=request.user, source=source, published=False)
@@ -602,17 +697,18 @@ class TemplateViewSet(ModelViewSet):
 
 
 class SealViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = SealSerializer
 
     def get_queryset(self):
         if self.request.user.is_superuser:
-            return Seal.objects.all().select_related("department").prefetch_related("versions")
+            return Seal.objects.filter(deleted_at__isnull=True).select_related("department").prefetch_related("versions")
         memberships = DepartmentMembership.objects.filter(user=self.request.user, active=True)
         administered = memberships.filter(role=DepartmentMembership.Role.ADMIN).values_list("department_id", flat=True)
         allowed = models.Q(department_id__in=administered)
         if self.action in {"list", "retrieve", "preview"} and is_owner(self.request.user):
             allowed |= models.Q(active=True)
-        return Seal.objects.filter(allowed).select_related("department").prefetch_related("versions")
+        return Seal.objects.filter(allowed, deleted_at__isnull=True).select_related("department").prefetch_related("versions")
 
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
@@ -630,22 +726,30 @@ class SealViewSet(ModelViewSet):
         serializer.save(department=seal.department)
 
     def perform_destroy(self, instance):
-        if ApprovalDepartment.objects.filter(seal_version__seal=instance).exists():
-            raise ValidationError("公章已有批次冻结使用，不能删除；可以停用")
-        instance.delete()
+        if not is_department_admin(self.request.user, instance.department): raise PermissionDenied("只能删除本部门公章")
+        if ApprovalDepartment.objects.filter(seal_version__seal=instance, version__batch__status__in=['review','queued'], version__batch__deleted_at__isnull=True).exists():
+            raise ValidationError("公章仍被审批或生成中的批次使用")
+        archive(self.request.user, instance)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def upload_version(self, request, pk=None):
         seal = self.get_object()
         uploaded = request.FILES.get("file")
         if not uploaded or not uploaded.content_type.startswith("image/"):
             return Response({"detail": "请选择图片文件"}, status=400)
-        content = uploaded.read()
+        content = uploaded.read(5*1024*1024+1)
         if len(content) > 5 * 1024 * 1024:
             return Response({"detail": "图片不能超过 5MB"}, status=400)
+        try:
+            with Image.open(io.BytesIO(content)) as source:
+                if source.width*source.height>16_000_000:raise ValueError('公章图片像素过大')
+                source.load();output=io.BytesIO();source.convert('RGBA').save(output,'PNG');content=output.getvalue()
+        except (OSError,ValueError,Image.DecompressionBombError):raise ValidationError('请选择有效的PNG/JPG公章图片，最大1600万像素')
+        Seal.objects.select_for_update().get(pk=seal.pk)
         number = (seal.versions.aggregate(models.Max("number"))["number__max"] or 0) + 1
         version = SealVersion(seal=seal, number=number, sha256=hashlib.sha256(content).hexdigest())
-        version.image.save(uploaded.name, ContentFile(content), save=True)
+        version.image.save(f'seal-{seal.pk}-v{number}.png', ContentFile(content), save=True)
         AuditEvent.objects.create(actor=request.user, action="seal.uploaded", object_type="Seal", object_id=str(seal.id), detail={"name": seal.name, "version": number, "sha256": version.sha256})
         return Response({"id": version.id, "number": number}, status=201)
 
@@ -669,7 +773,9 @@ class SealViewSet(ModelViewSet):
         return HttpResponse(output.getvalue(), content_type='image/png', headers={'Cache-Control': 'private, no-store'})
 
 
-class CertificateViewSet(ReadOnlyModelViewSet):
+class CertificateViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
+    http_method_names=["get","post","patch","delete","head","options"]
     serializer_class = CertificateSerializer
 
     def retrieve(self, request, *args, **kwargs):
@@ -686,7 +792,7 @@ class CertificateViewSet(ReadOnlyModelViewSet):
         return Response(data)
 
     def get_queryset(self):
-        return Certificate.objects.filter(
+        return Certificate.objects.filter(deleted_at__isnull=True,
             award__version__batch__competition__in=accessible_competitions(self.request.user),
             published_at__isnull=False,
         ).select_related("award__version__batch__competition").distinct().order_by("-created_at")
@@ -714,6 +820,36 @@ class CertificateViewSet(ReadOnlyModelViewSet):
             "results": CertificateSerializer(queryset[start:start + page_size], many=True).data,
         })
 
+    def create(self, request, *args, **kwargs):
+        raise PermissionDenied('证书只能由审批通过的生成任务签发')
+
+    def perform_update(self, serializer):
+        certificate=self.get_object()
+        if not is_department_admin(self.request.user): raise PermissionDenied('需要管理员权限')
+        if set(self.request.data)-{'notes'}:raise ValidationError('签发正文不可覆盖，请创建更正批次重新会签')
+        serializer.save()
+        AuditEvent.objects.create(actor=self.request.user,action='certificate.note_updated',object_type='Certificate',object_id=str(certificate.pk),detail={'notes':serializer.validated_data.get('notes','')})
+
+    def perform_destroy(self, instance):
+        if not is_department_admin(self.request.user):raise PermissionDenied('需要管理员权限')
+        if instance.revocation_requests.filter(status='review').exists():raise ValidationError('请先完成作废审批')
+        archive(self.request.user,instance)
+
+    @action(detail=True,methods=['post'])
+    @transaction.atomic
+    def correction(self, request, pk=None):
+        original=self.get_object();source=original.award;previous=source.version
+        if not can_manage_batch(request.user, previous.batch):raise PermissionDenied('无权更正此证书')
+        from .serializers import AwardSerializer
+        row={**AwardSerializer(source).data,**request.data.get('row',{}),'source_row':2}
+        parsed=AwardSerializer(data=row);parsed.is_valid(raise_exception=True)
+        batch=AwardBatch.objects.create(name=f'更正 {original.number}',competition=previous.batch.competition,created_by=request.user)
+        version=BatchVersion.objects.create(batch=batch,number=1,template_version=previous.template_version,output_formats=previous.output_formats,snapshot={**previous.snapshot,'correction_of':original.pk})
+        for requirement in previous.required_departments.all():ApprovalDepartment.objects.create(version=version,department=requirement.department,seal_version=requirement.seal_version)
+        TeamAward.objects.create(version=version,last_edited_by=request.user,**parsed.validated_data)
+        AuditEvent.objects.create(actor=request.user,action='certificate.correction_created',object_type='Certificate',object_id=str(original.pk),detail={'batch':batch.pk})
+        return Response({'batch':batch.pk,'name':batch.name},status=201)
+
     @action(detail=False, methods=["get"], url_path="batch/(?P<batch_id>[^/.]+)/archive")
     def archive(self, request, batch_id=None):
         certificates = self.get_queryset().filter(award__version__batch_id=batch_id, published_at__isnull=False)
@@ -723,8 +859,12 @@ class CertificateViewSet(ReadOnlyModelViewSet):
         with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
             for certificate in certificates:
                 if certificate.pdf:
+                    from .integrity import file_digest
+                    if certificate.pdf_sha256 and file_digest(certificate.pdf.path)!=certificate.pdf_sha256:raise ValidationError("证书文件完整性校验失败")
                     archive.write(certificate.pdf.path, f"{certificate.number}.pdf")
                 if certificate.image:
+                    from .integrity import file_digest
+                    if certificate.image_sha256 and file_digest(certificate.image.path)!=certificate.image_sha256:raise ValidationError("证书图片完整性校验失败")
                     archive.write(certificate.image.path, f"{certificate.number}.png")
         output.seek(0)
         return FileResponse(output, as_attachment=True, filename=f"batch-{batch_id}-certificates.zip", content_type="application/zip")
@@ -749,6 +889,7 @@ class CertificateViewSet(ReadOnlyModelViewSet):
 
 
 class RevocationViewSet(ReadOnlyModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = RevocationSerializer
 
     def get_queryset(self):
@@ -766,11 +907,27 @@ class RevocationViewSet(ReadOnlyModelViewSet):
 
 
 class NotificationViewSet(ModelViewSet):
+    lookup_value_regex = r"[0-9]+"
     serializer_class = NotificationSerializer
-    http_method_names = ["get", "patch"]
+    http_method_names = ["get", "patch", "delete", "post", "head", "options"]
+
+    def create(self, request):
+        raise PermissionDenied("通知由系统业务流程生成")
 
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+
+    def partial_update(self,request,*args,**kwargs):
+        notification=self.get_object()
+        if set(request.data)-{'read_at'}:raise ValidationError('只能更新已读状态')
+        self.get_queryset().filter(pk=notification.pk,read_at__isnull=True).update(read_at=timezone.now())
+        notification.refresh_from_db()
+        return Response({**NotificationSerializer(notification).data,'unreadCount':self.get_queryset().filter(read_at__isnull=True).count()})
+
+    @action(detail=False,methods=['post'])
+    def read_all(self,request):
+        count=self.get_queryset().filter(read_at__isnull=True).update(read_at=timezone.now())
+        return Response({'count':count,'unreadCount':self.get_queryset().filter(read_at__isnull=True).count()})
 
 
 @api_view(["GET"])
@@ -852,6 +1009,11 @@ def certificate_download(request, certificate_id, kind):
     field = certificate.pdf if kind == "pdf" else certificate.image
     if not field:
         return Response({"detail": "文件尚未生成"}, status=404)
+    from .integrity import file_digest
+    expected=certificate.pdf_sha256 if kind=="pdf" else certificate.image_sha256
+    if expected and file_digest(field.path)!=expected:
+        AuditEvent.objects.create(actor=request.user,action="certificate.integrity_failed",object_type="Certificate",object_id=str(certificate.pk),detail={"format":kind})
+        return Response({"detail":"文件完整性校验失败，下载已阻止，请联系超管"},status=409)
     extension = "pdf" if kind == "pdf" else "png"
     return FileResponse(field.open("rb"), as_attachment=request.query_params.get("inline") != "1", filename=f"{certificate.number}.{extension}", content_type="application/pdf" if kind == "pdf" else "image/png")
 
@@ -885,7 +1047,7 @@ def fonts_view(request):
     return Response(next(item for item in font_catalog(include_inactive=True) if item['id'] == font.pk), status=201 if created else 200)
 
 
-@api_view(["PATCH"])
+@api_view(["PATCH", "DELETE"])
 @transaction.atomic
 def font_management(request, font_id):
     if not request.user.is_superuser:
@@ -893,6 +1055,9 @@ def font_management(request, font_id):
     font = CertificateFont.objects.select_for_update().filter(pk=font_id).first()
     if not font:
         raise ValidationError('内置字体随系统维护，不可修改；或字体不存在')
+    if request.method == 'DELETE':
+        archive(request.user,font)
+        return Response(status=204)
     if set(request.data) - {'name', 'active'}:
         raise ValidationError('只能修改显示名称和启用状态，字体文件不可替换')
     before = {'name': font.name, 'active': font.active}

@@ -1,4 +1,5 @@
 import io
+import hashlib
 import base64
 import tempfile
 import zipfile
@@ -51,7 +52,7 @@ class WorkflowTests(TestCase):
         self.version = BatchVersion.objects.create(batch=self.batch, number=1, template_version=template_version)
         for department in self.departments:
             seal = Seal.objects.create(department=department, name="测试公章")
-            seal_version = SealVersion.objects.create(seal=seal, number=1, image=ContentFile(b"test", name="test.png"), sha256="0" * 64)
+            seal_version = SealVersion.objects.create(seal=seal, number=1, image=ContentFile(b"test", name="test.png"), sha256=hashlib.sha256(b"test").hexdigest())
             ApprovalDepartment.objects.create(version=self.version, department=department, seal_version=seal_version)
         self.award = TeamAward.objects.create(version=self.version, source_row=2, members=["张三", "李四"], award_name="一等奖", team_name="测试专用团队", last_edited_by=self.owner)
 
@@ -456,7 +457,9 @@ class WorkflowTests(TestCase):
         certificate.refresh_from_db(); self.assertEqual(certificate.status, 'active')
         client.force_authenticate(self.superuser)
         self.assertEqual(client.patch(f'/api/v1/competitions/{self.batch.competition_id}/', {'active':True}, format='json').status_code, 200)
-        self.assertEqual(client.delete(f'/api/v1/competitions/{self.batch.competition_id}/').status_code, 400)
+        self.assertEqual(client.delete(f'/api/v1/competitions/{self.batch.competition_id}/').status_code, 204)
+        self.assertTrue(Competition.objects.filter(pk=self.batch.competition_id,deleted_at__isnull=False).exists())
+        self.assertTrue(Certificate.objects.filter(pk=certificate.pk).exists())
 
     def test_non_superuser_cannot_change_competition_active_flag(self):
         client = APIClient(); client.force_authenticate(self.owner)
@@ -572,7 +575,7 @@ class WorkflowTests(TestCase):
         self.assertEqual(client.patch('/api/v1/fonts/hei/', {'active': False}, format='json').status_code, 400)
 
     def test_styled_text_and_shapes_are_rendered_and_remain_extractable(self):
-        import fitz
+        import pymupdf as fitz
         from .fonts import validate_canvas
         from .renderer import render_unsigned
         title={'id':'title','type':'text','field':'static','text':'荣誉证书 AWARD','x':80,'y':50,'width':650,'height':100,'fontFamily':'fangsong','fontSize':36,'minFontSize':10,'bold':True,'italic':True,'underline':True}

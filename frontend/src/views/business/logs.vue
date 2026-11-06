@@ -82,7 +82,7 @@ onMounted(load);
       :page-size="30"
       layout="total,prev,pager,next"
       @current-change="load"
-    /><RecordDetail v-model="drawer" title="日志完整内容" :data="selected" />
+    /><RecordDetail v-model="drawer" title="日志完整内容" :data="selected" readonly-reason="审计日志记录已发生的操作，为保护追溯记录，日志原文不允许修改或删除。" />
   </div>
 </template>
 <style scoped>

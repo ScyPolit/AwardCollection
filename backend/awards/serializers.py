@@ -29,8 +29,8 @@ class CompetitionSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     department_names = serializers.SerializerMethodField()
     collaborator_names = serializers.SerializerMethodField()
-    departments = serializers.PrimaryKeyRelatedField(many=True, queryset=Department.objects.all())
-    collaborators = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.all(), required=False, allow_empty=True)
+    departments = serializers.PrimaryKeyRelatedField(many=True, queryset=Department.objects.filter(deleted_at__isnull=True))
+    collaborators = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.filter(is_active=True), required=False, allow_empty=True)
 
     class Meta:
         model = Competition
@@ -49,7 +49,7 @@ class BatchSerializer(serializers.ModelSerializer):
     team_count = serializers.SerializerMethodField()
     approval_summary = serializers.SerializerMethodField()
     template_version = serializers.PrimaryKeyRelatedField(
-        queryset=TemplateVersion.objects.filter(template__published=True),
+        queryset=TemplateVersion.objects.filter(template__published=True, template__deleted_at__isnull=True),
         write_only=True,
         required=False,
     )
@@ -162,7 +162,8 @@ class CertificateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Certificate
-        fields = ["id", "number", "status", "published_at", "created_at", "competition_name", "batch_name", "team_name", "award_name"]
+        fields = ["id", "number", "status", "published_at", "created_at", "competition_name", "batch_name", "team_name", "award_name", "notes"]
+        read_only_fields = ["number", "status", "published_at", "created_at"]
 
 
 class RevocationSerializer(serializers.ModelSerializer):
@@ -185,4 +186,4 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = "__all__"
-        read_only_fields = ["user", "title", "body", "created_at", "updated_at"]
+        read_only_fields = ["user", "title", "body", "target", "kind", "created_at", "updated_at"]

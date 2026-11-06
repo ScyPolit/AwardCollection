@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { openNotification } from "@/utils/notifications";
+import { useLiveStore } from "@/store/modules/live";
+import { watch } from "vue";
+const live = useLiveStore();
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -7,13 +11,8 @@ defineOptions({ name: "Welcome" });
 const router = useRouter(),
   detail = ref(false),
   message = ref<Record<string, unknown>>({});
-async function showNotification(row: any) {
-  message.value = { 事项: row.title, 内容: row.body, 创建时间: row.created_at };
-  detail.value = true;
-  if (!row.read_at) {
-    await markNotificationRead(row.id);
-    data.value = await dashboard();
-  }
+function showNotification(row: any) {
+  openNotification(router, row);
 }
 const data = ref({
   pendingApprovals: 0,
@@ -22,6 +21,10 @@ const data = ref({
   unreadNotifications: 0,
   recent: [] as any[]
 });
+watch(
+  () => live.revision,
+  async () => (data.value = await dashboard())
+);
 onMounted(async () => (data.value = await dashboard()));
 </script>
 <template>
@@ -40,7 +43,10 @@ onMounted(async () => (data.value = await dashboard()));
         @click="router.push('/business/approvals')"
         @keydown.enter="router.push('/business/approvals')"
       >
-        <span>待审批批次</span><strong>{{ data.pendingApprovals }}</strong>
+        <span>待审批批次</span
+        ><strong>{{
+          live.initialized ? live.pending : data.pendingApprovals
+        }}</strong>
       </div>
       <div
         role="button"
@@ -48,7 +54,13 @@ onMounted(async () => (data.value = await dashboard()));
         @click="router.push('/business/batches')"
         @keydown.enter="router.push('/business/batches')"
       >
-        <span>生成中任务</span><strong>{{ data.runningTasks }}</strong>
+        <span>生成中任务</span
+        ><strong>{{
+          live.initialized
+            ? live.jobs.filter(j => ["running", "queued"].includes(j.status))
+                .length
+            : data.runningTasks
+        }}</strong>
       </div>
       <div
         role="button"
@@ -59,7 +71,10 @@ onMounted(async () => (data.value = await dashboard()));
         <span>本月签发</span><strong>{{ data.issuedThisMonth }}</strong>
       </div>
       <div>
-        <span>未读消息</span><strong>{{ data.unreadNotifications }}</strong>
+        <span>未读消息</span
+        ><strong>{{
+          live.initialized ? live.unread : data.unreadNotifications
+        }}</strong>
       </div>
     </div>
     <section>

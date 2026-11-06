@@ -1,0 +1,15 @@
+$themeColor: #409eff;
+$themeHoverColor: lighten($themeColor, 8%);
+$textColor: var(--ppt-text, #41464b);
+$borderColor: var(--ppt-border, #e5e7eb);
+$lightGray: var(--ppt-fill, #f9f9f9);
+
+$boxShadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1);
+
+$transitionDelay: .12s;
+$transitionDelayFast: .1s;
+$transitionDelaySlow: .15s;
+
+$borderRadius: 2px;
+
+$textElementFont: 'AC_hei', sans-serif;

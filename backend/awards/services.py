@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 from django.db import models, transaction
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from openpyxl import Workbook, load_workbook
 
@@ -31,9 +32,21 @@ def excel_template():
 
 
 def parse_excel(file_obj):
-    wb = load_workbook(file_obj, read_only=True, data_only=True)
+    import zipfile
+    content=file_obj.read(16*1024*1024+1)
+    if len(content)>16*1024*1024:raise ValueError("Excel文件不能超过16MB")
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            entries=archive.infolist()
+            if len(entries)>2000 or sum(e.file_size for e in entries)>64*1024*1024:raise ValueError("Excel文件解压后过大")
+    except zipfile.BadZipFile as exc:raise ValueError("请选择有效的XLSX文件") from exc
+    wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
     ws = wb["获奖名单"] if "获奖名单" in wb.sheetnames else wb.active
-    rows = list(ws.iter_rows(values_only=True))
+    rows=[]
+    for row in ws.iter_rows(values_only=True):
+        rows.append(row)
+        if len(rows)>10001:raise ValueError("单批最多10000条，请拆分名单")
+        if len(row)>32 or any(len(str(value))>10000 for value in row if value is not None):raise ValueError("单元格内容或列数过多")
     if not rows or list(rows[0])[:7] != HEADERS:
         raise ValueError("表头必须与统一模板一致")
     parsed, errors = [], []
@@ -51,7 +64,7 @@ def parse_excel(file_obj):
 @transaction.atomic
 def submit_batch(batch_id, actor):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
-    if not batch.competition.active:
+    if batch.deleted_at or batch.competition.deleted_at or not batch.competition.active:
         raise ValueError("竞赛已废止，不能提交新签发")
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED]:
         raise ValueError("当前批次状态不允许提交")
@@ -72,9 +85,20 @@ def submit_batch(batch_id, actor):
     for requirement in version.required_departments.select_related("seal_version__seal"):
         if not requirement.seal_version.seal.active:
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
+    if template.get("engine")=="pptist":
+        from .ppt_renderer import renderer,award_values
+        seals=[{"department_id":r.department_id,"image":r.seal_version.image.path} for r in version.required_departments.select_related("seal_version")]
+        awards=list(version.awards.order_by("source_row"))
+        for item in awards:
+            item.competition_name=version.snapshot.get("competition",{}).get("name",batch.competition.name)
+            item.issue_date=version.snapshot.get("issue_date",timezone.localdate().isoformat())
+        errors=renderer().preflight(template,seals,[{"source_row":a.source_row,"values":award_values(a,"2026-AC-00000000")} for a in awards])
+        if errors:raise ValueError("；".join(f"第{e['row']}行：{e['error']}" for e in errors))
     version.submitted_by = actor
     version.submitted_at = timezone.now()
     version.save(update_fields=["submitted_by", "submitted_at", "updated_at"])
+    from .integrity import freeze
+    freeze(version)
     batch.status = AwardBatch.Status.REVIEW
     batch.save(update_fields=["status", "updated_at"])
     admin_ids = DepartmentMembership.objects.filter(
@@ -83,9 +107,10 @@ def submit_batch(batch_id, actor):
         active=True,
     ).exclude(user=actor).values_list("user_id", flat=True)
     Notification.objects.bulk_create([
-        Notification(user_id=user_id, title="获奖名单待审批", body=f"批次“{batch.name}”已提交部门会签")
-        for user_id in set(admin_ids)
+        Notification(user_id=user_id, title="获奖名单待审批", body=f"批次“{batch.name}”已提交部门会签", kind="review", target=f"/business/approvals?batch={batch.pk}")
+        for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).exclude(pk=actor.pk).values_list('pk',flat=True))
     ])
+    AuditEvent.objects.create(actor=actor,action="batch.submitted",object_type="AwardBatch",object_id=str(batch.pk),detail={"version":version.number})
     return version
 
 
@@ -133,8 +158,10 @@ def decide(requirement_id, actor, decision, comment=""):
     batch = AwardBatch.objects.select_for_update().get(pk=version.batch_id)
     if batch.current_version != version.number or batch.status != AwardBatch.Status.REVIEW:
         raise ValueError("审批版本已失效")
-    if not batch.competition.active:
+    if batch.deleted_at or batch.competition.deleted_at or not batch.competition.active:
         raise ValueError("竞赛已废止，请先重新启用后再审批")
+    from .integrity import verify
+    verify(version)
     eligible = actor.is_superuser or DepartmentMembership.objects.filter(department=requirement.department, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists()
     if not eligible:
         raise PermissionError("无本部门审批权限")
@@ -146,14 +173,17 @@ def decide(requirement_id, actor, decision, comment=""):
     if decision == ApprovalDecision.Decision.RETURNED:
         batch.status = AwardBatch.Status.RETURNED
         batch.save(update_fields=["status", "updated_at"])
-        collaborator_ids = set(batch.competition.collaborators.values_list("id", flat=True))
+        collaborator_ids = set(batch.competition.collaborators.values_list("id", flat=True)) | {batch.created_by_id}
         Notification.objects.bulk_create([
-            Notification(user_id=user_id, title="获奖名单已退回", body=f"批次“{batch.name}”被退回：{comment or '请查看审批意见'}")
+            Notification(user_id=user_id, title="获奖名单已退回", body=f"批次“{batch.name}”被退回：{comment or '请查看审批意见'}", kind="returned", target=f"/business/batches?batch={batch.pk}")
             for user_id in collaborator_ids if user_id != actor.id
         ])
         return None
     required = version.required_departments.count()
     approved = ApprovalDecision.objects.filter(requirement__version=version, decision=ApprovalDecision.Decision.APPROVED).count()
+    if decision == 'approved':
+        recipients=set(batch.competition.collaborators.values_list('pk',flat=True)) | {batch.created_by_id}
+        Notification.objects.bulk_create([Notification(user_id=uid,title='部门会签进度已更新',body=f'批次“{batch.name}”已有 {approved}/{required} 个部门通过',kind='approval',target=f'/business/batches?batch={batch.pk}') for uid in recipients if uid!=actor.pk])
     if required and approved == required:
         task, _ = GenerationTask.objects.get_or_create(version=version, defaults={"total": version.awards.count()})
         batch.status = AwardBatch.Status.QUEUED
@@ -171,7 +201,7 @@ def emergency_issue(batch_id, actor, reason, password):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED, AwardBatch.Status.REVIEW, AwardBatch.Status.FAILED]:
         raise ValueError("当前批次状态不允许应急签发")
-    if not batch.competition.active:
+    if batch.deleted_at or batch.competition.deleted_at or not batch.competition.active:
         raise ValueError("竞赛已废止，不能签发")
     version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
     if not version.awards.exists():
@@ -179,6 +209,9 @@ def emergency_issue(batch_id, actor, reason, password):
     for requirement in version.required_departments.select_related("seal_version__seal"):
         if not requirement.seal_version.seal.active:
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
+    from .integrity import freeze,verify
+    if version.integrity_hmac:verify(version)
+    else:freeze(version)
     task, _ = GenerationTask.objects.get_or_create(version=version, defaults={"total": version.awards.count()})
     if task.status == GenerationTask.Status.DONE:
         raise ValueError("该版本已经签发")
@@ -220,8 +253,8 @@ def request_revocation(certificate_id, actor, reason):
         department_id__in=departments, role=DepartmentMembership.Role.ADMIN, active=True,
     ).values_list("user_id", flat=True)
     Notification.objects.bulk_create([
-        Notification(user_id=user_id, title="证书作废审批", body=f"证书 {certificate.number} 申请作废：{reason}")
-        for user_id in set(admin_ids)
+        Notification(user_id=user_id, title="证书作废审批", body=f"证书 {certificate.number} 申请作废：{reason}",kind="review",target=f"/business/approvals?revocation={request.pk}")
+        for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).exclude(pk=actor.pk).values_list('pk',flat=True))
     ])
     AuditEvent.objects.create(actor=actor, action="revocation.requested", object_type="Certificate", object_id=str(certificate.id), detail={"reason": reason})
     return request
@@ -282,6 +315,7 @@ def claim_task():
     task.status = GenerationTask.Status.RUNNING
     task.lease_token = uuid.uuid4()
     task.lease_expires_at = now + timedelta(minutes=10)
+    task.started_at = now
     task.attempts += 1
     task.save()
     return task

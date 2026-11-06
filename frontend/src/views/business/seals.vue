@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type UploadFile } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -123,10 +124,10 @@ onMounted(load);
         >新增公章</el-button
       >
     </header>
-    <el-table :data="rows" border @row-dblclick="show"
+    <el-table :data="rows" border @row-dblclick="row => show(row as Seal)"
       ><el-table-column min-width="220" label="公章名称"
         ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row)">{{
+          ><el-button link type="primary" @click="show(s.row as Seal)">{{
             s.row.name
           }}</el-button></template
         ></el-table-column
@@ -144,23 +145,31 @@ onMounted(load);
             s.row.active ? "启用" : "停用"
           }}</el-tag></template
         ></el-table-column
-      ><el-table-column label="操作" width="260"
+      ><el-table-column label="操作" width="350"
         ><template #default="s"
-          ><el-button link @click="show(s.row)">查看</el-button
-          ><template v-if="canManage(s.row)"
+          ><el-button link @click="show(s.row as Seal)">查看</el-button
+          ><ManagementActions
+            :url="`/api/v1/seals/${s.row.id}/`"
+            :data="s.row"
+            :name="s.row.name"
+            :can-edit="canManage(s.row as Seal)"
+            :can-delete="canManage(s.row as Seal)"
+            :fields="[{ key: 'name', label: '公章名称', required: true }]"
+            @changed="load"
+          /><template v-if="canManage(s.row as Seal)"
             ><el-upload
               :auto-upload="false"
               :show-file-list="false"
               accept="image/*"
               :disabled="busy === s.row.id"
-              :on-change="f => upload(s.row, f)"
+              :on-change="f => upload(s.row as Seal, f)"
               ><el-button link type="primary" :loading="busy === s.row.id"
                 >上传新版本</el-button
               ></el-upload
             ><el-button
               link
               :disabled="busy === s.row.id"
-              @click="toggle(s.row)"
+              @click="toggle(s.row as Seal)"
               >{{ s.row.active ? "停用" : "启用" }}</el-button
             ></template
           ></template
@@ -215,7 +224,29 @@ onMounted(load);
       </div>
       <p v-if="selected && !canManage(selected)">
         此处为用印信息核对预览，负责人不能修改公章。
-      </p></RecordDetail
+      </p>
+      <template #actions
+        ><ManagementActions
+          v-if="selected"
+          :url="`/api/v1/seals/${selected.id}/`"
+          :data="selected"
+          :name="selected.name"
+          :can-edit="canManage(selected)"
+          :can-delete="canManage(selected)"
+          :fields="[{ key: 'name', label: '公章名称', required: true }]"
+          @changed="
+            drawer = false;
+            load();
+          "
+        /><el-upload
+          v-if="selected && canManage(selected)"
+          :auto-upload="false"
+          :show-file-list="false"
+          accept="image/png,image/jpeg"
+          :on-change="f => upload(selected!, f)"
+          ><el-button>上传公章新版本</el-button></el-upload
+        ></template
+      ></RecordDetail
     >
   </div>
 </template>

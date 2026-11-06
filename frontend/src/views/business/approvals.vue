@@ -1,4 +1,9 @@
 <script setup lang="ts">
+import { useLiveStore } from "@/store/modules/live";
+import { watch } from "vue";
+import { useRoute } from "vue-router";
+const route = useRoute();
+const live = useLiveStore();
 import { onMounted, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -83,7 +88,42 @@ async function revoke(row: any, decision: string) {
   );
   await load();
 }
-onMounted(load);
+async function openLinked() {
+  if (route.query.revocation) {
+    tab.value = "revocation";
+    const row = revocations.value.find(
+      r => r.id === Number(route.query.revocation)
+    );
+    if (row) showRevocation(row);
+    else ElMessage.info("该作废申请已处理或记录已删除");
+    return;
+  }
+  if (route.query.batch) {
+    const row = rows.value.find(r => r.batch_id === Number(route.query.batch));
+    if (row) await show(row);
+    else {
+      try {
+        const data = await batchDetail(Number(route.query.batch));
+        await show({ batch_id: data.batch.id } as Approval);
+        ElMessage.info("该批次已离开待审批阶段，已打开批次记录");
+      } catch {
+        ElMessage.info("记录已删除或当前账号无权查看");
+      }
+    }
+  }
+}
+watch(
+  () => [route.query.batch, route.query.revocation, route.query.notice],
+  async () => {
+    await load();
+    await openLinked();
+  }
+);
+watch(() => live.revision, load);
+onMounted(async () => {
+  await load();
+  await openLinked();
+});
 </script>
 <template>
   <div class="page business-page">
@@ -103,9 +143,12 @@ onMounted(load);
             label="竞赛"
           /><el-table-column min-width="240" label="批次"
             ><template #default="s"
-              ><el-button link type="primary" @click="show(s.row)">{{
-                s.row.batch_name
-              }}</el-button></template
+              ><el-button
+                link
+                type="primary"
+                @click="show(s.row as Approval)"
+                >{{ s.row.batch_name }}</el-button
+              ></template
             ></el-table-column
           ><el-table-column
             prop="version_number"
@@ -117,11 +160,17 @@ onMounted(load);
             label="审批部门"
           /><el-table-column label="决定" width="180"
             ><template #default="s"
-              ><el-button link @click="show(s.row)">查看</el-button
+              ><el-button link @click="show(s.row as Approval)">查看</el-button
               ><template v-if="!s.row.decision"
-                ><el-button link type="success" @click="act(s.row, 'approved')"
+                ><el-button
+                  link
+                  type="success"
+                  @click="act(s.row as Approval, 'approved')"
                   >通过</el-button
-                ><el-button link type="danger" @click="act(s.row, 'returned')"
+                ><el-button
+                  link
+                  type="danger"
+                  @click="act(s.row as Approval, 'returned')"
                   >整批退回</el-button
                 ></template
               ><el-tag v-else>{{
@@ -162,7 +211,11 @@ onMounted(load);
           ></el-table
         ></el-tab-pane
       ></el-tabs
-    ><RecordDetail v-model="detail" title="审批信息详情" :data="detailData"
+    ><RecordDetail
+      v-model="detail"
+      title="审批信息详情"
+      :data="detailData"
+      readonly-reason="已提交名单和审批记录只读；发现问题请整批退回，由负责人修订后重新提交。"
       ><el-button
         v-if="previewBatch"
         tag="a"

@@ -5,6 +5,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "local-development-key-change-before-deploy")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
+if not DEBUG and (SECRET_KEY == "local-development-key-change-before-deploy" or len(SECRET_KEY)<40):
+    raise RuntimeError("Production requires a separate random DJANGO_SECRET_KEY of at least 40 characters")
 BUILD_VERSION = os.getenv("APP_BUILD_VERSION", "development")
 ALLOWED_HOSTS = [x.strip() for x in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://127.0.0.1:8848").split(",") if x.strip()]
@@ -71,7 +73,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
-DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
+DATA_UPLOAD_MAX_MEMORY_SIZE = 32 * 1024 * 1024
 BACKUP_ROOT = Path(os.getenv("BACKUP_ROOT", BASE_DIR / "backups"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SESSION_COOKIE_HTTPONLY = True
@@ -87,3 +89,5 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
+
+SESSION_COOKIE_AGE = 8 * 60 * 60

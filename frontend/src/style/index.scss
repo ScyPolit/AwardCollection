@@ -36,3 +36,10 @@
 .html-weakness {
   filter: invert(80%);
 }
+
+/* Keep feedback responsive while respecting reduced-motion preferences. */
+:root{--el-transition-duration:.12s;--el-transition-duration-fast:.08s;--animate-duration:.15s}
+body .el-overlay,body .el-dialog,body .el-drawer,.fade-enter-active,.fade-leave-active,.fade-transform-enter-active,.fade-transform-leave-active{transition-duration:.12s!important;animation-duration:.12s!important}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+:root{--pure-transition-duration:.12s}.el-tag,.el-zoom-in-center-enter-active,.el-zoom-in-center-leave-active{transition-duration:.12s!important;animation-duration:.12s!important}
