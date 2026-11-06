@@ -1,0 +1,26 @@
+{
+  "results": [
+    {
+      "award_name": "优秀创新奖",
+      "batch_name": "TEST ONLY V3 样式绘图验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T15:06:54.250703+08:00",
+      "id": 5010,
+      "number": "2026-AC-00005010",
+      "published_at": "2026-11-06T15:06:58.859785+08:00",
+      "status": "active",
+      "team_name": "首版验收乙队"
+    },
+    {
+      "award_name": "创新特等奖",
+      "batch_name": "TEST ONLY V3 样式绘图验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T15:06:54.227206+08:00",
+      "id": 5009,
+      "number": "2026-AC-00005009",
+      "published_at": "2026-11-06T15:06:58.859785+08:00",
+      "status": "active",
+      "team_name": "首版验收甲队"
+    }
+  ]
+}

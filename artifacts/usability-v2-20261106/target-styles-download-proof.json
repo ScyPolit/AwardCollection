@@ -1,0 +1,42 @@
+[
+  {
+    "sha256": "48c114feef360d95db5ab2f5f3b240baa34e06a5db20ed8a84eeb51f850b3bfa",
+    "status": 200,
+    "attachment": "attachment; filename=\"2026-AC-00005009.pdf\"",
+    "type": "application/pdf",
+    "file": "target-5009.pdf",
+    "bytes": 173071
+  },
+  {
+    "sha256": "980c48f70cf862c7f75c4a5faf6a23b4ea659c0f0dc4afa2742857c646be4e13",
+    "status": 200,
+    "attachment": "attachment; filename=\"2026-AC-00005009.png\"",
+    "type": "image/png",
+    "file": "target-5009.png",
+    "bytes": 120304
+  },
+  {
+    "sha256": "dab31edad9a7bf890f8d92d9295b8b46d7db0b5a7f5063c1122c8da0b58b90da",
+    "status": 200,
+    "attachment": "attachment; filename=\"2026-AC-00005010.pdf\"",
+    "type": "application/pdf",
+    "file": "target-5010.pdf",
+    "bytes": 175950
+  },
+  {
+    "sha256": "9233b1dbe0a72dc6a011e2fde35f17bb441903d57f692e657b80eb3032fdf958",
+    "status": 200,
+    "attachment": "attachment; filename=\"2026-AC-00005010.png\"",
+    "type": "image/png",
+    "file": "target-5010.png",
+    "bytes": 133338
+  },
+  {
+    "sha256": "9cbadc25bc815b056d20245ded06f29d3abf79c3c47bfdb49c9e556dbed58f08",
+    "status": 200,
+    "attachment": "attachment; filename=\"batch-6-certificates.zip\"",
+    "type": "application/zip",
+    "file": "target-batch-6.zip",
+    "bytes": 496094
+  }
+]

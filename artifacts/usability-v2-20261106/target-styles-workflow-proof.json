@@ -1,0 +1,70 @@
+{
+  "approvals": [
+    {
+      "batch_id": 6,
+      "batch_name": "TEST ONLY V3 样式绘图验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T15:05:59.429950+08:00",
+      "decision": "approved",
+      "decision_detail": {
+        "actor": "superadmin",
+        "comment": "TEST ONLY V3 样式与图形部门 A 会签",
+        "created_at": "2026-11-06T07:06:52.889429Z"
+      },
+      "department": 4,
+      "department_name": "TEST ONLY V2 验收部门 A",
+      "id": 11,
+      "version_number": 1
+    },
+    {
+      "batch_id": 6,
+      "batch_name": "TEST ONLY V3 样式绘图验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T15:05:59.432872+08:00",
+      "decision": "approved",
+      "decision_detail": {
+        "actor": "test_v2_adminb_20261106",
+        "comment": "TEST ONLY V3 样式与图形部门 B 会签",
+        "created_at": "2026-11-06T07:06:53.434529Z"
+      },
+      "department": 5,
+      "department_name": "TEST ONLY V2 验收部门 B",
+      "id": 12,
+      "version_number": 1
+    }
+  ],
+  "batch": {
+    "approval_summary": {
+      "approved": 2,
+      "total": 2
+    },
+    "competition": 4,
+    "competition_name": "TEST ONLY V2 交互验收竞赛",
+    "created_at": "2026-11-06T15:05:59.419220+08:00",
+    "current_version": 1,
+    "id": 6,
+    "name": "TEST ONLY V3 样式绘图验收批次",
+    "public_id": "32054b85-bf9e-46d6-8762-20a8ec8cd450",
+    "status": "issued",
+    "team_count": 2
+  },
+  "configuration": {
+    "output_formats": [
+      "pdf",
+      "png"
+    ],
+    "seals": {
+      "4": 5,
+      "5": 6
+    },
+    "template_name": "TEST ONLY V2 交互验收模板",
+    "template_version": 6
+  },
+  "task": {
+    "attempts": 1,
+    "error": "",
+    "processed": 2,
+    "status": "done",
+    "total": 2
+  }
+}

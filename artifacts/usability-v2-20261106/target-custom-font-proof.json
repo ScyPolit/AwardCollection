@@ -1,0 +1,40 @@
+{
+  "fonts": [
+    {
+      "font": "fangsong",
+      "id": "qa-title"
+    },
+    {
+      "font": "liberationsans-regular",
+      "id": "qa-en-sans"
+    },
+    {
+      "font": "29d12439831b7f59194efec85872f24f54eff05738933f9a860220d2abff88ba",
+      "id": "qa-en-serif"
+    },
+    {
+      "font": "hei",
+      "id": "qa-team"
+    },
+    {
+      "font": "kai",
+      "id": "qa-members"
+    },
+    {
+      "font": "song",
+      "id": "qa-award"
+    },
+    {
+      "font": "liberationserif-regular",
+      "id": "qa-work"
+    },
+    {
+      "font": "liberationmono-regular",
+      "id": "qa-number"
+    }
+  ],
+  "id": 3,
+  "name": "TEST ONLY V2 交互验收模板",
+  "number": 2,
+  "version": 5
+}

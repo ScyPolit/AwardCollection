@@ -1,0 +1,15 @@
+{
+  "approval_summary": {
+    "approved": 0,
+    "total": 2
+  },
+  "competition": 4,
+  "competition_name": "TEST ONLY V2 交互验收竞赛",
+  "created_at": "2026-11-06T15:05:59.419220+08:00",
+  "current_version": 1,
+  "id": 6,
+  "name": "TEST ONLY V3 样式绘图验收批次",
+  "public_id": "32054b85-bf9e-46d6-8762-20a8ec8cd450",
+  "status": "review",
+  "team_count": 2
+}

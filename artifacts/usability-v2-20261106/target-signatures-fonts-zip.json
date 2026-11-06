@@ -1,0 +1,59 @@
+{
+  "certificates": [
+    {
+      "file": "target-5007.pdf",
+      "signatures": [
+        {
+          "intact": true,
+          "valid": true,
+          "trusted": false
+        },
+        {
+          "intact": true,
+          "valid": true,
+          "trusted": false
+        }
+      ],
+      "fonts": [
+        "AAAAAA+LiberationMono",
+        "AAAAAA+LiberationSans",
+        "AAAAAA+LiberationSerif",
+        "AAAAAA+UKaiCN",
+        "AAAAAA+UMingCN",
+        "AAAAAA+WenQuanYiZenHei-0",
+        "AAAAAA+ZhuqueFangsong-Regular",
+        "Helvetica"
+      ],
+      "text": "TEST ONLY 获奖证书 CERTIFICATE\nCampus Competition 2026\nInnovation Award / TEST ONLY\n首版验收甲队\n测试甲、测试乙\n创新特等奖\n双部门电子证书回归测试作品\n2026-AC-00005007\n2026-AC-00005007\n",
+      "sha256": "f8c85269ad1e3b9e60ccbba1648b151c2e32946fdc027aeb0eb5b827fab68fae"
+    },
+    {
+      "file": "target-5008.pdf",
+      "signatures": [
+        {
+          "intact": true,
+          "valid": true,
+          "trusted": false
+        },
+        {
+          "intact": true,
+          "valid": true,
+          "trusted": false
+        }
+      ],
+      "fonts": [
+        "AAAAAA+LiberationMono",
+        "AAAAAA+LiberationSans",
+        "AAAAAA+LiberationSerif",
+        "AAAAAA+UKaiCN",
+        "AAAAAA+UMingCN",
+        "AAAAAA+WenQuanYiZenHei-0",
+        "AAAAAA+ZhuqueFangsong-Regular",
+        "Helvetica"
+      ],
+      "text": "TEST ONLY 获奖证书 CERTIFICATE\nCampus Competition 2026\nInnovation Award / TEST ONLY\n首版验收乙队\n测试丙、测试丁、测试戊\n优秀创新奖\n这是用于验证较长作品名称能够自动排版且保留全部内容的测试作品名称\n2026-AC-00005008\n2026-AC-00005008\n",
+      "sha256": "40642609ff61b93a0eafb5c158e43a9ea3644a657174b17885f8976f41d3eb99"
+    }
+  ],
+  "zip_identical": true
+}

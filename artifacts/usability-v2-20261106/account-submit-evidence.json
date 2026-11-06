@@ -1,0 +1,33 @@
+{
+  "accounts": [
+    {
+      "memberships": [],
+      "roles": [
+        "owner"
+      ],
+      "username": "qa_v2_created_owner"
+    }
+  ],
+  "requests": [
+    {
+      "duration": 33.900000005960464,
+      "status": 200,
+      "url": "http://127.0.0.1:18849/api/v1/management/accounts/"
+    },
+    {
+      "duration": 509.800000011921,
+      "status": 400,
+      "url": "http://127.0.0.1:18849/api/v1/management/accounts/"
+    },
+    {
+      "duration": 32.900000005960464,
+      "status": 200,
+      "url": "http://127.0.0.1:18849/api/v1/management/accounts/"
+    },
+    {
+      "duration": 21.899999976158146,
+      "status": 200,
+      "url": "http://127.0.0.1:18849/api/v1/management/accounts/"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "approvals": [
+    {
+      "batch_id": 5,
+      "batch_name": "TEST ONLY V2 最终验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T14:06:28.693215+08:00",
+      "decision": "approved",
+      "decision_detail": {
+        "actor": "superadmin",
+        "comment": "TEST ONLY V2 超管继承部门 A 普通审批权限",
+        "created_at": "2026-11-06T06:15:45.648730Z"
+      },
+      "department": 4,
+      "department_name": "TEST ONLY V2 验收部门 A",
+      "id": 9,
+      "version_number": 1
+    },
+    {
+      "batch_id": 5,
+      "batch_name": "TEST ONLY V2 最终验收批次",
+      "competition_name": "TEST ONLY V2 交互验收竞赛",
+      "created_at": "2026-11-06T14:06:28.695884+08:00",
+      "decision": null,
+      "decision_detail": null,
+      "department": 5,
+      "department_name": "TEST ONLY V2 验收部门 B",
+      "id": 10,
+      "version_number": 1
+    }
+  ],
+  "batch": {
+    "approval_summary": {
+      "approved": 1,
+      "total": 2
+    },
+    "competition": 4,
+    "competition_name": "TEST ONLY V2 交互验收竞赛",
+    "created_at": "2026-11-06T14:06:28.683216+08:00",
+    "current_version": 1,
+    "id": 5,
+    "name": "TEST ONLY V2 最终验收批次",
+    "public_id": "ee5f7d5e-59fe-4385-b5f6-ec2296d32ddc",
+    "status": "review",
+    "team_count": 2
+  }
+}

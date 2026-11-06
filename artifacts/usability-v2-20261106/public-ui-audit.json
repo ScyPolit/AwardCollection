@@ -1,0 +1,50 @@
+[
+  {
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/verify",
+    "width": 1440
+  },
+  {
+    "dark": true,
+    "documentWidth": 1440,
+    "url": "#/verify",
+    "width": 1440
+  },
+  {
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/login",
+    "width": 1440
+  },
+  {
+    "dark": true,
+    "documentWidth": 1440,
+    "url": "#/login",
+    "width": 1440
+  },
+  {
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/verify",
+    "width": 390
+  },
+  {
+    "dark": true,
+    "documentWidth": 390,
+    "url": "#/verify",
+    "width": 390
+  },
+  {
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/login",
+    "width": 390
+  },
+  {
+    "dark": true,
+    "documentWidth": 390,
+    "url": "#/login",
+    "width": 390
+  }
+]

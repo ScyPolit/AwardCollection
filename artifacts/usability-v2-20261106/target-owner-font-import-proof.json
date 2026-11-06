@@ -1,0 +1,21 @@
+{
+  "advancedActions": 0,
+  "imported": {
+    "active": true,
+    "builtin": false,
+    "id": "6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c",
+    "license": "管理员确认具备系统使用授权",
+    "name": "TEST ONLY V3 负责人导入字体",
+    "sha256": "6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c",
+    "url": "/api/v1/fonts/6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c/file/"
+  },
+  "user": {
+    "isSuperuser": false,
+    "managedDepartmentIds": [],
+    "name": "TEST ONLY V2 独立负责人",
+    "roles": [
+      "owner"
+    ],
+    "username": "test_v2_owner_20261106"
+  }
+}

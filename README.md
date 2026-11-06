@@ -4,12 +4,14 @@
 
 ## 功能
 
-- 超管、部门管理员、负责人，多部门授权及多人协作。
+- 超管继承部门管理员能力；管理员按部门授权，负责人独立建档并按竞赛协作。
 - 统一 Excel 导入、版本冻结、并行会签、本人回避及应急操作。
-- 全校共享模板库，背景、文字字段、公章位置、编号水印及图层拖放。
+- 全校共享可视化模板选用库，复用 Pure Admin 官方商品卡片页；支持背景、字段、公章位、编号水印、文字样式、图形绘制和图层拖放。
 - 各部门独立管理多枚公章，按批准的模板和公章快照签发。
 - 后台任务、全局唯一编号、签名 PDF、PNG、单张和整批下载。
 - 编号查验、验证码、公开字段及脱敏、作废会签、站内消息。
+- 所有登录用户可导入授权 TTF/TTC，超管管理字体启停；浅色、深色及窄屏布局适配。
+- 登录、导航及浏览器图标使用学校校徽。
 - Docker 部署、版本标识、加密配置备份和每日维护调度。
 
 ## 文档
@@ -26,6 +28,8 @@
 ## 本地开发
 
 后端安装 backend/requirements.txt，执行 backend/manage.py migrate 后启动开发服务器。前端在 frontend 目录安装 pnpm 依赖，运行 pnpm dev。账号初始化使用管理命令，口令通过私密环境配置提供，不使用部署面板口令。
+
+首次开发环境安装依赖后，运行 `python tools/prepare_fonts.py` 准备固定版本与摘要校验的字体，再执行迁移并启动。Docker 构建已自动准备字体。
 
 本地 SQLite 可用于便捷开发；涉及事务与并发的验收应使用 PostgreSQL。前端生产构建和类型检查分别使用 pnpm build 与 pnpm typecheck。
 
@@ -44,3 +48,5 @@
 ## 开源组件
 
 前端基于 [vue-pure-admin](https://github.com/pure-admin/vue-pure-admin) 的官方精简版 [pure-admin-thin](https://github.com/pure-admin/pure-admin-thin)，沿用其组件及布局。保留上游 MIT 版权与许可，后端和其他依赖遵循各自许可证。
+
+内置字体与授权来源见 [字体说明](backend/font-assets/README.md)，模板选用页来源见 [Pure Admin 页面复用说明](docs/upstream/pure-admin-card-list/SOURCE.md)。
