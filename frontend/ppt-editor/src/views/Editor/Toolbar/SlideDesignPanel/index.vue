@@ -116,7 +116,7 @@
     </div>
 
     <div class="row">
-      <div class="canvas-size">画布尺寸：{{  viewportSize  }} × {{ toFixed(viewportSize * viewportRatio) }}</div>
+      <div class="canvas-size">画布尺寸：{{ toFixed(viewportSize) }} × {{ toFixed(viewportSize * viewportRatio) }}</div>
     </div>
 
     <Divider />

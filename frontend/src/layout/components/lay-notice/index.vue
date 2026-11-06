@@ -3,6 +3,8 @@ import { onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { openNotification, notificationTarget } from "@/utils/notifications";
 import { useLiveStore } from "@/store/modules/live";
+import { useUserStoreHook } from "@/store/modules/user";
+function expireSession(){useUserStoreHook().logOut()}
 import BellIcon from "~icons/ep/bell";
 const live = useLiveStore(),
   router = useRouter();
@@ -14,10 +16,12 @@ function popup(event: Event) {
 }
 onMounted(() => {
   live.start();
+  window.addEventListener("award-session-expired",expireSession);
   window.addEventListener("award-notification", popup);
 });
 onBeforeUnmount(() => {
   live.stop();
+  window.removeEventListener("award-session-expired",expireSession);
   window.removeEventListener("award-notification", popup);
 });
 </script>
@@ -147,3 +151,5 @@ onBeforeUnmount(() => {
   margin-top: 8px;
 }
 </style>
+
+<style scoped>.notice-item span,.notice-item small{overflow-wrap:anywhere}</style>

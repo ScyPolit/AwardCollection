@@ -104,6 +104,7 @@ class PureHttp {
       },
       (error: PureHttpError) => {
         const $error = error;
+        if(($error as any).response?.status===403&&$error.config?.url?.split("?")[0]==="/api/v1/auth/me/")useUserStoreHook().logOut();
         $error.isCancelRequest = Axios.isCancel($error);
         if (!$error.isCancelRequest && !$error.config?.headers?.["X-Quiet-Errors"]) {
           const response = ($error as any).response;

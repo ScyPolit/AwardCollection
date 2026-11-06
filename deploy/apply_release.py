@@ -149,6 +149,28 @@ def main():
             if hashlib.sha256(cached.read_bytes()).hexdigest() != font["sha256"]:
                 raise RuntimeError("Cached font checksum mismatch: " + font["id"])
             shutil.copyfile(cached, font_root / name)
+    wheel_cache = BASE / "wheel-cache" / "linux-cp312-amd64"
+    wheel_manifest = source / "backend/wheel-assets/manifest.json"
+    if wheel_cache.is_dir():
+        run(
+            [
+                "python3",
+                str(source / "backend/tools/verify_wheel_cache.py"),
+                "--root",
+                str(wheel_cache),
+                "--manifest",
+                str(wheel_manifest),
+            ],
+            capture=True,
+            timeout=60,
+        )
+        target = source / "backend/.offline-wheels"
+        target.mkdir(exist_ok=True)
+        for item in json.loads(wheel_manifest.read_text())["files"]:
+            shutil.copyfile(wheel_cache / item["name"], target / item["name"])
+        (target / "READY").write_text(
+            hashlib.sha256(wheel_manifest.read_bytes()).hexdigest()
+        )
     checkpoint = BASE / "rollback" / stamp
     checkpoint.mkdir(parents=True, mode=0o700)
     old_env = (PROJECT / ".env").read_text()
