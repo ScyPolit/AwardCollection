@@ -71,6 +71,7 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
+DATA_UPLOAD_MAX_MEMORY_SIZE = 12 * 1024 * 1024
 BACKUP_ROOT = Path(os.getenv("BACKUP_ROOT", BASE_DIR / "backups"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SESSION_COOKIE_HTTPONLY = True
