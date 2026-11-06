@@ -239,7 +239,7 @@ function scheduleLayout() {
 async function refreshLayout(id: number) {
   try {
     const result = await layoutTemplate(
-      JSON.parse(JSON.stringify(canvas.value))
+        { ...JSON.parse(JSON.stringify(canvas.value)), background: "" }
     );
     const ids = new Set<string>();
     for (const layer of Object.values(result) as any[])
