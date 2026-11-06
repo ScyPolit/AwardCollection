@@ -47,10 +47,29 @@ class BatchSerializer(serializers.ModelSerializer):
     competition_name = serializers.CharField(source="competition.name", read_only=True)
     team_count = serializers.SerializerMethodField()
     approval_summary = serializers.SerializerMethodField()
+    template_version = serializers.PrimaryKeyRelatedField(
+        queryset=TemplateVersion.objects.filter(template__published=True),
+        write_only=True,
+        required=False,
+    )
+    output_formats = serializers.ListField(
+        child=serializers.ChoiceField(choices=["pdf", "png"]),
+        write_only=True,
+        required=False,
+    )
+    seal_versions = serializers.DictField(
+        child=serializers.IntegerField(min_value=1),
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = AwardBatch
-        fields = ["id", "public_id", "name", "status", "current_version", "competition", "competition_name", "team_count", "approval_summary", "created_at"]
+        fields = [
+            "id", "public_id", "name", "status", "current_version", "competition",
+            "competition_name", "team_count", "approval_summary", "created_at",
+            "template_version", "output_formats", "seal_versions",
+        ]
         read_only_fields = ["public_id", "status", "current_version", "created_at"]
 
     def get_team_count(self, obj):
@@ -62,6 +81,12 @@ class BatchSerializer(serializers.ModelSerializer):
         if not version:
             return {"approved": 0, "total": 0}
         return {"approved": version.required_departments.filter(decision__decision="approved").count(), "total": version.required_departments.count()}
+
+    def validate_output_formats(self, value):
+        formats = list(dict.fromkeys(value))
+        if not formats:
+            raise serializers.ValidationError("至少选择一种发放格式")
+        return formats
 
 
 class AwardSerializer(serializers.ModelSerializer):

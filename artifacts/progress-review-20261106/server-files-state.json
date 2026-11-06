@@ -1,0 +1,22 @@
+{
+  "database_records": 5000,
+  "pdf_files": 5000,
+  "png_files": 5000,
+  "samples": [
+    {
+      "number": "2026-AC-00000003",
+      "pdf_digest_matches": true,
+      "signature_fields": 2
+    },
+    {
+      "number": "2026-AC-00002503",
+      "pdf_digest_matches": true,
+      "signature_fields": 2
+    },
+    {
+      "number": "2026-AC-00005002",
+      "pdf_digest_matches": true,
+      "signature_fields": 2
+    }
+  ]
+}

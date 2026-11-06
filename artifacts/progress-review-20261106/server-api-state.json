@@ -1,0 +1,22 @@
+{
+  "debug": true,
+  "source_hashes": {
+    "views.py": "be067f8591ac23548b0a44a03a7a3d7c21f7b15a85eebb77e5bc12ae21eaeb3c",
+    "serializers.py": "8f01e5e2b023d833628cfee95cfae7df0b6a91abe17d3eeba8f6a5aa87a20647",
+    "services.py": "82dcc10df1b9d641f066247a860dd792f8faedb4380349ec9d1781b2688a463b"
+  },
+  "normalized_source_comparison": {
+    "views.py": {
+      "bom_removed_lf_matches": true,
+      "utf8_bom": false
+    },
+    "serializers.py": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    },
+    "services.py": {
+      "bom_removed_lf_matches": false,
+      "utf8_bom": false
+    }
+  }
+}
