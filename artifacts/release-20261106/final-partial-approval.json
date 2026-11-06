@@ -1,0 +1,15 @@
+{
+  "approval_summary": {
+    "approved": 1,
+    "total": 2
+  },
+  "competition": 3,
+  "competition_name": "TEST ONLY 首版部署验收竞赛 20261106",
+  "created_at": "2026-11-06T10:29:22.096069+08:00",
+  "current_version": 1,
+  "id": 4,
+  "name": "TEST ONLY 最终版双签验收 20261106",
+  "public_id": "4f69d46c-38e0-41ab-b8dd-41286b4f70d5",
+  "status": "review",
+  "team_count": 2
+}

@@ -1,0 +1,24 @@
+[
+  {
+    "award_name": "优秀创新奖",
+    "batch_name": "TEST ONLY 最终版双签验收 20261106",
+    "competition_name": "TEST ONLY 首版部署验收竞赛 20261106",
+    "created_at": "2026-11-06T10:34:26.217614+08:00",
+    "id": 5006,
+    "number": "2026-AC-00005006",
+    "published_at": "2026-11-06T10:34:28.981587+08:00",
+    "status": "active",
+    "team_name": "首版验收乙队"
+  },
+  {
+    "award_name": "创新特等奖",
+    "batch_name": "TEST ONLY 最终版双签验收 20261106",
+    "competition_name": "TEST ONLY 首版部署验收竞赛 20261106",
+    "created_at": "2026-11-06T10:34:26.188232+08:00",
+    "id": 5005,
+    "number": "2026-AC-00005005",
+    "published_at": "2026-11-06T10:34:28.981587+08:00",
+    "status": "active",
+    "team_name": "首版验收甲队"
+  }
+]

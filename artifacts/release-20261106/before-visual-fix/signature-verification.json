@@ -1,0 +1,42 @@
+[
+  {
+    "file": "issued-5003.pdf",
+    "sha256": "18770f84df4fbeef51471d90f60315224dae87db550211697db39dc070b5c4e1",
+    "signatures": [
+      {
+        "field": "Department_1_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "field": "Department_2_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "embedded_images": 3,
+    "text": "TEST ONLY 校赛获奖证书\n首版验收甲队\n创新特等奖\n2026-AC-00005003\n测试甲、测试乙\n双部门电子证书回归测试作品\n2026-AC-00005003\nþÿ\u0000D\u0000i\u0000g\u0000i\u0000t\u0000a\u0000l\u0000l\u0000y\u0000 \u0000s\u0000i\u0000g\u0000n\u0000e\u0000d\u0000 \u0000Timestamp: 2026-11-06 10:18:44 CST.\nþÿ\u0000D\u0000i\u0000g\u0000i\u0000t\u0000a\u0000l\u0000l\u0000y\u0000 \u0000s\u0000i\u0000g\u0000n\u0000e\u0000d\u0000 \u0000Timestamp: 2026-11-06 10:18:44 CST.\n"
+  },
+  {
+    "file": "issued-5004.pdf",
+    "sha256": "e0b55cd28894acca5db196b05d504599a181f38237952a0a6e7abb09aadc372c",
+    "signatures": [
+      {
+        "field": "Department_1_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "field": "Department_2_Signature",
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "embedded_images": 3,
+    "text": "TEST ONLY 校赛获奖证书\n首版验收乙队\n优秀创新奖\n2026-AC-00005004\n测试丙、测试丁、测试戊\n这是用于验证较长作品名称能够自动排版且保留全部内容的测试\n作品名称\n2026-AC-00005004\nþÿ\u0000D\u0000i\u0000g\u0000i\u0000t\u0000a\u0000l\u0000l\u0000y\u0000 \u0000s\u0000i\u0000g\u0000n\u0000e\u0000d\u0000 \u0000Timestamp: 2026-11-06 10:18:44 CST.\nþÿ\u0000D\u0000i\u0000g\u0000i\u0000t\u0000a\u0000l\u0000l\u0000y\u0000 \u0000s\u0000i\u0000g\u0000n\u0000e\u0000d\u0000 \u0000Timestamp: 2026-11-06 10:18:44 CST.\n"
+  }
+]
