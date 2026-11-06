@@ -33,3 +33,6 @@ artifacts/**/.venv/
 
 # Built from pinned upstream archives and SHA256-verified inside Docker.
 /backend/font-assets/*.ttf
+
+/backend/.offline-wheels/*
+!/backend/.offline-wheels/.gitkeep

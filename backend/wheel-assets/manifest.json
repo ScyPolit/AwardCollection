@@ -1,0 +1,270 @@
+{
+  "platform": "CPython 3.12, Linux x86_64, Debian bookworm (glibc 2.36)",
+  "provenance": "Each SHA256 matched the official PyPI release JSON after mirror download.",
+  "files": [
+    {
+      "name": "asgiref-3.13.0-py3-none-any.whl",
+      "package": "asgiref",
+      "version": "3.13.0",
+      "sha256": "f9596a2434512686473d50f96ff6207fbba49ae1a785dfac614df4aeb085674d"
+    },
+    {
+      "name": "asn1crypto-1.5.1-py2.py3-none-any.whl",
+      "package": "asn1crypto",
+      "version": "1.5.1",
+      "sha256": "db4e40728b728508912cbb3d44f19ce188f218e9eba635821bb4b68564f8fd67"
+    },
+    {
+      "name": "bleach-6.4.0-py3-none-any.whl",
+      "package": "bleach",
+      "version": "6.4.0",
+      "sha256": "4b6b6a54fff2e69a3dde9d21cc6301220bee3c3cb792187d11403fd795031081"
+    },
+    {
+      "name": "certifi-2026.10.23-py3-none-any.whl",
+      "package": "certifi",
+      "version": "2026.10.23",
+      "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
+    },
+    {
+      "name": "cffi-2.1.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "package": "cffi",
+      "version": "2.1.1",
+      "sha256": "c1453022f490d2459a11819d83ad1d586e9ff65a12ac3e705ffebd46d3685dcf"
+    },
+    {
+      "name": "charset_normalizer-3.5.2-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "package": "charset-normalizer",
+      "version": "3.5.2",
+      "sha256": "3d31298449090ab8d47b7b1b2a555ff73cac7ed438a08b7ac160980c7ebed649"
+    },
+    {
+      "name": "click-8.5.0-py3-none-any.whl",
+      "package": "click",
+      "version": "8.5.0",
+      "sha256": "255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360"
+    },
+    {
+      "name": "cryptography-50.0.2-cp311-abi3-manylinux_2_28_x86_64.whl",
+      "package": "cryptography",
+      "version": "50.0.2",
+      "sha256": "4061c0079120205fb760c58acab6443e217307dcf05e3702cf970e0689972856"
+    },
+    {
+      "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+      "package": "defusedxml",
+      "version": "0.7.1",
+      "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61"
+    },
+    {
+      "name": "django-5.2.19-py3-none-any.whl",
+      "package": "django",
+      "version": "5.2.19",
+      "sha256": "5965d974a5218a2b68a11dd1276434707f23886525c23f0598eccedaf4f4ca00"
+    },
+    {
+      "name": "djangorestframework-3.18.3-py3-none-any.whl",
+      "package": "djangorestframework",
+      "version": "3.18.3",
+      "sha256": "8544bb674846731b1e3c9b309236ee1dc412905a0aa725be2ec193ca950a7d12"
+    },
+    {
+      "name": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "package": "et-xmlfile",
+      "version": "2.0.0",
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
+    },
+    {
+      "name": "fonttools-4.68.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "package": "fonttools",
+      "version": "4.68.0",
+      "sha256": "3edce69ecdefa73ab1041901ca22eefed6ebb93a77bc77e889d940479f25bf7d"
+    },
+    {
+      "name": "greenlet-3.5.6-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl",
+      "package": "greenlet",
+      "version": "3.5.6",
+      "sha256": "975736b002ed080d124cf81a79cb7e05cb26d6b3f5c7a7b651c0fcce70353aa1"
+    },
+    {
+      "name": "gunicorn-23.0.0-py3-none-any.whl",
+      "package": "gunicorn",
+      "version": "23.0.0",
+      "sha256": "ec400d38950de4dfd418cff8328b2c8faed0edb0d517d3394e457c317908ca4d"
+    },
+    {
+      "name": "h11-0.16.0-py3-none-any.whl",
+      "package": "h11",
+      "version": "0.16.0",
+      "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"
+    },
+    {
+      "name": "idna-3.20-py3-none-any.whl",
+      "package": "idna",
+      "version": "3.20",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+    },
+    {
+      "name": "lxml-6.1.3-cp312-cp312-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl",
+      "package": "lxml",
+      "version": "6.1.3",
+      "sha256": "909f4e927bb051f7740d6367285fc60cdcfdaf0258c2dba4ff5ba7eadadc250c"
+    },
+    {
+      "name": "openpyxl-3.1.5-py2.py3-none-any.whl",
+      "package": "openpyxl",
+      "version": "3.1.5",
+      "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"
+    },
+    {
+      "name": "oscrypto-1.3.0-py2.py3-none-any.whl",
+      "package": "oscrypto",
+      "version": "1.3.0",
+      "sha256": "2b2f1d2d42ec152ca90ccb5682f3e051fb55986e1b170ebde472b133713e7085"
+    },
+    {
+      "name": "packaging-26.3-py3-none-any.whl",
+      "package": "packaging",
+      "version": "26.3",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    },
+    {
+      "name": "pillow-13.0.0-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "package": "pillow",
+      "version": "13.0.0",
+      "sha256": "42d63be3af4f9b951b199b0a9d23365d37ab14687e6d77b74940432c8515c4ca"
+    },
+    {
+      "name": "playwright-1.64.1-py3-none-manylinux1_x86_64.whl",
+      "package": "playwright",
+      "version": "1.64.1",
+      "sha256": "577b8d88778c245cfbd145ae17cf53044f084b1b46c55c69081d4069d56057e2"
+    },
+    {
+      "name": "psycopg-3.2.12-py3-none-any.whl",
+      "package": "psycopg",
+      "version": "3.2.12",
+      "sha256": "8a1611a2d4c16ae37eada46438be9029a35bb959bb50b3d0e1e93c0f3d54c9ee"
+    },
+    {
+      "name": "psycopg_binary-3.2.12-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "package": "psycopg-binary",
+      "version": "3.2.12",
+      "sha256": "6a898717ab560db393355c6ecf39b8c534f252afc3131480db1251e061090d3a"
+    },
+    {
+      "name": "pycparser-3.12-py3-none-any.whl",
+      "package": "pycparser",
+      "version": "3.12",
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+    },
+    {
+      "name": "pyee-14.0.0-py3-none-any.whl",
+      "package": "pyee",
+      "version": "14.0.0",
+      "sha256": "3ac2d3229a9677f7de2c33d7f52fe25b638a46b19c413fea2edc8c6d0a644e4d"
+    },
+    {
+      "name": "pyhanko-0.31.0-py3-none-any.whl",
+      "package": "pyhanko",
+      "version": "0.31.0",
+      "sha256": "be4baab844026d44206685eb87569b3a203ac7499dce0c03ec6488f288e10c50"
+    },
+    {
+      "name": "pyhanko_certvalidator-0.29.1-py3-none-any.whl",
+      "package": "pyhanko-certvalidator",
+      "version": "0.29.1",
+      "sha256": "c85747bb09bfb23777f947901212a6640f5d1ee3bd95479b063b27c2f4213250"
+    },
+    {
+      "name": "pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl",
+      "package": "pymupdf",
+      "version": "1.28.2",
+      "sha256": "397d6715c1f0df7548a92d0afd8ce370fc48fa47aeefac16be2bc04a16a8227f"
+    },
+    {
+      "name": "pyyaml-6.0.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "package": "pyyaml",
+      "version": "6.0.3",
+      "sha256": "ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc"
+    },
+    {
+      "name": "reportlab-4.4.4-py3-none-any.whl",
+      "package": "reportlab",
+      "version": "4.4.4",
+      "sha256": "299b3b0534e7202bb94ed2ddcd7179b818dcda7de9d8518a57c85a58a1ebaadb"
+    },
+    {
+      "name": "requests-2.34.2-py3-none-any.whl",
+      "package": "requests",
+      "version": "2.34.2",
+      "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+    },
+    {
+      "name": "sqlparse-0.6.1-py3-none-any.whl",
+      "package": "sqlparse",
+      "version": "0.6.1",
+      "sha256": "3be5a72d04c873d690d7c6dedd33d6fae2ef82759881ceec02fc2efd0cba564f"
+    },
+    {
+      "name": "tinycss2-1.5.1-py3-none-any.whl",
+      "package": "tinycss2",
+      "version": "1.5.1",
+      "sha256": "3415ba0f5839c062696996998176c4a3751d18b7edaaeeb658c9ce21ec150661"
+    },
+    {
+      "name": "typing_extensions-4.16.0-py3-none-any.whl",
+      "package": "typing-extensions",
+      "version": "4.16.0",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    },
+    {
+      "name": "tzdata-2026.6-py2.py3-none-any.whl",
+      "package": "tzdata",
+      "version": "2026.6",
+      "sha256": "0a10eec6e13ef16b627fabed9a5f2ba61a62b1c67f327305f4e7e412a70b4aec"
+    },
+    {
+      "name": "tzlocal-5.4.5-py3-none-any.whl",
+      "package": "tzlocal",
+      "version": "5.4.5",
+      "sha256": "ecab534f6d65d9deb4c4ea52c121ab6dd5958e9b878e71dcb102578269752454"
+    },
+    {
+      "name": "uritools-6.1.4-py3-none-any.whl",
+      "package": "uritools",
+      "version": "6.1.4",
+      "sha256": "7e48617975c3ccd3ee11da4641af8f8c9b97dcd7e75969a4cdfd7c8ce177f4e3"
+    },
+    {
+      "name": "urllib3-2.8.0-py3-none-any.whl",
+      "package": "urllib3",
+      "version": "2.8.0",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+    },
+    {
+      "name": "uvicorn-0.38.0-py3-none-any.whl",
+      "package": "uvicorn",
+      "version": "0.38.0",
+      "sha256": "48c0afd214ceb59340075b4a052ea1ee91c16fbc2a9b1469cca0e54566977b02"
+    },
+    {
+      "name": "uvicorn_worker-0.4.0-py3-none-any.whl",
+      "package": "uvicorn-worker",
+      "version": "0.4.0",
+      "sha256": "e2ed952cef976f5e9e429d7269640bbcafbd36c80aa80f1003c8c77a6797abde"
+    },
+    {
+      "name": "webencodings-0.6.1-py3-none-any.whl",
+      "package": "webencodings",
+      "version": "0.6.1",
+      "sha256": "7fab6269c8bf237c657876b52058ccb182e861518d1c695c1a9aaa8c1c105d5b"
+    },
+    {
+      "name": "whitenoise-6.11.0-py3-none-any.whl",
+      "package": "whitenoise",
+      "version": "6.11.0",
+      "sha256": "b2aeb45950597236f53b5342b3121c5de69c8da0109362aee506ce88e022d258"
+    }
+  ]
+}

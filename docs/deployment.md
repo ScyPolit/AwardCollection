@@ -90,3 +90,14 @@ cat /opt/awardcollection-v1-test/app/runtime/release-status.json
 构建支持目标主机 /opt/awardcollection-v1-test/font-cache 的离线字体缓存。apply_release.py 逐文件验证 SHA256 后复制到源码构建目录；prepare_fonts.py 在全部文件匹配时无需外网下载。网络隔离部署应提前准备这七个 manifest 指定的文件，禁止用未经核验的同名字体替换。当前主机缓存已核验；不将缓存或私密配置推送到 Git。
 
 最新升级备份 `/opt/awardcollection-v1-test/backups/20261106-071107-wdlX9W`，回滚检查点 `/opt/awardcollection-v1-test/rollback/20261106-071101`。完整50项PostgreSQL回归通过（447.454秒），最终图形空值与全员导入专项3项通过（26.073秒）。新增文字样式、绘图和校徽均已部署，完整验收见 artifacts/usability-v2-20261106/REPORT.md。
+
+
+## 经过校验的离线 Python 依赖
+
+backend/wheel-assets/manifest.json 固定本版 Linux x86_64 / CPython 3.12 的 wheel 文件名及 SHA256。每个摘要已与 PyPI 官方版本元数据核对；二进制文件不进入 Git。
+
+可将完整缓存放在 /opt/awardcollection-v1-test/wheel-cache/linux-cp312-amd64。发布脚本先按该版本清单逐文件验证，再复制到构建目录并写 READY 标记；Docker 构建再次校验后使用 pip --no-index。没有缓存的首次环境仍支持联网安装。约束更新时需同步重建对应平台的清单和缓存，不得跳过校验或改用同名未核实文件。
+
+大文件 FileResponse 在 ASGI 下采用 64 KB 异步分块读取，避免将整个证书 ZIP 载入 API 内存。
+
+本版后端构建使用中科大 Debian HTTPS 镜像，继续保留 Debian 官方签名验证；镜像说明：https://mirrors.ustc.edu.cn/help/debian.html 。运行服务不依赖该镜像站。

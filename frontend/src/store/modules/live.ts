@@ -46,6 +46,7 @@ export const useLiveStore = defineStore("award-live", {
       stream.onerror = () => (this.connected = false);
       stream.addEventListener("session-expired", () => {
         this.stop();
+        window.dispatchEvent(new Event("award-session-expired"));
         ElNotification({
           title: "登录状态已失效",
           message: "请重新登录以继续接收通知",
