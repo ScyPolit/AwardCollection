@@ -108,7 +108,7 @@ services:
     networks: [conversion]
     deploy:
       resources:
-        limits: {memory: 768M, cpus: "1"}
+        limits: {memory: 768M, cpus: "1", pids: 80}
 
   web:
     logging: *application-logging
