@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="540" viewBox="0 0 1280 540" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">AwardCollection · 让每一份荣誉，有据可查。</title>
+  <desc id="desc">Open-source campus certificate workflow: design, import, approve, sign and issue. A blue and gold certificate illustration on a midnight-blue background.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#101E3A"/><stop offset=".55" stop-color="#102B53"/><stop offset="1" stop-color="#0B1930"/></linearGradient>
+    <linearGradient id="shine" x1="550" y1="0" x2="1170" y2="540" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB" stop-opacity="0"/><stop offset=".6" stop-color="#38BDF8" stop-opacity=".13"/><stop offset="1" stop-color="#2563EB" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gold" x1="1030" y1="280" x2="1150" y2="405" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE9AE"/><stop offset="1" stop-color="#E5AA37"/></linearGradient>
+    <linearGradient id="icon" x1="57" y1="62" x2="116" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#4E91FF"/><stop offset="1" stop-color="#2563EB"/></linearGradient>
+    <pattern id="grid" width="36" height="36" patternUnits="userSpaceOnUse"><path d="M36 0H0V36" stroke="#94B6E8" stroke-opacity=".055"/></pattern>
+  </defs>
+  <rect width="1280" height="540" rx="24" fill="url(#bg)"/>
+  <rect width="1280" height="540" rx="24" fill="url(#grid)"/>
+  <path d="M680 0H1200L1280 540H460L680 0Z" fill="url(#shine)"/>
+  <path d="M695 92C819-20 1137-21 1220 174C1308 381 1041 533 834 484" stroke="#76B1FF" stroke-opacity=".13"/>
+  <path d="M725 112C837 18 1108 21 1181 187C1262 368 1038 501 855 456" stroke="#76B1FF" stroke-opacity=".08"/>
+  <rect x="56" y="60" width="64" height="64" rx="17" fill="url(#icon)"/>
+  <path d="M75 74H94L104 84V108H75V74Z" fill="#FFF"/>
+  <path d="M94 74V84H104" fill="#C9E1FF"/>
+  <path d="M81 87H90M81 94H96M81 101H88" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="103" cy="105" r="11" fill="#F6CB70" stroke="#FFF" stroke-width="2"/>
+  <path d="M98 105L101 108L107 102" stroke="#17376B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="138" y="100" fill="#F5F8FF" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="39" font-weight="750" letter-spacing="-1.5">AwardCollection</text>
+  <rect x="56" y="157" width="233" height="29" rx="14.5" fill="#1D436C" stroke="#4A7CAC" stroke-opacity=".45"/>
+  <circle cx="72" cy="171.5" r="3.5" fill="#65D7BB"/>
+  <text x="84" y="177" fill="#BFE1F9" font-family="Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="1.7">OPEN SOURCE · SELF HOSTED</text>
+  <text x="56" y="252" fill="#FFF" font-family="Microsoft YaHei,PingFang SC,Noto Sans CJK SC,sans-serif" font-size="43" font-weight="700">让每一份荣誉，</text>
+  <text x="56" y="310" fill="#9CCBFF" font-family="Microsoft YaHei,PingFang SC,Noto Sans CJK SC,sans-serif" font-size="43" font-weight="700">有据可查。</text>
+  <text x="58" y="355" fill="#ACBED6" font-family="Microsoft YaHei,PingFang SC,sans-serif" font-size="17">从获奖名单到电子证书，一套完整的校赛工作流。</text>
+  <g font-family="Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="1.6" fill="#C5D5E9">
+    <text x="58" y="435">DESIGN</text><path d="M119 431H142M137 427L142 431L137 435" stroke="#5A7CA6"/>
+    <text x="159" y="435">APPROVE</text><path d="M232 431H255M250 427L255 431L250 435" stroke="#5A7CA6"/>
+    <text x="272" y="435">SIGN</text><path d="M315 431H338M333 427L338 431L333 435" stroke="#5A7CA6"/>
+    <text x="355" y="435">ISSUE</text>
+  </g>
+  <path d="M58 461H550" stroke="#365173" stroke-opacity=".55"/>
+  <text x="58" y="488" fill="#6F8BAF" font-family="Segoe UI,Arial,sans-serif" font-size="12" letter-spacing="1">VUE 3  /  DJANGO  /  POSTGRESQL  /  DOCKER</text>
+  <g transform="rotate(-6 940 275)">
+    <rect x="736" y="117" width="415" height="305" rx="12" fill="#071525" fill-opacity=".4"/>
+    <rect x="712" y="89" width="415" height="305" rx="12" fill="#315783" stroke="#668AB3" stroke-opacity=".4"/>
+  </g>
+  <g transform="rotate(4 942 270)">
+    <rect x="724" y="110" width="441" height="316" rx="12" fill="#071525" fill-opacity=".4"/>
+    <rect x="712" y="95" width="441" height="316" rx="12" fill="#F7FAFE"/>
+    <path d="M733 116H1132V390H733V116Z" stroke="#265A8B" stroke-width="2"/>
+    <path d="M740 123H1125V383H740V123Z" stroke="#B8CBDE"/>
+    <path d="M733 139V116H756M1109 116H1132V139M733 367V390H756M1109 390H1132V367" stroke="#DCB56A" stroke-width="4"/>
+    <text x="932" y="160" text-anchor="middle" fill="#375B83" font-family="Segoe UI,Arial,sans-serif" font-size="10" letter-spacing="4">CERTIFICATE OF ACHIEVEMENT</text>
+    <text x="932" y="212" text-anchor="middle" fill="#173B64" font-family="Microsoft YaHei,PingFang SC,sans-serif" font-size="30" font-weight="700" letter-spacing="10">荣誉证书</text>
+    <path d="M867 231H998" stroke="#C8A15C"/>
+    <text x="932" y="271" text-anchor="middle" fill="#4D6480" font-family="Segoe UI,Arial,sans-serif" font-size="15">Every achievement deserves a record.</text>
+    <path d="M813 298H1052M840 311H1025" stroke="#C9D6E5" stroke-width="4" stroke-linecap="round"/>
+    <text x="758" y="365" fill="#7890AD" font-family="Segoe UI,Arial,sans-serif" font-size="9" letter-spacing="1">AC · 2026 · 000001</text>
+    <path d="M1045 344L1033 401L1062 385L1086 402L1081 344" fill="#DDAA4C"/>
+    <path d="M1063 293L1075 301L1090 302L1095 316L1105 326L1101 341L1101 355L1087 362L1078 375L1063 372L1048 375L1039 362L1025 355L1025 341L1021 326L1031 316L1036 302L1051 301L1063 293Z" fill="url(#gold)"/>
+    <circle cx="1063" cy="335" r="24" stroke="#A47727" stroke-opacity=".45"/>
+    <path d="M1051 335L1060 344L1077 325" stroke="#1B406C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <rect x="689" y="391" width="194" height="53" rx="12" fill="#163B59" stroke="#387185"/>
+  <circle cx="716" cy="417" r="10" fill="#214F58"/>
+  <path d="M711 417L715 421L722 413" stroke="#7AE0C0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="736" y="413" fill="#D5F1EA" font-family="Microsoft YaHei,Segoe UI,sans-serif" font-size="12" font-weight="600">多部门会签 · 批量签发</text>
+  <text x="736" y="432" fill="#8CADB9" font-family="Segoe UI,Arial,sans-serif" font-size="10" letter-spacing=".6">ONE WORKFLOW. EVERY AWARD.</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">AwardCollection</title>
+  <desc id="desc">A folded certificate, three award lines, and a gold seal with a check mark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="12" y1="8" x2="116" y2="124" gradientUnits="userSpaceOnUse"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#123B8B"/></linearGradient>
+    <linearGradient id="gold" x1="70" y1="64" x2="112" y2="110" gradientUnits="userSpaceOnUse"><stop stop-color="#FFE3A0"/><stop offset="1" stop-color="#F1B744"/></linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#bg)"/>
+  <rect x="4.5" y="4.5" width="119" height="119" rx="29.5" stroke="#FFF" stroke-opacity=".16"/>
+  <path d="M35 27H73L91 45V90C91 95.523 86.523 100 81 100H35C29.477 100 25 95.523 25 90V37C25 31.477 29.477 27 35 27Z" fill="#FFF"/>
+  <path d="M73 27V38C73 41.866 76.134 45 80 45H91" fill="#BFDBFE"/>
+  <path d="M40 48H58M40 61H73M40 73H61" stroke="#2563EB" stroke-width="5" stroke-linecap="round"/>
+  <path d="M77 96L73 118L87 110L99 118L97 96" fill="#F1B744"/>
+  <path d="M87 65L93.5 69.5L101.5 70L104 77.5L110 83L107.5 91L108 99L100.5 103L96 110L87 108L78 110L73.5 103L66 99L66.5 91L64 83L70 77.5L72.5 70L80.5 69.5L87 65Z" fill="url(#gold)" stroke="#FFF" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="87" cy="88" r="14.5" stroke="#9A6414" stroke-opacity=".3"/>
+  <path d="M79.5 88L84.5 93L95 82.5" stroke="#183E70" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

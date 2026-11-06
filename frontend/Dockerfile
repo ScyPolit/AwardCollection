@@ -20,7 +20,7 @@ LABEL org.opencontainers.image.revision=$APP_BUILD_VERSION
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 COPY 40-award-tls.sh /docker-entrypoint.d/40-award-tls.sh
 RUN sed -i 's/\r$//' /docker-entrypoint.d/40-award-tls.sh && chmod +x /docker-entrypoint.d/40-award-tls.sh
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 EXPOSE 8080 8443
 
 CMD ["nginx", "-g", "daemon off;"]
