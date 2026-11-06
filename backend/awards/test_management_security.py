@@ -406,3 +406,15 @@ class ManagementSecurityTests(TestCase):
         client=APIClient()
         self.assertEqual(client.post('/api/v1/auth/login/',{'username':{},'password':[]},format='json').status_code,400)
         self.assertEqual(client.post('/api/v1/verification/query/',{'number':'x'*1000},format='json').status_code,400)
+
+    async def test_asgi_download_uses_bounded_async_chunks(self):
+        from django.test import AsyncClient
+        client=AsyncClient()
+        await client.aforce_login(self.superuser)
+        response=await client.get('/api/v1/fonts/hei/file/')
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(response.is_async)
+        count=0;total=0
+        async for chunk in response.streaming_content:
+            count+=1;total+=len(chunk);self.assertLessEqual(len(chunk),65536)
+        self.assertGreater(count,1);self.assertEqual(total,int(response['Content-Length']))

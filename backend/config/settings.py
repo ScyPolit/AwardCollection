@@ -30,6 +30,7 @@ MIDDLEWARE = [
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    "awards.middleware.async_file_streaming",
 ]
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [{
