@@ -145,13 +145,17 @@ onMounted(async () => {
       </div>
     </header>
     <el-table :data="rows" border @row-dblclick="open"
-      ><el-table-column label="批次"
+      ><el-table-column min-width="240" label="批次"
         ><template #default="s"
           ><el-button link type="primary" @click="open(s.row)">{{
             s.row.name
           }}</el-button></template
         ></el-table-column
-      ><el-table-column prop="competition_name" label="竞赛" /><el-table-column
+      ><el-table-column
+        min-width="240"
+        prop="competition_name"
+        label="竞赛"
+      /><el-table-column
         prop="team_count"
         label="团队"
         width="80"
@@ -298,7 +302,11 @@ onMounted(async () => {
             ><template #default="s">{{
               s.row.members.join("、")
             }}</template></el-table-column
-          ><el-table-column prop="award_name" label="奖项" /><el-table-column
+          ><el-table-column
+            min-width="140"
+            prop="award_name"
+            label="奖项" /><el-table-column
+            min-width="180"
             prop="team_name"
             label="团队" /><el-table-column
             prop="work_name"

@@ -124,15 +124,17 @@ onMounted(load);
       >
     </header>
     <el-table :data="rows" border @row-dblclick="show"
-      ><el-table-column label="公章名称"
+      ><el-table-column min-width="220" label="公章名称"
         ><template #default="s"
           ><el-button link type="primary" @click="show(s.row)">{{
             s.row.name
           }}</el-button></template
         ></el-table-column
-      ><el-table-column prop="department_name" label="部门" /><el-table-column
-        label="版本"
-        width="90"
+      ><el-table-column
+        min-width="220"
+        prop="department_name"
+        label="部门"
+      /><el-table-column label="版本" width="90"
         ><template #default="s">{{
           s.row.versions.length
         }}</template></el-table-column

@@ -72,6 +72,7 @@ onMounted(async () => (data.value = await dashboard()));
           prop="title"
           label="事项"
           width="180" /><el-table-column
+          min-width="180"
           prop="body"
           label="内容" /><el-table-column
           prop="created_at"

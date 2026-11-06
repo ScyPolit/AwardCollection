@@ -59,13 +59,19 @@ onMounted(load);
         prop="created_at"
         label="时间"
         min-width="200"
-      /><el-table-column prop="actor" label="操作人" /><el-table-column
+      /><el-table-column
+        min-width="160"
+        prop="actor"
+        label="操作人"
+      /><el-table-column
         prop="action"
         label="操作"
         min-width="180"
-      /><el-table-column prop="object_type" label="对象" /><el-table-column
-        label="操作"
-        width="90"
+      /><el-table-column
+        min-width="160"
+        prop="object_type"
+        label="对象"
+      /><el-table-column label="操作" width="90"
         ><template #default="s"
           ><el-button link @click="show(s.row)">查看</el-button></template
         ></el-table-column

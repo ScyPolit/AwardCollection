@@ -83,10 +83,19 @@ onMounted(load);
             s.row.number
           }}</el-button></template
         ></el-table-column
-      ><el-table-column prop="competition_name" label="竞赛" /><el-table-column
+      ><el-table-column
+        min-width="240"
+        prop="competition_name"
+        label="竞赛"
+      /><el-table-column
+        min-width="180"
         prop="team_name"
         label="团队"
-      /><el-table-column prop="award_name" label="奖项" /><el-table-column
+      /><el-table-column
+        min-width="140"
+        prop="award_name"
+        label="奖项"
+      /><el-table-column
         prop="status"
         label="状态"
         width="90"
