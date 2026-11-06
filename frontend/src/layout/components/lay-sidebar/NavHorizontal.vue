@@ -53,7 +53,7 @@ onMounted(() => {
     class="horizontal-header"
   >
     <div v-if="showLogo" class="horizontal-header-left" @click="backTopMenu">
-      <img :src="getLogo()" alt="logo" />
+      <img :src="getLogo()" alt="学校校徽" />
       <span>{{ title }}</span>
     </div>
     <el-menu

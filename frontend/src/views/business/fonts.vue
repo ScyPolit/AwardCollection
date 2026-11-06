@@ -5,11 +5,14 @@ import RecordDetail from "@/components/RecordDetail.vue";
 import {
   importFont,
   manageFonts,
+  listFonts,
+  currentUser,
   updateFont,
   type CertificateFont
 } from "@/api/business";
 
 const rows = ref<CertificateFont[]>([]),
+  isSuper = ref(false),
   search = ref(""),
   busy = ref(false);
 const dialog = ref(false),
@@ -39,7 +42,8 @@ const sample = ref("荣誉证书 校园竞赛 ABCDEFG abcdefg 0123456789");
 async function load() {
   busy.value = true;
   try {
-    rows.value = await manageFonts();
+    isSuper.value = (await currentUser()).isSuperuser;
+    rows.value = isSuper.value ? await manageFonts() : await listFonts();
   } finally {
     busy.value = false;
   }
@@ -66,7 +70,7 @@ async function upload() {
     ElMessage.success(
       result.active
         ? "字体已导入，可在模板编辑器选用"
-        : "字体已存在且已停用，可在列表中重新启用"
+        : "字体已存在且已停用，请由超管重新启用"
     );
   } finally {
     saving.value = false;
@@ -176,7 +180,7 @@ onMounted(load);
       <el-table-column label="操作" width="240"
         ><template #default="s"
           ><el-button link @click="show(s.row)">预览与详情</el-button
-          ><template v-if="!s.row.builtin"
+          ><template v-if="isSuper && !s.row.builtin"
             ><el-button link @click="rename(s.row)">重命名</el-button
             ><el-button
               link

@@ -35,7 +35,7 @@ export default {
       path: "/business/fonts",
       name: "FontManagement",
       component: () => import("@/views/business/fonts.vue"),
-      meta: { title: "字体管理", roles: ["super"] }
+      meta: { title: "字体管理" }
     },
     {
       path: "/business/seals",
