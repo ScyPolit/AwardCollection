@@ -326,3 +326,80 @@ class WorkflowTests(TestCase):
         self.assertEqual(response["Content-Type"], "application/pdf")
         self.assertTrue(response.content.startswith(b"%PDF"))
         self.assertFalse(Certificate.objects.filter(award=self.award).exists())
+
+    def test_owner_can_choose_active_seal_metadata_without_accessing_originals(self):
+        DepartmentMembership.objects.create(
+            department=self.departments[0], user=self.owner, role="owner",
+        )
+        client = APIClient()
+        client.force_authenticate(self.owner)
+        response = client.get("/api/v1/seals/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["department"], self.departments[0].id)
+        self.assertNotIn("image", response.data[0]["versions"][0])
+
+    def test_owner_metadata_access_does_not_allow_seal_changes(self):
+        DepartmentMembership.objects.create(
+            department=self.departments[0], user=self.owner, role="owner",
+        )
+        seal = Seal.objects.get(department=self.departments[0])
+        client = APIClient()
+        client.force_authenticate(self.owner)
+        response = client.patch(f"/api/v1/seals/{seal.id}/", {"active": False}, format="json")
+        self.assertEqual(response.status_code, 404)
+        seal.refresh_from_db()
+        self.assertTrue(seal.active)
+        response = client.post("/api/v1/seals/", {
+            "name": "负责人不得创建", "department": self.departments[0].id,
+        }, format="json")
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Seal.objects.filter(name="负责人不得创建").exists())
+
+    def test_superuser_can_create_department(self):
+        client = APIClient()
+        client.force_authenticate(self.superuser)
+        response = client.post("/api/v1/departments/", {
+            "name": "新建测试部门", "code": "NEW-TEST",
+        }, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Department.objects.filter(code="NEW-TEST").exists())
+
+    def test_department_admin_cannot_create_or_modify_department(self):
+        client = APIClient()
+        client.force_authenticate(self.admin_a)
+        response = client.post("/api/v1/departments/", {
+            "name": "未授权部门", "code": "FORBIDDEN",
+        }, format="json")
+        self.assertEqual(response.status_code, 403)
+        response = client.patch(f"/api/v1/departments/{self.departments[0].id}/", {
+            "name": "未授权改名",
+        }, format="json")
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Department.objects.filter(code="FORBIDDEN").exists())
+
+    def test_admin_can_link_existing_owner_without_resetting_password(self):
+        client = APIClient()
+        client.force_authenticate(self.admin_a)
+        response = client.post("/api/v1/management/memberships/", {
+            "username": self.owner.username, "department": self.departments[0].id,
+            "role": "owner", "active": True,
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.owner.refresh_from_db()
+        self.assertTrue(self.owner.check_password("Test-Pass-2026"))
+        self.assertTrue(DepartmentMembership.objects.filter(
+            user=self.owner, department=self.departments[0], role="owner", active=True,
+        ).exists())
+
+    def test_department_admin_cannot_grant_an_existing_account_admin_role(self):
+        client = APIClient()
+        client.force_authenticate(self.admin_a)
+        response = client.post("/api/v1/management/memberships/", {
+            "username": self.owner.username, "department": self.departments[0].id,
+            "role": "admin", "active": True,
+        }, format="json")
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(DepartmentMembership.objects.filter(
+            user=self.owner, department=self.departments[0], role="admin",
+        ).exists())
