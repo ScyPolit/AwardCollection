@@ -126,7 +126,7 @@ def main():
             if config["volumes"][volume]["name"] != PROJECT_NAME + "_" + volume:
                 raise RuntimeError("Existing volume identity changed")
         progress("build")
-        compose("build", *SERVICES)
+        compose("build", *SERVICES, timeout=3600)
         progress("restart")
         started_services = True
         compose("up", "-d", "--no-deps", *SERVICES, timeout=240)

@@ -23,7 +23,9 @@ def download(url):
     cache.mkdir(exist_ok=True)
     target = cache / hashlib.sha256(url.encode()).hexdigest()
     if not target.exists():
+        print('Downloading pinned font source: ' + url, flush=True)
         target.write_bytes(urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "AwardCollection-font-build"}), timeout=120).read())
+        print('Downloaded font source bytes: ' + str(target.stat().st_size), flush=True)
     return target.read_bytes()
 
 
