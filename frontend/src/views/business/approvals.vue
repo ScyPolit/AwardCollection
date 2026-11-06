@@ -98,9 +98,10 @@ onMounted(load);
       ><el-tab-pane label="签发审批" name="issuance"
         ><el-table :data="rows" border
           ><el-table-column
+            min-width="240"
             prop="competition_name"
             label="竞赛"
-          /><el-table-column label="批次"
+          /><el-table-column min-width="240" label="批次"
             ><template #default="s"
               ><el-button link type="primary" @click="show(s.row)">{{
                 s.row.batch_name
@@ -111,6 +112,7 @@ onMounted(load);
             label="版本"
             width="80"
           /><el-table-column
+            min-width="240"
             prop="department_name"
             label="审批部门"
           /><el-table-column label="决定" width="180"
@@ -130,15 +132,17 @@ onMounted(load);
         ></el-tab-pane
       ><el-tab-pane label="作废审批" name="revocation"
         ><el-table :data="revocations" border
-          ><el-table-column label="证书编号"
+          ><el-table-column min-width="180" label="证书编号"
             ><template #default="s"
               ><el-button link type="primary" @click="showRevocation(s.row)">{{
                 s.row.certificate_number
               }}</el-button></template
             ></el-table-column
-          ><el-table-column prop="reason" label="原因" /><el-table-column
-            label="进度"
-            width="100"
+          ><el-table-column
+            min-width="240"
+            prop="reason"
+            label="原因"
+          /><el-table-column label="进度" width="100"
             ><template #default="s"
               >{{ s.row.approved_departments }} /
               {{ s.row.total_departments }}</template

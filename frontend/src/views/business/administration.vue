@@ -179,22 +179,25 @@ onMounted(load);
     <section>
       <h3>账号与角色</h3>
       <el-table :data="accounts" border @row-dblclick="showAccount">
-        <el-table-column label="账号"
+        <el-table-column min-width="180" label="账号"
           ><template #default="s"
             ><el-button link type="primary" @click="showAccount(s.row)">{{
               s.row.username
             }}</el-button></template
           ></el-table-column
         >
-        <el-table-column prop="name" label="姓名" /><el-table-column
-          label="角色"
+        <el-table-column
+          min-width="120"
+          prop="name"
+          label="姓名"
+        /><el-table-column min-width="240" label="角色"
           ><template #default="s"
             ><el-tag v-for="role in s.row.roles" :key="role" class="tag">{{
               roleName(role)
             }}</el-tag></template
           ></el-table-column
         >
-        <el-table-column label="管理部门"
+        <el-table-column min-width="280" label="管理部门"
           ><template #default="s"
             ><span v-if="!s.row.memberships.length">{{
               s.row.superuser ? "全部部门" : "—"
@@ -397,6 +400,14 @@ h3 {
   align-items: center;
   justify-content: space-between;
   padding: 3px 0;
+  gap: 12px;
+}
+.membership > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.membership :deep(.el-switch) {
+  flex-shrink: 0;
 }
 .tag {
   margin: 2px;
