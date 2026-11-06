@@ -33,7 +33,7 @@ function query() {
 onMounted(load);
 </script>
 <template>
-  <div class="page">
+  <div class="page business-page">
     <header>
       <div>
         <h2>操作日志</h2>
@@ -94,7 +94,7 @@ h2 {
   margin: 0;
 }
 p {
-  color: #73767a;
+  color: var(--el-text-color-secondary);
 }
 .search {
   display: flex;

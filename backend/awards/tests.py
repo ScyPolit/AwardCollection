@@ -539,6 +539,31 @@ class WorkflowTests(TestCase):
             self.assertTrue(layout['lines'])
 
 
+    def test_only_superuser_can_manage_font_without_changing_historical_bytes(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .fonts import font_file, layout_text
+        client = APIClient(); client.force_authenticate(self.superuser)
+        content = font_file('liberationserif-regular').read_bytes()
+        response = client.post('/api/v1/fonts/', {'file': SimpleUploadedFile('licensed.ttf', content), 'license_confirmed': 'true'}, format='multipart')
+        self.assertEqual(response.status_code, 201)
+        font_id = response.data['id']; url = f'/api/v1/fonts/{font_id}/'
+        for user in (self.owner, self.admin_a):
+            client.force_authenticate(user)
+            self.assertEqual(client.patch(url, {'active': False}, format='json').status_code, 403)
+            self.assertEqual(client.get('/api/v1/fonts/?include_inactive=1').status_code, 403)
+        client.force_authenticate(self.superuser)
+        self.assertEqual(client.patch(url, {'name': '', 'active': False}, format='json').status_code, 400)
+        self.assertEqual(client.patch(url, {'file': 'replacement'}, format='json').status_code, 400)
+        response = client.patch(url, {'name': '学校授权字体', 'active': False}, format='json')
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data['active'])
+        self.assertNotIn(font_id, {f['id'] for f in client.get('/api/v1/fonts/').data})
+        self.assertIn(font_id, {f['id'] for f in client.get('/api/v1/fonts/?include_inactive=1').data})
+        self.assertEqual(font_file(font_id).read_bytes(), content)
+        self.assertTrue(layout_text('历史证书 AWARD', {'fontFamily': font_id})['lines'])
+        self.assertEqual(client.patch(url, {'active': True}, format='json').status_code, 200)
+        self.assertEqual(client.patch('/api/v1/fonts/hei/', {'active': False}, format='json').status_code, 400)
+
     def test_audit_details_are_scoped_to_actor_for_department_admin(self):
         from .models import AuditEvent
         first=AuditEvent.objects.create(actor=self.admin_a,action='test.detail',object_type='TEST',object_id='1',detail={'reason':'完整内容'})

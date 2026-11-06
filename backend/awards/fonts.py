@@ -28,11 +28,11 @@ def resolved_font_files(files):
         _resolved_files.reset(token)
 
 
-def font_catalog():
+def font_catalog(include_inactive=False):
     from .models import CertificateFont
-    result = [{**item, 'builtin': True, 'url': f"/api/v1/fonts/{item['id']}/file/?v={item['sha256']}"} for item in json.loads((ASSETS / 'manifest.json').read_text(encoding='utf8'))]
+    result = [{**item, 'builtin': True, 'active': True, 'url': f"/api/v1/fonts/{item['id']}/file/?v={item['sha256']}"} for item in json.loads((ASSETS / 'manifest.json').read_text(encoding='utf8'))]
     result += [{'id': item.pk, 'name': item.name, 'sha256': item.pk, 'builtin': False,
-                'license': item.license_note, 'url': f'/api/v1/fonts/{item.pk}/file/'} for item in CertificateFont.objects.all()]
+                'active': item.active, 'license': item.license_note, 'url': f'/api/v1/fonts/{item.pk}/file/'} for item in CertificateFont.objects.filter(**({} if include_inactive else {'active': True}))]
     return result
 
 

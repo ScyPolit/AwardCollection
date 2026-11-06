@@ -86,7 +86,7 @@ async function submit() {
 onMounted(load);
 </script>
 <template>
-  <div class="page">
+  <div class="page business-page">
     <header>
       <div>
         <h2>竞赛管理</h2>
@@ -188,7 +188,7 @@ h2 {
 }
 p {
   margin: 6px 0 0;
-  color: #73767a;
+  color: var(--el-text-color-secondary);
 }
 .full {
   width: 100%;

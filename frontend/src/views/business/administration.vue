@@ -160,7 +160,7 @@ async function saveSettings() {
 onMounted(load);
 </script>
 <template>
-  <div class="page">
+  <div class="page business-page">
     <header>
       <div>
         <h2>账号与公开设置</h2>
@@ -382,7 +382,7 @@ h2 {
   letter-spacing: 0;
 }
 p {
-  color: #73767a;
+  color: var(--el-text-color-secondary);
 }
 section {
   padding: 18px 0;

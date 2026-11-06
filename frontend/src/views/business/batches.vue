@@ -3,28 +3,339 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import RecordDetail from "@/components/RecordDetail.vue";
 import { ElMessage, type UploadFile } from "element-plus";
-import { batchDetail, batchProgress, createBatch, importAwards, listBatches, listCompetitions, listSeals, listTemplates, submitBatch, type Batch, type Competition, type Seal, type Template } from "@/api/business";
+import {
+  batchDetail,
+  batchProgress,
+  createBatch,
+  importAwards,
+  listBatches,
+  listCompetitions,
+  listSeals,
+  listTemplates,
+  submitBatch,
+  type Batch,
+  type Competition,
+  type Seal,
+  type Template
+} from "@/api/business";
 
-const route=useRoute(),awardDetail=ref(false),awardData=ref<Record<string,unknown>>({});
-function showAward(row:any){awardData.value={来源行:row.source_row,团队名称:row.team_name,团队成员:row.members,奖项:row.award_name,作品名称:row.work_name,项目类别:row.category,指导教师:row.teachers,备注:row.note};awardDetail.value=true}
-const rows=ref<Batch[]>([]),competitions=ref<Competition[]>([]),templates=ref<Template[]>([]),seals=ref<Seal[]>([]),createDialog=ref(false),drawer=ref(false),selected=ref<any>(null),uploading=ref(false);
-const form=reactive({name:"",competition:undefined as number|undefined,template_version:undefined as number|undefined,output_formats:["pdf","png"],seal_versions:{} as Record<string,number>});
-const competition=computed(()=>competitions.value.find(item=>item.id===form.competition));
-async function load(){[rows.value,competitions.value,templates.value,seals.value]=await Promise.all([listBatches(),listCompetitions(),listTemplates(),listSeals()])}
-watch(()=>form.competition,()=>{form.seal_versions={};for(const id of competition.value?.departments||[]){const seal=seals.value.find(item=>item.department===id&&item.active&&item.versions.length);if(seal)form.seal_versions[String(id)]=seal.versions.at(-1)!.id}});
-async function create(){await createBatch(form);createDialog.value=false;ElMessage.success("批次已按选定模板、公章和输出格式创建");await load()}
-async function open(row:Batch){selected.value=await batchDetail(row.id);drawer.value=true}
-async function upload(file:UploadFile){if(!selected.value||!file.raw)return;uploading.value=true;try{await importAwards(selected.value.batch.id,file.raw,selected.value.batch.current_version);ElMessage.success("名单导入成功");selected.value=await batchDetail(selected.value.batch.id);await load()}finally{uploading.value=false}}
-async function submit(){await submitBatch(selected.value.batch.id);ElMessage.success("已提交全部部门并行会签");selected.value=await batchDetail(selected.value.batch.id);await load()}
-async function progress(){
- selected.value=await batchDetail(selected.value.batch.id);await load();
- const task=await batchProgress(selected.value.batch.id);
- if(!task)return ElMessage.info("尚未创建生成任务");
- awardData.value={任务状态:task.status,已处理:task.processed,总数:task.total,尝试次数:task.attempts,错误详情:task.error||"无"};
- awardDetail.value=true;
+const route = useRoute(),
+  awardDetail = ref(false),
+  awardData = ref<Record<string, unknown>>({});
+function showAward(row: any) {
+  awardData.value = {
+    来源行: row.source_row,
+    团队名称: row.team_name,
+    团队成员: row.members,
+    奖项: row.award_name,
+    作品名称: row.work_name,
+    项目类别: row.category,
+    指导教师: row.teachers,
+    备注: row.note
+  };
+  awardDetail.value = true;
+}
+const rows = ref<Batch[]>([]),
+  competitions = ref<Competition[]>([]),
+  templates = ref<Template[]>([]),
+  seals = ref<Seal[]>([]),
+  createDialog = ref(false),
+  drawer = ref(false),
+  selected = ref<any>(null),
+  uploading = ref(false);
+const form = reactive({
+  name: "",
+  competition: undefined as number | undefined,
+  template_version: undefined as number | undefined,
+  output_formats: ["pdf", "png"],
+  seal_versions: {} as Record<string, number>
+});
+const competition = computed(() =>
+  competitions.value.find(item => item.id === form.competition)
+);
+async function load() {
+  [rows.value, competitions.value, templates.value, seals.value] =
+    await Promise.all([
+      listBatches(),
+      listCompetitions(),
+      listTemplates(),
+      listSeals()
+    ]);
+}
+watch(
+  () => form.competition,
+  () => {
+    form.seal_versions = {};
+    for (const id of competition.value?.departments || []) {
+      const seal = seals.value.find(
+        item => item.department === id && item.active && item.versions.length
+      );
+      if (seal) form.seal_versions[String(id)] = seal.versions.at(-1)!.id;
+    }
+  }
+);
+async function create() {
+  await createBatch(form);
+  createDialog.value = false;
+  ElMessage.success("批次已按选定模板、公章和输出格式创建");
+  await load();
+}
+async function open(row: Batch) {
+  selected.value = await batchDetail(row.id);
+  drawer.value = true;
+}
+async function upload(file: UploadFile) {
+  if (!selected.value || !file.raw) return;
+  uploading.value = true;
+  try {
+    await importAwards(
+      selected.value.batch.id,
+      file.raw,
+      selected.value.batch.current_version
+    );
+    ElMessage.success("名单导入成功");
+    selected.value = await batchDetail(selected.value.batch.id);
+    await load();
+  } finally {
+    uploading.value = false;
+  }
+}
+async function submit() {
+  await submitBatch(selected.value.batch.id);
+  ElMessage.success("已提交全部部门并行会签");
+  selected.value = await batchDetail(selected.value.batch.id);
+  await load();
+}
+async function progress() {
+  selected.value = await batchDetail(selected.value.batch.id);
+  await load();
+  const task = await batchProgress(selected.value.batch.id);
+  if (!task) return ElMessage.info("尚未创建生成任务");
+  awardData.value = {
+    任务状态: task.status,
+    已处理: task.processed,
+    总数: task.total,
+    尝试次数: task.attempts,
+    错误详情: task.error || "无"
+  };
+  awardDetail.value = true;
 }
 
-onMounted(async()=>{await load();if(route.query.template){form.template_version=Number(route.query.template);createDialog.value=true}});
+onMounted(async () => {
+  await load();
+  if (route.query.template) {
+    form.template_version = Number(route.query.template);
+    createDialog.value = true;
+  }
+});
 </script>
-<template><div class="page"><header><div><h2>名单与批次</h2><p>导入获奖名单、核对版本并提交会签</p></div><div><el-button tag="a" href="/api/v1/excel/template/">下载 Excel 模板</el-button><el-button type="primary" @click="createDialog=true">新建批次</el-button></div></header><el-table :data="rows" border @row-dblclick="open"><el-table-column label="批次"><template #default="s"><el-button link type="primary" @click="open(s.row)">{{s.row.name}}</el-button></template></el-table-column><el-table-column prop="competition_name" label="竞赛"/><el-table-column prop="team_count" label="团队" width="80"/><el-table-column prop="current_version" label="版本" width="80"/><el-table-column label="审批" width="100"><template #default="s">{{s.row.approval_summary.approved}} / {{s.row.approval_summary.total}}</template></el-table-column><el-table-column prop="status" label="状态" width="110"/><el-table-column label="操作" width="90"><template #default="s"><el-button link type="primary" @click="open(s.row)">查看</el-button></template></el-table-column></el-table><el-dialog v-model="createDialog" title="新建批次" width="600"><el-form label-position="top"><el-form-item label="批次名称"><el-input v-model="form.name"/></el-form-item><el-form-item label="竞赛"><el-select v-model="form.competition" class="full"><el-option v-for="c in competitions" :key="c.id" :label="c.name+(c.active?'':'（已废止）')" :value="c.id" :disabled="!c.active"/></el-select></el-form-item><el-form-item label="证书模板"><el-select v-model="form.template_version" class="full"><el-option v-for="t in templates" :key="t.latest_version?.id" :label="`${t.name} · v${t.latest_version?.number}`" :value="t.latest_version?.id" :disabled="!t.latest_version"/></el-select></el-form-item><el-form-item label="输出格式"><el-checkbox-group v-model="form.output_formats"><el-checkbox value="pdf">PDF</el-checkbox><el-checkbox value="png">图片</el-checkbox></el-checkbox-group></el-form-item><el-form-item v-for="(name,index) in competition?.department_names||[]" :key="competition!.departments[index]" :label="`${name}公章`"><el-select v-model="form.seal_versions[String(competition!.departments[index])]" class="full"><template v-for="seal in seals" :key="seal.id"><el-option v-for="version in seal.versions" v-if="seal.department===competition!.departments[index]&&seal.active" :key="version.id" :label="`${seal.name} · v${version.number}`" :value="version.id"/></template></el-select></el-form-item></el-form><template #footer><el-button @click="createDialog=false">取消</el-button><el-button type="primary" :disabled="!form.name||!form.competition||!form.template_version||!form.output_formats.length" @click="create">创建</el-button></template></el-dialog><el-drawer v-model="drawer" title="批次详情" size="70%"><template v-if="selected"><el-descriptions border :column="3"><el-descriptions-item label="批次">{{selected.batch.name}}</el-descriptions-item><el-descriptions-item label="状态">{{selected.batch.status}}</el-descriptions-item><el-descriptions-item label="版本">v{{selected.batch.current_version}}</el-descriptions-item><el-descriptions-item label="模板">{{selected.configuration.template_name}}</el-descriptions-item><el-descriptions-item label="输出">{{selected.configuration.output_formats.join(' + ').toUpperCase()}}</el-descriptions-item></el-descriptions><div class="actions"><el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" :on-change="upload"><el-button :loading="uploading">导入 / 修订 Excel</el-button></el-upload><el-button tag="a" target="_blank" :href="`/api/v1/batches/${selected.batch.id}/preview/`" :disabled="!selected.awards.length">预览首条名单</el-button><el-button type="primary" :disabled="!selected.awards.length||!['draft','returned'].includes(selected.batch.status)" @click="submit">提交会签</el-button><el-button @click="progress">任务进度</el-button><el-button v-if="selected.batch.status==='issued'" tag="a" :href="`/api/v1/certificates/batch/${selected.batch.id}/archive/`" type="success">下载整批 ZIP</el-button></div><p>点击名单行可查看成员、作品与备注等完整信息</p><el-table :data="selected.awards" border @row-click="showAward"><el-table-column prop="source_row" label="行" width="60"/><el-table-column label="团队成员" min-width="180"><template #default="s">{{s.row.members.join('、')}}</template></el-table-column><el-table-column prop="award_name" label="奖项"/><el-table-column prop="team_name" label="团队"/><el-table-column prop="work_name" label="作品" min-width="200"/></el-table></template></el-drawer><RecordDetail v-model="awardDetail" title="记录与任务详情" :data="awardData"/></div></template>
-<style scoped>.page{padding:20px}header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px}h2{margin:0;font-size:20px;letter-spacing:0}p{margin:6px 0 0;color:#73767a}.full{width:100%}.actions{display:flex;gap:10px;margin:18px 0}</style>
+<template>
+  <div class="page business-page">
+    <header>
+      <div>
+        <h2>名单与批次</h2>
+        <p>导入获奖名单、核对版本并提交会签</p>
+      </div>
+      <div>
+        <el-button tag="a" href="/api/v1/excel/template/"
+          >下载 Excel 模板</el-button
+        ><el-button type="primary" @click="createDialog = true"
+          >新建批次</el-button
+        >
+      </div>
+    </header>
+    <el-table :data="rows" border @row-dblclick="open"
+      ><el-table-column label="批次"
+        ><template #default="s"
+          ><el-button link type="primary" @click="open(s.row)">{{
+            s.row.name
+          }}</el-button></template
+        ></el-table-column
+      ><el-table-column prop="competition_name" label="竞赛" /><el-table-column
+        prop="team_count"
+        label="团队"
+        width="80"
+      /><el-table-column
+        prop="current_version"
+        label="版本"
+        width="80"
+      /><el-table-column label="审批" width="100"
+        ><template #default="s"
+          >{{ s.row.approval_summary.approved }} /
+          {{ s.row.approval_summary.total }}</template
+        ></el-table-column
+      ><el-table-column
+        prop="status"
+        label="状态"
+        width="110"
+      /><el-table-column label="操作" width="90"
+        ><template #default="s"
+          ><el-button link type="primary" @click="open(s.row)"
+            >查看</el-button
+          ></template
+        ></el-table-column
+      ></el-table
+    ><el-dialog v-model="createDialog" title="新建批次" width="600"
+      ><el-form label-position="top"
+        ><el-form-item label="批次名称"
+          ><el-input v-model="form.name" /></el-form-item
+        ><el-form-item label="竞赛"
+          ><el-select v-model="form.competition" class="full"
+            ><el-option
+              v-for="c in competitions"
+              :key="c.id"
+              :label="c.name + (c.active ? '' : '（已废止）')"
+              :value="c.id"
+              :disabled="!c.active" /></el-select></el-form-item
+        ><el-form-item label="证书模板"
+          ><el-select v-model="form.template_version" class="full"
+            ><el-option
+              v-for="t in templates"
+              :key="t.latest_version?.id"
+              :label="`${t.name} · v${t.latest_version?.number}`"
+              :value="t.latest_version?.id"
+              :disabled="!t.latest_version" /></el-select></el-form-item
+        ><el-form-item label="输出格式"
+          ><el-checkbox-group v-model="form.output_formats"
+            ><el-checkbox value="pdf">PDF</el-checkbox
+            ><el-checkbox value="png">图片</el-checkbox></el-checkbox-group
+          ></el-form-item
+        ><el-form-item
+          v-for="(name, index) in competition?.department_names || []"
+          :key="competition!.departments[index]"
+          :label="`${name}公章`"
+          ><el-select
+            v-model="
+              form.seal_versions[String(competition!.departments[index])]
+            "
+            class="full"
+            ><template v-for="seal in seals" :key="seal.id"
+              ><el-option
+                v-for="version in seal.versions"
+                v-if="
+                  seal.department === competition!.departments[index] &&
+                  seal.active
+                "
+                :key="version.id"
+                :label="`${seal.name} · v${version.number}`"
+                :value="
+                  version.id
+                " /></template></el-select></el-form-item></el-form
+      ><template #footer
+        ><el-button @click="createDialog = false">取消</el-button
+        ><el-button
+          type="primary"
+          :disabled="
+            !form.name ||
+            !form.competition ||
+            !form.template_version ||
+            !form.output_formats.length
+          "
+          @click="create"
+          >创建</el-button
+        ></template
+      ></el-dialog
+    ><el-drawer
+      v-model="drawer"
+      title="批次详情"
+      size="min(1100px, 96vw)"
+      class="batch-detail"
+      ><template v-if="selected"
+        ><el-descriptions border :column="3"
+          ><el-descriptions-item label="批次">{{
+            selected.batch.name
+          }}</el-descriptions-item
+          ><el-descriptions-item label="状态">{{
+            selected.batch.status
+          }}</el-descriptions-item
+          ><el-descriptions-item label="版本"
+            >v{{ selected.batch.current_version }}</el-descriptions-item
+          ><el-descriptions-item label="模板">{{
+            selected.configuration.template_name
+          }}</el-descriptions-item
+          ><el-descriptions-item label="输出">{{
+            selected.configuration.output_formats.join(" + ").toUpperCase()
+          }}</el-descriptions-item></el-descriptions
+        >
+        <div class="actions">
+          <el-upload
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".xlsx"
+            :on-change="upload"
+            ><el-button :loading="uploading"
+              >导入 / 修订 Excel</el-button
+            ></el-upload
+          ><el-button
+            tag="a"
+            target="_blank"
+            :href="`/api/v1/batches/${selected.batch.id}/preview/`"
+            :disabled="!selected.awards.length"
+            >预览首条名单</el-button
+          ><el-button
+            type="primary"
+            :disabled="
+              !selected.awards.length ||
+              !['draft', 'returned'].includes(selected.batch.status)
+            "
+            @click="submit"
+            >提交会签</el-button
+          ><el-button @click="progress">任务进度</el-button
+          ><el-button
+            v-if="selected.batch.status === 'issued'"
+            tag="a"
+            :href="`/api/v1/certificates/batch/${selected.batch.id}/archive/`"
+            type="success"
+            >下载整批 ZIP</el-button
+          >
+        </div>
+        <p>点击名单行可查看成员、作品与备注等完整信息</p>
+        <el-table :data="selected.awards" border @row-click="showAward"
+          ><el-table-column
+            prop="source_row"
+            label="行"
+            width="60" /><el-table-column label="团队成员" min-width="180"
+            ><template #default="s">{{
+              s.row.members.join("、")
+            }}</template></el-table-column
+          ><el-table-column prop="award_name" label="奖项" /><el-table-column
+            prop="team_name"
+            label="团队" /><el-table-column
+            prop="work_name"
+            label="作品"
+            min-width="200" /></el-table></template></el-drawer
+    ><RecordDetail
+      v-model="awardDetail"
+      title="记录与任务详情"
+      :data="awardData"
+    />
+  </div>
+</template>
+<style scoped>
+.page {
+  padding: 20px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+p {
+  margin: 6px 0 0;
+  color: var(--el-text-color-secondary);
+}
+.full {
+  width: 100%;
+}
+.actions {
+  display: flex;
+  gap: 10px;
+  margin: 18px 0;
+}
+</style>

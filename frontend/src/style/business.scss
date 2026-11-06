@@ -1,0 +1,77 @@
+/* Keep business screens aligned with Pure Admin / Element Plus theme tokens. */
+.business-page {
+  min-width: 0;
+  color: var(--el-text-color-primary);
+
+  > header {
+    flex-wrap: wrap;
+    gap: 16px;
+    > div {
+      min-width: 0;
+    }
+    > div:last-child:not(:first-child),
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      > .el-button + .el-button {
+        margin-left: 0;
+      }
+    }
+  }
+  .el-table .el-button.is-link {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+  }
+  .el-pagination {
+    max-width: 100%;
+    overflow-x: auto;
+    justify-content: flex-end;
+  }
+}
+.el-dialog {
+  max-width: calc(100vw - 32px);
+}
+.el-message-box {
+  max-width: calc(100vw - 32px);
+}
+.el-drawer__body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.el-dialog .el-checkbox__label {
+  white-space: normal;
+}
+.el-dialog .el-checkbox {
+  height: auto;
+  min-height: 32px;
+}
+.batch-detail {
+  .actions {
+    flex-wrap: wrap;
+  }
+  .actions > .el-button {
+    margin-left: 0;
+  }
+  .el-descriptions__body {
+    overflow-x: auto;
+  }
+  .el-descriptions__table {
+    min-width: 540px;
+  }
+}
+@media (max-width: 700px) {
+  .business-page {
+    padding: 12px !important;
+  }
+  .business-page > header {
+    align-items: flex-start;
+  }
+  .business-page .toolbar {
+    max-width: 100%;
+  }
+}
