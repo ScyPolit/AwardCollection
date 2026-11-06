@@ -878,7 +878,7 @@ def fonts_view(request):
     with transaction.atomic():
         font, created = CertificateFont.objects.get_or_create(sha256=digest, defaults={
             'name': name, 'file': ContentFile(content, name=digest + '.ttf'),
-            'license_note': str(request.data.get('license_note', '管理员确认具备系统使用授权'))[:240], 'created_by': request.user,
+            'license_note': str(request.data.get('license_note', '上传者确认具备系统使用、格式转换、嵌入和展示授权'))[:240], 'created_by': request.user,
         })
         if created:
             AuditEvent.objects.create(actor=request.user, action='font.imported', object_type='CertificateFont', object_id=digest, detail={'name': name, 'sha256': digest})

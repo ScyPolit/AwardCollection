@@ -173,12 +173,13 @@ def validate_canvas(canvas):
         else:
             if layer.get('kind') not in ('rect', 'ellipse', 'line', 'freehand'):
                 raise ValueError('图形类型无效')
-            width, height = layer.get('width', 200), layer.get('height', 100)
+            number(layer.get('x'), 0, page['width']); number(layer.get('y'), 0, page['height'])
+            width, height = layer.get('width'), layer.get('height')
             number(width, 1, page['width']); number(height, 1, page['height'])
-            number(layer.get('strokeWidth', 2), 0, min(20, width, height))
-            if not is_color(layer.get('stroke', '#1f2937')):
+            number(layer.get('strokeWidth'), 0, min(20, width, height))
+            if not is_color(layer.get('stroke')):
                 raise ValueError('图形线条颜色无效')
-            if layer.get('fill', 'none') != 'none' and not is_color(layer.get('fill', 'none')):
+            if layer.get('fill') != 'none' and not is_color(layer.get('fill')):
                 raise ValueError('图形填充颜色无效')
             if layer['kind'] in ('line', 'freehand'):
                 points = layer.get('points', [])
