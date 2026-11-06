@@ -18,6 +18,7 @@ python -m pip install -r backend/requirements.txt -c backend/constraints.txt
 python backend/tools/prepare_fonts.py
 python -m playwright install chromium
 python backend/manage.py migrate
+python backend/manage.py cache_builtin_fonts
 python backend/manage.py createsuperuser
 ```
 

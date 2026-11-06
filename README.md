@@ -71,6 +71,8 @@ flowchart LR
   </tr>
 </table>
 
+想从截图中的样式开始？[下载三款可编辑演示模板](examples/README.md)，在“模板编辑器 → 导入模板”中导入后调整。
+
 ## 快速部署
 
 使用 Linux 上的 Docker Engine 与 Docker Compose 插件，首次初始化工具需要 Python 3。首次构建会下载镜像、依赖与字体，请保持网络可用。Windows / macOS 可通过 Docker Desktop 的 Linux 容器运行。
