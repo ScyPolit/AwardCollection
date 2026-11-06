@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="580" height="128" viewBox="0 0 580 128" fill="none" role="img" aria-labelledby="title desc">
+  <title id="title">AwardCollection — 校赛电子证书系统</title>
+  <desc id="desc">Blue certificate and gold verification seal beside the AwardCollection wordmark.</desc>
+  <defs><linearGradient id="blue" x2="1" y2="1"><stop stop-color="#2563EB"/><stop offset="1" stop-color="#123B8B"/></linearGradient><linearGradient id="gold" x2="1" y2="1"><stop stop-color="#FFE3A0"/><stop offset="1" stop-color="#F1B744"/></linearGradient></defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="url(#blue)"/>
+  <path d="M35 27H73L91 45V90A10 10 0 0 1 81 100H35A10 10 0 0 1 25 90V37A10 10 0 0 1 35 27Z" fill="#FFF"/>
+  <path d="M73 27V38A7 7 0 0 0 80 45H91" fill="#BFDBFE"/>
+  <path d="M40 48H58M40 61H73M40 73H61" stroke="#2563EB" stroke-width="5" stroke-linecap="round"/>
+  <path d="M77 96L73 118L87 110L99 118L97 96" fill="#F1B744"/>
+  <path d="M87 65L94 70L102 71L105 79L110 85L107 93L107 100L100 104L95 110L87 108L79 110L74 104L67 100L67 93L64 85L69 79L72 71L80 70Z" fill="url(#gold)" stroke="#FFF" stroke-width="3"/>
+  <path d="M79.5 88L84.5 93L95 82.5" stroke="#183E70" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="150" y="62" fill="#17376B" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="43" font-weight="750" letter-spacing="-1.8">AwardCollection</text>
+  <text x="152" y="94" fill="#64748B" font-family="Segoe UI,Microsoft YaHei,sans-serif" font-size="17" letter-spacing="3">校赛电子证书系统</text>
+</svg>

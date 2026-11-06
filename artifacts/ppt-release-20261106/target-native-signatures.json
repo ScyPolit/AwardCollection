@@ -1,0 +1,36 @@
+[
+  {
+    "file": "target-native-5611.pdf",
+    "signatures": [
+      {
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "sha256": "27e9ddd97435c69c4cefb000fe3e8bf0799394cfdb236b7c72bf5485cf124981",
+    "chinese_text_present": true
+  },
+  {
+    "file": "target-native-5612.pdf",
+    "signatures": [
+      {
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      },
+      {
+        "intact": true,
+        "valid": true,
+        "trusted": false
+      }
+    ],
+    "sha256": "f4b53243f9d1c29275c20d475b424ab950089498da0749223d5573d0dba42537",
+    "chinese_text_present": true
+  }
+]
