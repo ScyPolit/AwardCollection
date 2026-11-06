@@ -1,0 +1,6 @@
+{
+  "consecutiveSpacesPreserved": true,
+  "content": "<p style=\"text-indent: 2em;\"><span style=\"font-size: 24px;\"><span style=\"font-family: AC_hei;\">  测试   空格</span></span></p>",
+  "indentPersisted": true,
+  "operation": "set first-line indent to two characters and save immediately"
+}

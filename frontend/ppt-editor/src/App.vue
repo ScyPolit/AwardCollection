@@ -7,7 +7,7 @@
   <FullscreenSpin v-else tip="正在载入证书模板…" loading :mask="false" />
 </template>
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useScreenStore, useSnapshotStore, useSlidesStore } from '@/store'
 import { legacyDocument, registerFonts } from '@/award'
@@ -54,6 +54,8 @@ async function receive(event:MessageEvent){
 async function save(){
   if(readonly.value||!ready.value)return
   try{
+    window.dispatchEvent(new Event('award-flush-editors'))
+    await nextTick()
     const doc=await normalizeMedia(JSON.parse(JSON.stringify({title:slidesStore.title,slides:slidesStore.slides,theme:slidesStore.theme,viewportSize:slidesStore.viewportSize,viewportRatio:slidesStore.viewportRatio})))
     const canvas={engine:'pptist',page:{width:page.width,height:Math.round(page.width*doc.viewportRatio*100)/100},presentation:doc,slideIndex:slidesStore.slideIndex}
     send('award-save',canvas)

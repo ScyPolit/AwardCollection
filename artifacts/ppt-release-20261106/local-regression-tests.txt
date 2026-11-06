@@ -2,7 +2,7 @@ Creating test database for alias 'default'...
 
 F:\project\AwardCollection\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: F:\project\AwardCollection\backend\staticfiles\
   mw_instance = middleware(adapted_handler)
-................................................Validation error [cert context: Common Name: ���Բ���A ����ǩ��, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: ���Բ���A ����ǩ��, Organization: AwardCollection TEST ONLY, Country: CN"
+.....................................................Validation error [cert context: Common Name: ���Բ���A ����ǩ��, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: ���Բ���A ����ǩ��, Organization: AwardCollection TEST ONLY, Country: CN"
 Traceback (most recent call last):
   File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 31, in find_valid_path
     async for candidate_path in paths:
@@ -44,11 +44,11 @@ Traceback (most recent call last):
 pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: ���Բ���B ����ǩ��, Organization: AwardCollection TEST ONLY, Country: CN"
 .....................
 ----------------------------------------------------------------------
-Ran 69 tests in 168.828s
+Ran 74 tests in 146.323s
 
 OK
 Destroying test database for alias 'default'...
 
-Found 69 test(s).
+Found 74 test(s).
 System check identified no issues (0 silenced).
 7 verified fonts available in the media volume

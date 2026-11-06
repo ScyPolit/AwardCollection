@@ -18,7 +18,7 @@ from django.http import FileResponse, HttpResponse
 from django.shortcuts import get_object_or_404
 from django.middleware.csrf import get_token
 from django.utils import timezone
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
@@ -76,8 +76,12 @@ def csrf(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@csrf_protect
 def login_view(request):
-    username = request.data.get("username", "").strip()
+    username=request.data.get("username", "")
+    password=request.data.get("password", "")
+    if not isinstance(username,str) or not isinstance(password,str) or len(username)>150 or len(password)>1024:raise ValidationError("登录信息格式无效")
+    username=username.strip()
     user = get_user_model().objects.filter(username=username).first()
     protection = LoginProtection.objects.filter(user=user).first() if user else None
     if protection and protection.locked_until and protection.locked_until > timezone.now():
@@ -378,6 +382,7 @@ class BatchViewSet(ModelViewSet):
                 "issue_date": timezone.localdate().isoformat(),
                 "template_version": template.id,
                 "departments": [department.id for department, _ in selected],
+                "department_details": [{"id":department.id,"name":department.name} for department,_ in selected],
                 "seals": [seal.id for _, seal in selected],
                 "output_formats": output_formats,
             },
@@ -971,7 +976,9 @@ def public_verify(request):
     cutoff = timezone.now() - timedelta(minutes=1)
     if VerificationAttempt.objects.filter(ip_address=ip, created_at__gte=cutoff).count() >= 10:
         return Response({"detail": "查询过于频繁，请稍后重试"}, status=429)
-    number = request.data.get("number", "").strip()
+    number = request.data.get("number", "")
+    if not isinstance(number,str) or not 1<=len(number.strip())<=32:raise ValidationError("证书编号需要1～32个字符")
+    number=number.strip()
     if request.session.get("verification_used", True) or str(request.data.get("answer", "")) != str(request.session.get("verification_answer", "missing")):
         VerificationAttempt.objects.create(ip_address=ip, certificate_number=number, successful=False)
         return Response({"detail": "验证码错误或已使用"}, status=400)
@@ -983,7 +990,7 @@ def public_verify(request):
     setting = SystemSetting.objects.filter(key="public_verification").first()
     config = setting.value if setting else {"show_team": True, "show_members": True, "mask_members": True}
     award = certificate.award
-    result = {"found": True, "number": certificate.number, "status": certificate.status, "competition": award.version.batch.competition.name, "award": award.award_name}
+    result = {"found": True, "number": certificate.number, "status": certificate.status, "competition": award.version.snapshot.get("competition",{}).get("name",award.version.batch.competition.name), "award": award.award_name}
     if config.get("show_team", True):
         result["team"] = award.team_name
     if config.get("show_members", True):
@@ -996,7 +1003,7 @@ def admin_verify(request):
     certificate = Certificate.objects.select_related("award__version__batch__competition").filter(number=request.data.get("number", ""), published_at__isnull=False).first()
     if not certificate or not accessible_competitions(request.user).filter(pk=certificate.award.version.batch.competition_id).exists():
         return Response({"found": False})
-    return Response({"found": True, "number": certificate.number, "status": certificate.status, "team": certificate.award.team_name, "members": certificate.award.members, "competition": certificate.award.version.batch.competition.name, "award": certificate.award.award_name})
+    return Response({"found": True, "number": certificate.number, "status": certificate.status, "team": certificate.award.team_name, "members": certificate.award.members, "competition": certificate.award.version.snapshot.get("competition",{}).get("name",certificate.award.version.batch.competition.name), "award": certificate.award.award_name})
 
 
 @api_view(["GET"])
