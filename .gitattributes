@@ -9,3 +9,6 @@ Dockerfile text eol=lf
 *.jpeg binary
 *.xlsx binary
 *.zip binary
+*.ttf binary
+*.ttc binary
+backend/font-assets/LICENSE-* -text -whitespace
