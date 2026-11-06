@@ -163,16 +163,15 @@ class WorkflowTests(TestCase):
         client.force_authenticate(self.owner)
         response = client.get(f"/api/v1/certificates/{certificate.id}/download/pdf/")
         self.assertEqual(response.status_code, 200)
-        response.close()
+        self.assertEqual(b"".join(response.streaming_content), b"pdf")
 
         response = client.get(f"/api/v1/certificates/{certificate.id}/download/image/")
         self.assertEqual(response.status_code, 200)
         self.assertIn(f'{certificate.number}.png', response["Content-Disposition"])
-        response.close()
+        self.assertEqual(b"".join(response.streaming_content), b"png")
         response = client.get(f"/api/v1/certificates/batch/{self.batch.id}/archive/")
         self.assertEqual(response.status_code, 200)
         archive_data = b"".join(response.streaming_content)
-        response.close()
         with zipfile.ZipFile(io.BytesIO(archive_data)) as archive:
             self.assertEqual(set(archive.namelist()), {f"{certificate.number}.pdf", f"{certificate.number}.png"})
         client.force_authenticate(self.outsider)
