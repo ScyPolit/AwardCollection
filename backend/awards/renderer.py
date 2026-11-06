@@ -22,6 +22,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
+from .fonts import layout_text
 
 
 KEY_PASSWORD = os.getenv("SIGNING_KEY_PASSWORD", "local-test-only-change-before-deploy").encode()
@@ -159,18 +160,15 @@ def _draw_text_layer(c, layer, award, number, page_height):
     if not text:
         return
     x = float(layer.get("x", 80)); top = float(layer.get("y", 80))
-    width = float(layer.get("width", 680)); height = float(layer.get("height", 70))
-    maximum = int(layer.get("fontSize", 24)); minimum = int(layer.get("minFontSize", min(10, maximum)))
-    size, leading, lines = fit_text(str(text), "CertificateCJK", width, height, maximum, minimum)
+    try:
+        layout = layout_text(str(text), layer)
+    except ValueError as exc:
+        raise ValueError(f"{layer.get('field', '文本')}：{exc}") from exc
     c.setFillColor(layer.get("color", "#1f2937"))
-    c.setFont("CertificateCJK", size)
-    cursor = page_height - top - leading
-    alignment = layer.get("align", "center")
-    for line in lines:
-        if alignment == "left": c.drawString(x, cursor, line)
-        elif alignment == "right": c.drawRightString(x + width, cursor, line)
-        else: c.drawCentredString(x + width / 2, cursor, line)
-        cursor -= leading
+    for line in layout["lines"]:
+        for run in line["runs"]:
+            c.setFont(run["fontName"], layout["fontSize"])
+            c.drawString(x + run["x"], page_height - top - line["baseline"], run["text"])
 
 
 def render_unsigned(award, number, output, template=None, seals=None):

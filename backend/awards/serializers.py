@@ -26,6 +26,7 @@ class DepartmentSerializer(serializers.ModelSerializer):
 
 
 class CompetitionSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.CharField(source="created_by.username", read_only=True)
     department_names = serializers.SerializerMethodField()
     collaborator_names = serializers.SerializerMethodField()
     departments = serializers.PrimaryKeyRelatedField(many=True, queryset=Department.objects.all())
@@ -33,7 +34,7 @@ class CompetitionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Competition
-        fields = ["id", "name", "award_presets", "active", "created_at", "departments", "department_names", "collaborators", "collaborator_names"]
+        fields = ["id", "name", "award_presets", "active", "created_at", "created_by_name", "departments", "department_names", "collaborators", "collaborator_names"]
         read_only_fields = ["created_at"]
 
     def get_department_names(self, obj):
@@ -102,13 +103,20 @@ class ApprovalSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.name", read_only=True)
     competition_name = serializers.CharField(source="version.batch.competition.name", read_only=True)
     decision = serializers.SerializerMethodField()
+    decision_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = ApprovalDepartment
-        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "created_at"]
+        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "decision_detail", "created_at"]
 
     def get_decision(self, obj):
         return getattr(getattr(obj, "decision", None), "decision", None)
+
+    def get_decision_detail(self, obj):
+        decision = getattr(obj, "decision", None)
+        if not decision:
+            return None
+        return {"actor": decision.actor.username, "comment": decision.comment, "created_at": decision.created_at}
 
 
 class TemplateVersionSerializer(serializers.ModelSerializer):

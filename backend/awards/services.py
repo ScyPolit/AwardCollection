@@ -51,11 +51,24 @@ def parse_excel(file_obj):
 @transaction.atomic
 def submit_batch(batch_id, actor):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
+    if not batch.competition.active:
+        raise ValueError("竞赛已废止，不能提交新签发")
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED]:
         raise ValueError("当前批次状态不允许提交")
     version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
     if not version.awards.exists():
         raise ValueError("名单为空")
+    from .fonts import layout_text
+    from .renderer import _field_value
+    template = version.snapshot.get("template") or version.template_version.canvas
+    for award in version.awards.iterator():
+        for layer in template.get("layers", []):
+            if layer.get("type") == "text":
+                text = layer.get("text", "") if layer.get("field") == "static" else _field_value(award, layer.get("field"), "2026-AC-00000000")
+                try:
+                    layout_text(text, layer)
+                except ValueError as exc:
+                    raise ValueError(f"第 {award.source_row} 行 {layer.get('field')}：{exc}") from exc
     for requirement in version.required_departments.select_related("seal_version__seal"):
         if not requirement.seal_version.seal.active:
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
@@ -120,13 +133,16 @@ def decide(requirement_id, actor, decision, comment=""):
     batch = AwardBatch.objects.select_for_update().get(pk=version.batch_id)
     if batch.current_version != version.number or batch.status != AwardBatch.Status.REVIEW:
         raise ValueError("审批版本已失效")
-    eligible = DepartmentMembership.objects.filter(department=requirement.department, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists()
+    if not batch.competition.active:
+        raise ValueError("竞赛已废止，请先重新启用后再审批")
+    eligible = actor.is_superuser or DepartmentMembership.objects.filter(department=requirement.department, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists()
     if not eligible:
         raise PermissionError("无本部门审批权限")
     editors = set(version.awards.exclude(last_edited_by=None).values_list("last_edited_by_id", flat=True))
     if version.submitted_by_id == actor.id or actor.id in editors:
         raise PermissionError("提交或修改人员必须回避")
     ApprovalDecision.objects.update_or_create(requirement=requirement, defaults={"decision": decision, "actor": actor, "comment": comment})
+    AuditEvent.objects.create(actor=actor, action="batch.approval", object_type="ApprovalDepartment", object_id=str(requirement.pk), detail={"batch": batch.id, "version": version.number, "department": requirement.department_id, "decision": decision, "comment": comment})
     if decision == ApprovalDecision.Decision.RETURNED:
         batch.status = AwardBatch.Status.RETURNED
         batch.save(update_fields=["status", "updated_at"])
@@ -155,6 +171,8 @@ def emergency_issue(batch_id, actor, reason, password):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED, AwardBatch.Status.REVIEW, AwardBatch.Status.FAILED]:
         raise ValueError("当前批次状态不允许应急签发")
+    if not batch.competition.active:
+        raise ValueError("竞赛已废止，不能签发")
     version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
     if not version.awards.exists():
         raise ValueError("名单为空")
@@ -219,7 +237,7 @@ def decide_revocation(request_id, department_id, actor, decision, comment=""):
     required_ids = set(request.certificate.award.version.required_departments.values_list("department_id", flat=True))
     if department_id not in required_ids:
         raise PermissionError("该部门不在原盖章部门中")
-    if not DepartmentMembership.objects.filter(department_id=department_id, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists():
+    if not actor.is_superuser and not DepartmentMembership.objects.filter(department_id=department_id, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists():
         raise PermissionError("无本部门作废审批权限")
     RevocationDecision.objects.update_or_create(
         request=request, department_id=department_id,

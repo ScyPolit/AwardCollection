@@ -1,0 +1,219 @@
+<!-- Product-card grid adapted from Pure Admin's official CardList page (MIT). -->
+<script setup lang="ts">
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import ListCard from "./ListCard.vue";
+import RecordDetail from "@/components/RecordDetail.vue";
+import { useBusinessAccess } from "@/utils/businessAccess";
+import {
+  copyTemplate,
+  listDepartments,
+  listTemplates,
+  publishTemplate,
+  type Template,
+  type Option
+} from "@/api/business";
+const router = useRouter(),
+  { user, isAdmin, isSuper } = useBusinessAccess();
+const productList = ref<Template[]>([]),
+  departments = ref<Option[]>([]),
+  dataLoading = ref(true),
+  searchValue = ref(""),
+  department = ref<number>(),
+  pagination = reactive({ current: 1, pageSize: 12 });
+const filtered = computed(() =>
+  productList.value.filter(
+    p =>
+      p.name.toLowerCase().includes(searchValue.value.toLowerCase()) &&
+      (!department.value || p.department === department.value)
+  )
+);
+const visible = computed(() =>
+  filtered.value.slice(
+    (pagination.current - 1) * pagination.pageSize,
+    pagination.current * pagination.pageSize
+  )
+);
+const managed = computed(() =>
+  departments.value.filter(
+    d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
+  )
+);
+const selected = ref<Template>(),
+  preview = ref(false),
+  copyDialog = ref(false),
+  saving = ref(false),
+  form = reactive({ name: "", department: undefined as number | undefined });
+const info = computed(() => ({
+  模板名称: selected.value?.name,
+  维护部门: selected.value?.department_name,
+  版本: selected.value?.latest_version?.number,
+  共享: selected.value?.published
+}));
+watch([searchValue, department], () => (pagination.current = 1));
+async function load() {
+  try {
+    [productList.value, departments.value] = await Promise.all([
+      listTemplates(),
+      listDepartments()
+    ]);
+  } finally {
+    dataLoading.value = false;
+  }
+}
+function show(product: Template) {
+  selected.value = product;
+  preview.value = true;
+}
+function select(product: Template) {
+  router.push({
+    path: "/business/batches",
+    query: { template: product.latest_version?.id }
+  });
+}
+function edit(product: Template) {
+  router.push({ path: "/business/templates", query: { template: product.id } });
+}
+function openCopy(product: Template) {
+  selected.value = product;
+  Object.assign(form, {
+    name: product.name + " 副本",
+    department: managed.value[0]?.id
+  });
+  copyDialog.value = true;
+}
+async function copy() {
+  if (!selected.value || saving.value) return;
+  saving.value = true;
+  try {
+    const target = await copyTemplate(selected.value.id, { ...form });
+    await publishTemplate(target.id);
+    copyDialog.value = false;
+    ElMessage.success("模板已复制到本部门");
+    edit(target);
+  } catch {
+  } finally {
+    saving.value = false;
+  }
+}
+onMounted(load);
+</script>
+<template>
+  <div class="market-page">
+    <div class="w-full flex justify-between mb-4 toolbar">
+      <div>
+        <el-button v-if="isAdmin" @click="router.push('/business/templates')"
+          >新建与编辑模板</el-button
+        ><el-select
+          v-model="department"
+          clearable
+          placeholder="全部维护部门"
+          style="width: 200px"
+          ><el-option
+            v-for="d in departments"
+            :key="d.id"
+            :label="d.name"
+            :value="d.id"
+        /></el-select>
+      </div>
+      <el-input
+        v-model="searchValue"
+        style="width: 300px"
+        placeholder="搜索证书模板"
+        clearable
+      />
+    </div>
+    <div v-loading="dataLoading">
+      <el-empty
+        v-if="!dataLoading && !filtered.length"
+        description="未找到模板，可由管理员新建或复制共享模板"
+      /><el-row :gutter="16"
+        ><el-col
+          v-for="product in visible"
+          :key="product.id"
+          :xs="24"
+          :sm="12"
+          :md="8"
+          :lg="6"
+          :xl="4"
+          ><ListCard
+            :product="product"
+            :can-copy="isAdmin"
+            @preview="show"
+            @select="select"
+            @copy="openCopy"
+            @edit="edit" /></el-col></el-row
+      ><el-pagination
+        v-model:current-page="pagination.current"
+        v-model:page-size="pagination.pageSize"
+        class="float-right"
+        :total="filtered.length"
+        :page-sizes="[12, 24, 36]"
+        background
+        layout="total,sizes,prev,pager,next,jumper"
+      />
+    </div>
+    <RecordDetail v-model="preview" title="证书模板预览" :data="info"
+      ><el-image
+        v-if="selected"
+        :src="`/api/v1/templates/${selected.id}/thumbnail/?version=${selected.latest_version?.id}`"
+        fit="contain"
+        style="width: 100%"
+      /><el-space
+        ><el-button
+          type="primary"
+          :disabled="!selected?.published"
+          @click="selected && select(selected)"
+          >选用模板</el-button
+        ><el-button v-if="isAdmin" @click="selected && openCopy(selected)"
+          >复制后编辑</el-button
+        ></el-space
+      ></RecordDetail
+    >
+    <el-dialog
+      v-model="copyDialog"
+      title="复制模板到本部门"
+      width="480"
+      :show-close="!saving"
+      :close-on-click-modal="!saving"
+      ><el-form label-position="top"
+        ><el-form-item label="模板名称"
+          ><el-input v-model.trim="form.name" /></el-form-item
+        ><el-form-item label="维护部门"
+          ><el-select v-model="form.department" style="width: 100%"
+            ><el-option
+              v-for="d in managed"
+              :key="d.id"
+              :label="d.name"
+              :value="d.id" /></el-select></el-form-item></el-form
+      ><template #footer
+        ><el-button :disabled="saving" @click="copyDialog = false"
+          >取消</el-button
+        ><el-button
+          type="primary"
+          :loading="saving"
+          :disabled="!form.name || !form.department"
+          @click="copy"
+          >复制并编辑</el-button
+        ></template
+      ></el-dialog
+    >
+  </div>
+</template>
+<style scoped>
+.market-page {
+  padding: 20px;
+}
+.toolbar {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.toolbar > div {
+  display: flex;
+  gap: 12px;
+}
+:deep(.el-pagination) {
+  margin: 20px 0;
+}
+</style>

@@ -82,6 +82,14 @@ class SealVersion(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["seal", "number"], name="uniq_seal_version")]
 
 
+class CertificateFont(TimeStampedModel):
+    sha256 = models.CharField(max_length=64, primary_key=True)
+    name = models.CharField(max_length=160)
+    file = models.FileField(upload_to="protected/font-library")
+    license_note = models.CharField(max_length=240)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+
 class AwardBatch(TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "草稿"

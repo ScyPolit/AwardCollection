@@ -18,6 +18,7 @@ from .models import (
     Seal, SealVersion, SystemSetting, TeamAward, Template, TemplateVersion,
 )
 from .renderer import fit_text, render_certificate
+from .permissions import grant_owner, is_owner
 from .services import (
     allocate_number, decide, decide_revocation, emergency_void, excel_template,
     emergency_issue, parse_excel, request_revocation, revise_batch, submit_batch,
@@ -33,6 +34,7 @@ class WorkflowTests(TestCase):
         self.addCleanup(self.media_directory.cleanup)
         User = get_user_model()
         self.owner = User.objects.create_user("owner", password="Test-Pass-2026")
+        grant_owner(self.owner)
         self.admin_a = User.objects.create_user("admin_a", password="Test-Pass-2026")
         self.admin_b = User.objects.create_user("admin_b", password="Test-Pass-2026")
         self.outsider = User.objects.create_user("outsider", password="Test-Pass-2026")
@@ -350,8 +352,8 @@ class WorkflowTests(TestCase):
         client.force_authenticate(self.owner)
         response = client.get("/api/v1/seals/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
-        self.assertEqual(response.data[0]["department"], self.departments[0].id)
+        self.assertEqual(len(response.data), 2)
+        self.assertEqual(set(item["department"] for item in response.data), set(d.id for d in self.departments))
         self.assertNotIn("image", response.data[0]["versions"][0])
 
     def test_owner_metadata_access_does_not_allow_seal_changes(self):
@@ -403,9 +405,8 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.owner.refresh_from_db()
         self.assertTrue(self.owner.check_password("Test-Pass-2026"))
-        self.assertTrue(DepartmentMembership.objects.filter(
-            user=self.owner, department=self.departments[0], role="owner", active=True,
-        ).exists())
+        self.assertTrue(is_owner(self.owner))
+        self.assertFalse(DepartmentMembership.objects.filter(user=self.owner, role="owner").exists())
 
     def test_department_admin_cannot_grant_an_existing_account_admin_role(self):
         client = APIClient()
@@ -418,3 +419,159 @@ class WorkflowTests(TestCase):
         self.assertFalse(DepartmentMembership.objects.filter(
             user=self.owner, department=self.departments[0], role="admin",
         ).exists())
+
+    def test_owner_creation_has_no_department_and_duplicate_is_rejected(self):
+        client = APIClient(); client.force_authenticate(self.admin_a)
+        payload = {"username": "independent_owner", "name": "独立负责人", "password": "Owner-Strong-2026!", "role": "owner"}
+        response = client.post("/api/v1/management/accounts/", payload, format="json")
+        self.assertEqual(response.status_code, 201, response.data)
+        user = get_user_model().objects.get(username=payload['username'])
+        self.assertTrue(is_owner(user))
+        self.assertFalse(DepartmentMembership.objects.filter(user=user).exists())
+        self.assertEqual(response.data['memberships'], [])
+        self.assertNotIn(payload['password'], str(response.data))
+        self.assertEqual(client.post("/api/v1/management/accounts/", payload, format="json").status_code, 400)
+        self.assertEqual(get_user_model().objects.filter(username=payload['username']).count(), 1)
+
+    def test_independent_owner_can_choose_departments_and_create_competition(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        self.assertFalse(DepartmentMembership.objects.filter(user=self.owner).exists())
+        self.assertEqual(len(client.get('/api/v1/departments/').data), 2)
+        response = client.post('/api/v1/competitions/', {'name': '独立负责人测试竞赛', 'departments': [d.id for d in self.departments]}, format='json')
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data['active'])
+        client.force_authenticate(self.outsider)
+        self.assertEqual(client.post('/api/v1/competitions/', {'name':'无授权竞赛', 'departments':[self.departments[0].id]}, format='json').status_code, 403)
+
+    def test_superuser_can_deactivate_competition_without_revoking_history(self):
+        certificate = self.create_published_certificate()
+        client = APIClient(); client.force_authenticate(self.superuser)
+        response = client.patch(f'/api/v1/competitions/{self.batch.competition_id}/', {'active': False}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        with self.assertRaisesMessage(ValueError, '废止'):
+            submit_batch(self.batch.pk, self.owner)
+        client.force_authenticate(self.owner)
+        response = client.post('/api/v1/batches/', {'name':'应拒绝的新批次', 'competition':self.batch.competition_id}, format='json')
+        self.assertEqual(response.status_code, 400)
+        certificate.refresh_from_db(); self.assertEqual(certificate.status, 'active')
+        client.force_authenticate(self.superuser)
+        self.assertEqual(client.patch(f'/api/v1/competitions/{self.batch.competition_id}/', {'active':True}, format='json').status_code, 200)
+        self.assertEqual(client.delete(f'/api/v1/competitions/{self.batch.competition_id}/').status_code, 400)
+
+    def test_non_superuser_cannot_change_competition_active_flag(self):
+        client = APIClient(); client.force_authenticate(self.owner)
+        response = client.patch(f'/api/v1/competitions/{self.batch.competition_id}/', {'active':False}, format='json')
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_inherits_department_approval_without_memberships(self):
+        self.assertFalse(DepartmentMembership.objects.filter(user=self.superuser).exists())
+        submit_batch(self.batch.pk, self.owner)
+        requirements = list(self.version.required_departments.order_by('id'))
+        self.assertIsNone(decide(requirements[0].pk, self.superuser, 'approved'))
+        self.assertIsNotNone(decide(requirements[1].pk, self.superuser, 'approved'))
+        for requirement in requirements:
+            self.assertEqual(requirement.decision.actor_id, self.superuser.pk)
+
+    def test_superuser_still_observes_ordinary_approval_avoidance(self):
+        submit_batch(self.batch.pk, self.superuser)
+        with self.assertRaises(PermissionError):
+            decide(self.version.required_departments.first().pk, self.superuser, 'approved')
+
+    def test_superuser_inherits_revocation_approval(self):
+        certificate = self.create_published_certificate()
+        request = request_revocation(certificate.pk, self.owner, '测试作废')
+        decide_revocation(request.pk, self.departments[0].pk, self.superuser, 'approved')
+        certificate.refresh_from_db(); self.assertEqual(certificate.status, 'active')
+        decide_revocation(request.pk, self.departments[1].pk, self.superuser, 'approved')
+        certificate.refresh_from_db(); self.assertEqual(certificate.status, 'void')
+
+    def test_font_catalog_serves_exact_font_bytes_with_authentication(self):
+        from django.core.management import call_command
+        call_command('cache_builtin_fonts', verbosity=0)
+        from .fonts import font_file
+        client = APIClient(); client.force_authenticate(self.owner)
+        catalog = client.get('/api/v1/fonts/')
+        self.assertEqual(catalog.status_code, 200)
+        self.assertTrue({'hei','song','kai','fangsong'}.issubset({f['id'] for f in catalog.data}))
+        response = client.get('/api/v1/fonts/fangsong/file/')
+        self.assertEqual(b''.join(response.streaming_content), font_file('fangsong').read_bytes())
+        self.assertEqual(APIClient().get('/api/v1/fonts/fangsong/file/').status_code, 403)
+
+    def test_shared_layout_falls_back_for_mixed_english_and_chinese(self):
+        from .fonts import layout_text
+        layer = {'fontFamily':'liberationserif-regular','fontSize':24,'minFontSize':12,'width':500,'height':100,'lineHeight':1.5,'align':'left'}
+        layout = layout_text('荣誉证书 AWARD 2026', layer)
+        fonts = {r['fontId'] for line in layout['lines'] for r in line['runs']}
+        self.assertEqual(fonts, {'hei','liberationserif-regular'})
+        self.assertEqual(layout['lines'][0]['baseline'], 36)
+        with self.assertRaisesMessage(ValueError, '缺少字形'):
+            layout_text(chr(0x10FFFF), layer)
+
+    def test_template_layout_endpoint_and_font_selection(self):
+        client = APIClient(); client.force_authenticate(self.admin_a)
+        canvas = {'page':{'width':842,'height':595},'layers':[{'id':'title','type':'text','field':'static','text':'荣誉证书 AWARD','x':100,'y':100,'width':600,'height':100,'fontFamily':'fangsong','fontSize':32,'minFontSize':10,'lineHeight':1.4}]}
+        response = client.post('/api/v1/templates/layout/', {'canvas':canvas}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['title']['fontSize'], 32)
+        self.assertTrue(all(r['fontId']=='fangsong' for line in response.data['title']['lines'] for r in line['runs']))
+        canvas['background']='/srv/media/protected/seals/forbidden.png'
+        response = client.post('/api/v1/templates/', {'department':self.departments[0].pk,'name':'坏模板','canvas':canvas}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Template.objects.filter(name='坏模板').exists())
+
+    def test_font_import_requires_administrator_and_license_confirmation(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .fonts import font_file
+        client = APIClient(); client.force_authenticate(self.owner)
+        self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,403)
+        client.force_authenticate(self.superuser)
+        self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
+        file=SimpleUploadedFile('licensed.ttf',font_file('liberationserif-regular').read_bytes())
+        response=client.post('/api/v1/fonts/',{'file':file,'name':'授权英文字体测试','license_confirmed':'true'},format='multipart')
+        self.assertEqual(response.status_code,201,response.data)
+        self.assertEqual(response.data['name'],'授权英文字体测试')
+        file_response=client.get(response.data['url'])
+        self.assertGreater(len(b''.join(file_response.streaming_content)),1000)
+
+    def test_audit_details_are_scoped_to_actor_for_department_admin(self):
+        from .models import AuditEvent
+        first=AuditEvent.objects.create(actor=self.admin_a,action='test.detail',object_type='TEST',object_id='1',detail={'reason':'完整内容'})
+        other=AuditEvent.objects.create(actor=self.admin_b,action='test.detail',object_type='TEST',object_id='2',detail={'reason':'他部门内容'})
+        client=APIClient();client.force_authenticate(self.admin_a)
+        self.assertEqual(client.get(f'/api/v1/logs/{first.pk}/').data['detail']['reason'],'完整内容')
+        self.assertEqual(client.get(f'/api/v1/logs/{other.pk}/').status_code,404)
+        client.force_authenticate(self.superuser)
+        self.assertEqual(client.get(f'/api/v1/logs/{other.pk}/').status_code,200)
+        client.force_authenticate(self.owner)
+        self.assertEqual(client.get('/api/v1/logs/').status_code,403)
+
+    def test_seal_preview_is_authorized_and_can_choose_version(self):
+        seal=Seal.objects.get(department=self.departments[0]);version=seal.versions.first()
+        content=io.BytesIO();Image.new('RGBA',(100,100),(255,0,0,100)).save(content,'PNG')
+        version.image.save('valid-preview.png',ContentFile(content.getvalue()),save=True)
+        client=APIClient();client.force_authenticate(self.superuser)
+        response=client.get(f'/api/v1/seals/{seal.pk}/preview/?version={version.pk}')
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(response.content.startswith(b'\x89PNG'))
+        client.force_authenticate(self.outsider)
+        self.assertEqual(client.get(f'/api/v1/seals/{seal.pk}/preview/').status_code,404)
+
+    def test_template_thumbnail_is_real_png_and_certificate_detail_is_complete(self):
+        client=APIClient();client.force_authenticate(self.owner)
+        template=self.version.template_version.template
+        response=client.get(f'/api/v1/templates/{template.pk}/thumbnail/')
+        self.assertEqual(response.status_code,200)
+        self.assertTrue(b''.join(response.streaming_content).startswith(b'\x89PNG'))
+        certificate=self.create_published_certificate()
+        detail=client.get(f'/api/v1/certificates/{certificate.pk}/')
+        self.assertEqual(detail.status_code,200)
+        self.assertEqual(detail.data['members'],self.award.members)
+        self.assertEqual(len(detail.data['departments']),2)
+
+    def test_deactivated_competition_cannot_finish_pending_approval(self):
+        submit_batch(self.batch.pk,self.owner)
+        competition=self.batch.competition
+        competition.active=False;competition.save(update_fields=['active'])
+        with self.assertRaisesMessage(ValueError,'废止'):
+            decide(self.version.required_departments.first().pk,self.superuser,'approved')
+        self.assertFalse(GenerationTask.objects.filter(version=self.version).exists())
