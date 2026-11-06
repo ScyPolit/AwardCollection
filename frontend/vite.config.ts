@@ -25,7 +25,11 @@ export default ({ mode }: ConfigEnv): UserConfigExport => {
       host: "0.0.0.0",
       // 本地跨域代理 https://cn.vitejs.dev/config/server-options.html#server-proxy
       proxy: {
-        "/ppt-editor": { target: "http://127.0.0.1:18850", changeOrigin: true },
+        "/ppt-editor": {
+          target: "http://127.0.0.1:18850",
+          changeOrigin: true,
+          ws: true
+        },
         "/api": {
           target: "http://127.0.0.1:8000",
           changeOrigin: true

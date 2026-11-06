@@ -104,12 +104,24 @@ class PureHttp {
       },
       (error: PureHttpError) => {
         const $error = error;
-        if(($error as any).response?.status===403&&$error.config?.url?.split("?")[0]==="/api/v1/auth/me/")useUserStoreHook().logOut();
+        if (
+          ($error as any).response?.status === 403 &&
+          $error.config?.url?.split("?")[0] === "/api/v1/auth/me/"
+        )
+          useUserStoreHook().logOut();
         $error.isCancelRequest = Axios.isCancel($error);
-        if (!$error.isCancelRequest && !$error.config?.headers?.["X-Quiet-Errors"]) {
+        if (
+          !$error.isCancelRequest &&
+          !$error.config?.headers?.["X-Quiet-Errors"]
+        ) {
           const response = ($error as any).response;
           const body = response?.data;
-          const detail = typeof body?.detail === "string" ? body.detail : body ? JSON.stringify(body) : "请求失败，请检查网络后重试";
+          const detail =
+            typeof body?.detail === "string"
+              ? body.detail
+              : body
+                ? JSON.stringify(body)
+                : "请求失败，请检查网络后重试";
           ElMessage.error({ message: detail, duration: 6000, grouping: true });
         }
         return Promise.reject($error);
