@@ -38,7 +38,12 @@ if [ "$action" = backup ] || [ "$action" = all ]; then
   python3 -c "$config_code" | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass "file:$key" -out "$target/deployment-config.tar.gz.enc"
   python3 -c 'import sys,tarfile; from pathlib import Path; p=Path(sys.argv[1]); assert (p/"database.dump").read_bytes()[:5]==b"PGDMP"; t=tarfile.open(p/"media.tar.gz"); assert t.getmembers()' "$target"
   openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$key" -in "$target/deployment-config.tar.gz.enc" | python3 -c 'import sys,tarfile; t=tarfile.open(fileobj=sys.stdin.buffer,mode="r|gz"); assert {".env","secrets/db_password.txt"}.issubset({m.name for m in t})'
+  if docker compose -p awardcollection-v1-test exec -T web test -s /etc/award-tls/server.key; then
+    docker compose -p awardcollection-v1-test exec -T web tar czf - -C /etc/award-tls server.crt server.key | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass "file:$key" -out "$target/tls.tar.gz.enc"
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass "file:$key" -in "$target/tls.tar.gz.enc" | python3 -c 'import sys,tarfile;t=tarfile.open(fileobj=sys.stdin.buffer,mode="r|gz");assert {"server.crt","server.key"}.issubset({m.name for m in t})'
+  fi
   (cd "$target" && sha256sum database.dump media.tar.gz deployment-config.tar.gz.enc >SHA256SUMS)
+  if [ -s "$target/tls.tar.gz.enc" ]; then (cd "$target" && sha256sum tls.tar.gz.enc >>SHA256SUMS); fi
   touch "$target/COMPLETE"
   printf '%s\n' "$target" >runtime/last-backup-path
   echo "BACKUP_COMPLETE=$target"

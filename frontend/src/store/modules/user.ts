@@ -1,3 +1,4 @@
+import { useLiveStore } from "./live";
 import { defineStore } from "pinia";
 import {
   type userType,
@@ -78,6 +79,7 @@ export const useUserStore = defineStore("pure-user", {
     },
     /** 前端登出（不调用接口） */
     logOut() {
+      useLiveStore().stop();
       this.username = "";
       this.roles = [];
       this.permissions = [];

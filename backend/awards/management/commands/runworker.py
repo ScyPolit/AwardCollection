@@ -7,14 +7,17 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.db import transaction, connections
+from django.contrib.auth import get_user_model
 from django.utils import timezone
-from awards.models import AwardBatch, Certificate, DepartmentMembership, GenerationTask, Notification
+from awards.models import AwardBatch, Certificate, DepartmentMembership, GenerationTask, Notification, AuditEvent
 from awards.renderer import render_certificate_payload
 from awards.services import allocate_number, claim_task
 from awards.fonts import font_file
 
 
 def process_task(task):
+    from awards.integrity import verify,file_digest
+    verify(task.version)
     lease_token = task.lease_token
     requirements = list(task.version.required_departments.select_related("department", "seal_version__seal").order_by("department_id"))
     for requirement in requirements:
@@ -28,6 +31,9 @@ def process_task(task):
     } for item in requirements]
     template = task.version.snapshot.get("template") or task.version.template_version.canvas
     font_ids = {'hei'} | {layer.get('fontFamily') or 'hei' for layer in template.get('layers', []) if layer.get('type') == 'text'}
+    if template.get('engine')=='pptist':
+        from awards.presentation import presentation_fonts
+        font_ids |= presentation_fonts(template)
     # Resolve uploaded fonts before forking; render children must not use ORM
     # or inherit a live PostgreSQL connection from the parent.
     font_files = {font_id: str(font_file(font_id)) for font_id in font_ids}
@@ -46,9 +52,13 @@ def process_task(task):
 
     concurrency = max(1, min(int(os.getenv("RENDER_CONCURRENCY", "4")), 8))
 
+    if template.get("engine")=="pptist":concurrency=min(concurrency,2)
+
     def payload(item):
         award, certificate = item
         return ({
+            "competition_name": task.version.snapshot.get("competition",{}).get("name", task.version.batch.competition.name),
+            "issue_date": task.version.snapshot.get("issue_date",""),
             "team_name": award.team_name,
             "members": award.members,
             "award_name": award.award_name,
@@ -91,8 +101,9 @@ def process_task(task):
                         certificate.image.name = str(final_image.relative_to(settings.MEDIA_ROOT)).replace("\\", "/")
                     else:
                         certificate.image = ""
+                    certificate.image_sha256 = file_digest(final_image) if image else ""
                     certificate.pdf_sha256 = digest
-                    certificate.save(update_fields=["pdf", "image", "pdf_sha256", "updated_at"])
+                    certificate.save(update_fields=["pdf", "image", "pdf_sha256", "image_sha256", "updated_at"])
                     current.processed = Certificate.objects.filter(award__version=current.version).exclude(pdf="").count()
                     current.lease_expires_at = timezone.now() + timedelta(minutes=10)
                     current.save(update_fields=["processed", "lease_expires_at", "updated_at"])
@@ -117,8 +128,11 @@ def process_task(task):
         recipients.update(DepartmentMembership.objects.filter(
             department__competitions=competition, role=DepartmentMembership.Role.ADMIN, active=True,
         ).values_list("user_id", flat=True))
+        recipients.add(current.version.batch.created_by_id)
+        recipients.update(get_user_model().objects.filter(is_superuser=True,is_active=True).values_list("pk",flat=True))
+        AuditEvent.objects.create(action="generation.completed",object_type="AwardBatch",object_id=str(current.version.batch_id),detail={"total":ready})
         Notification.objects.bulk_create([
-            Notification(user_id=user_id, title="证书签发完成", body=f"批次“{current.version.batch.name}”的 {ready} 份证书已全部发布")
+            Notification(user_id=user_id, title="证书签发完成", body=f"批次“{current.version.batch.name}”的 {ready} 份证书已全部发布", kind="completed", target=f"/business/batches?batch={current.version.batch_id}")
             for user_id in recipients
         ])
     shutil.rmtree(attempt_root, ignore_errors=True)
@@ -140,6 +154,9 @@ class Command(BaseCommand):
             try:
                 process_task(task)
             except Exception as exc:
+                Notification.objects.create(user=task.version.batch.created_by, title="证书生成失败", body=f"批次“{task.version.batch.name}”生成失败，请查看错误并修订重试", kind="failed", target=f"/business/batches?batch={task.version.batch_id}")
+                AuditEvent.objects.create(action="generation.failed",object_type="AwardBatch",object_id=str(task.version.batch_id),detail={"error":str(exc)[:1000]})
+                AwardBatch.objects.filter(pk=task.version.batch_id,current_version=task.version.number).update(status=AwardBatch.Status.FAILED)
                 GenerationTask.objects.filter(pk=task.pk, lease_token=task.lease_token).update(
                     status=GenerationTask.Status.FAILED, error=str(exc)
                 )

@@ -141,7 +141,7 @@ export const createBatch = (data: object) =>
 export const batchDetail = (id: number) =>
   http.get<any, never>(`/api/v1/batches/${id}/detail/`);
 export const submitBatch = (id: number) =>
-  http.post<any, object>(`/api/v1/batches/${id}/submit/`, { data: {} });
+  http.post<any, object>(`/api/v1/batches/${id}/submit/`, { data: {}, timeout:120000 });
 export const batchProgress = (id: number) =>
   http.get<any, never>(`/api/v1/batches/${id}/progress/`);
 export const importAwards = (
@@ -192,9 +192,9 @@ export const publishTemplate = (id: number) =>
   http.request<Template>("patch", `/api/v1/templates/${id}/`, {
     data: { published: true }
   });
-export const saveTemplateVersion = (id: number, canvas: object) =>
+export const saveTemplateVersion = (id: number, canvas: object, expected_version?: number) =>
   http.post<any, object>(`/api/v1/templates/${id}/save_version/`, {
-    data: { canvas }
+    data: { canvas, expected_version }
   });
 export const listSeals = () => http.get<Seal[], never>("/api/v1/seals/");
 export const createSeal = (data: object) =>

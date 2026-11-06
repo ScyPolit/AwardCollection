@@ -11,7 +11,20 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
-class Department(TimeStampedModel):
+class ManagedModel(TimeStampedModel):
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        abstract = True
+
+
+class AccountProfile(TimeStampedModel):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='management_profile')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name='managed_accounts')
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+
+class Department(ManagedModel):
     name = models.CharField(max_length=120, unique=True)
     code = models.CharField(max_length=24, unique=True)
     members = models.ManyToManyField(settings.AUTH_USER_MODEL, through="DepartmentMembership")
@@ -40,7 +53,7 @@ class LoginProtection(models.Model):
     locked_until = models.DateTimeField(null=True, blank=True)
 
 
-class Competition(TimeStampedModel):
+class Competition(ManagedModel):
     name = models.CharField(max_length=240)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_competitions")
     collaborators = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="competitions")
@@ -49,7 +62,7 @@ class Competition(TimeStampedModel):
     active = models.BooleanField(default=True)
 
 
-class Template(TimeStampedModel):
+class Template(ManagedModel):
     name = models.CharField(max_length=160)
     department = models.ForeignKey(Department, on_delete=models.PROTECT)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
@@ -66,7 +79,7 @@ class TemplateVersion(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["template", "number"], name="uniq_template_version")]
 
 
-class Seal(TimeStampedModel):
+class Seal(ManagedModel):
     department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="seals")
     name = models.CharField(max_length=120)
     active = models.BooleanField(default=True)
@@ -82,7 +95,7 @@ class SealVersion(TimeStampedModel):
         constraints = [models.UniqueConstraint(fields=["seal", "number"], name="uniq_seal_version")]
 
 
-class CertificateFont(TimeStampedModel):
+class CertificateFont(ManagedModel):
     sha256 = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=160)
     active = models.BooleanField(default=True)
@@ -91,7 +104,7 @@ class CertificateFont(TimeStampedModel):
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
 
 
-class AwardBatch(TimeStampedModel):
+class AwardBatch(ManagedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "草稿"
         REVIEW = "review", "审批中"
@@ -116,6 +129,7 @@ class BatchVersion(TimeStampedModel):
     snapshot = models.JSONField(default=dict)
     submitted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.PROTECT, related_name="submitted_batch_versions")
     submitted_at = models.DateTimeField(null=True)
+    integrity_hmac = models.CharField(max_length=64,blank=True,db_default="")
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["batch", "number"], name="uniq_batch_version")]
@@ -173,9 +187,10 @@ class GenerationTask(TimeStampedModel):
     processed = models.PositiveIntegerField(default=0)
     total = models.PositiveIntegerField(default=0)
     error = models.TextField(blank=True)
+    started_at = models.DateTimeField(null=True, blank=True)
 
 
-class Certificate(TimeStampedModel):
+class Certificate(ManagedModel):
     class Status(models.TextChoices):
         ACTIVE = "active", "有效"
         VOID = "void", "已作废"
@@ -186,7 +201,9 @@ class Certificate(TimeStampedModel):
     pdf = models.FileField(upload_to="protected/certificates/%Y", blank=True)
     image = models.FileField(upload_to="protected/certificates/%Y", blank=True)
     pdf_sha256 = models.CharField(max_length=64, blank=True)
+    image_sha256 = models.CharField(max_length=64, blank=True, db_default="")
     published_at = models.DateTimeField(null=True)
+    notes = models.TextField(blank=True, db_default="")
 
 
 class RevocationRequest(TimeStampedModel):
@@ -230,6 +247,8 @@ class Notification(TimeStampedModel):
     title = models.CharField(max_length=160)
     body = models.TextField()
     read_at = models.DateTimeField(null=True)
+    target = models.CharField(max_length=240, blank=True, db_default='')
+    kind = models.CharField(max_length=24, default='info', db_default='info')
 
 
 class CertificateSequence(models.Model):

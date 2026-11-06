@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
+import { useLiveStore } from "@/store/modules/live";
+import { useBusinessAccess } from "@/utils/businessAccess";
+import { http } from "@/utils/http";
+const live = useLiveStore(),
+  { isAdmin } = useBusinessAccess();
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -43,6 +49,91 @@ const rows = ref<Batch[]>([]),
   drawer = ref(false),
   selected = ref<any>(null),
   uploading = ref(false);
+const job = computed(() =>
+  selected.value
+    ? live.jobs.find(j => j.batch_id === selected.value.batch.id)
+    : undefined
+);
+const rowDialog = ref(false),
+  rowSource = ref<number>();
+const rowForm = reactive({
+  members: "",
+  teachers: "",
+  award_name: "",
+  team_name: "",
+  work_name: "",
+  category: "",
+  note: ""
+});
+function editRow(row?: any) {
+  rowSource.value = row?.source_row;
+  Object.assign(rowForm, {
+    members: row?.members?.join("、") || "",
+    teachers: row?.teachers?.join("、") || "",
+    award_name: row?.award_name || "",
+    team_name: row?.team_name || "",
+    work_name: row?.work_name || "",
+    category: row?.category || "",
+    note: row?.note || ""
+  });
+  rowDialog.value = true;
+}
+async function saveRow() {
+  await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
+    data: {
+      operation: rowSource.value ? "update" : "create",
+      source_row: rowSource.value,
+      expected_version: selected.value.batch.current_version,
+      row: {
+        ...rowForm,
+        members: rowForm.members
+          .split(/[、，,\n]/)
+          .map(s => s.trim())
+          .filter(Boolean),
+        teachers: rowForm.teachers
+          .split(/[、，,\n]/)
+          .map(s => s.trim())
+          .filter(Boolean)
+      }
+    }
+  });
+  rowDialog.value = false;
+  await open(selected.value.batch);
+  await load();
+}
+async function deleteRow(row: any) {
+  const { ElMessageBox } = await import("element-plus");
+  await ElMessageBox.confirm("确认删除此获奖记录？", "删除名单行");
+  await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
+    data: {
+      operation: "delete",
+      source_row: row.source_row,
+      expected_version: selected.value.batch.current_version
+    }
+  });
+  await open(selected.value.batch);
+  await load();
+}
+watch(
+  () => live.revision,
+  async () => {
+    await load();
+    if (drawer.value && selected.value)
+      selected.value = await batchDetail(selected.value.batch.id);
+  }
+);
+watch(
+  () => [route.query.batch, route.query.notice],
+  async () => {
+    const id = route.query.batch;
+    if (id) {
+      await load();
+      const row = rows.value.find(r => r.id === Number(id));
+      if (row) await open(row);
+      else ElMessage.info("该批次已删除或当前账号无权查看");
+    }
+  }
+);
 const form = reactive({
   name: "",
   competition: undefined as number | undefined,
@@ -106,6 +197,7 @@ async function submit() {
   selected.value = await batchDetail(selected.value.batch.id);
   await load();
 }
+async function retryGeneration(){await http.post(`/api/v1/batches/${selected.value.batch.id}/retry_generation/`,{data:{}});ElMessage.success("已重新加入生成队列")}
 async function progress() {
   selected.value = await batchDetail(selected.value.batch.id);
   await load();
@@ -123,6 +215,10 @@ async function progress() {
 
 onMounted(async () => {
   await load();
+  if (route.query.batch) {
+    const row = rows.value.find(r => r.id === Number(route.query.batch));
+    if (row) await open(row);
+  }
   if (route.query.template) {
     form.template_version = Number(route.query.template);
     createDialog.value = true;
@@ -144,26 +240,23 @@ onMounted(async () => {
         >
       </div>
     </header>
-    <el-table :data="rows" border @row-dblclick="open"
+    <el-table :data="rows" border @row-dblclick="row => open(row as Batch)"
       ><el-table-column min-width="240" label="批次"
         ><template #default="s"
-          ><el-button link type="primary" @click="open(s.row)">{{
+          ><el-button link type="primary" @click="open(s.row as Batch)">{{
             s.row.name
           }}</el-button></template
         ></el-table-column
       ><el-table-column
         min-width="240"
         prop="competition_name"
-        label="竞赛"
-      /><el-table-column
+        label="竞赛" /><el-table-column
         prop="team_count"
         label="团队"
-        width="80"
-      /><el-table-column
+        width="80" /><el-table-column
         prop="current_version"
         label="版本"
-        width="80"
-      /><el-table-column label="审批" width="100"
+        width="80" /><el-table-column label="审批" width="100"
         ><template #default="s"
           >{{ s.row.approval_summary.approved }} /
           {{ s.row.approval_summary.total }}</template
@@ -171,14 +264,16 @@ onMounted(async () => {
       ><el-table-column
         prop="status"
         label="状态"
-        width="110"
-      /><el-table-column label="操作" width="90"
+        width="110" /><el-table-column label="操作" width="230"
         ><template #default="s"
-          ><el-button link type="primary" @click="open(s.row)"
+          ><el-button link type="primary" @click="open(s.row as Batch)"
             >查看</el-button
-          ></template
-        ></el-table-column
-      ></el-table
+          ><ManagementActions
+            :url="`/api/v1/batches/${s.row.id}/`"
+            :data="s.row"
+            :name="s.row.name"
+            :fields="[{ key: 'name', label: '批次名称', required: true }]"
+            @changed="load" /></template></el-table-column></el-table
     ><el-dialog v-model="createDialog" title="新建批次" width="600"
       ><el-form label-position="top"
         ><el-form-item label="批次名称"
@@ -261,8 +356,50 @@ onMounted(async () => {
             selected.configuration.output_formats.join(" + ").toUpperCase()
           }}</el-descriptions-item></el-descriptions
         >
-        <div class="actions">
+        <div v-if="job" class="generation-status">
+          <strong
+            >证书生成：{{
+              job.status === "done"
+                ? "已完成，可下载"
+                : job.status === "failed"
+                  ? "失败，请查看原因"
+                  : job.status === "queued"
+                    ? "排队中"
+                    : "正在生成"
+            }}</strong
+          ><el-progress
+            :percentage="job.percent"
+            :status="
+              job.status === 'done'
+                ? 'success'
+                : job.status === 'failed'
+                  ? 'exception'
+                  : undefined
+            "
+          /><span
+            >{{ job.processed }} / {{ job.total }} 份 ·
+            {{
+              job.status === "done"
+                ? "全部文件已发布"
+                : job.eta_seconds
+                  ? `预计还需 ${Math.ceil(job.eta_seconds / 60)} 分钟`
+                  : "剩余时间估算中"
+            }}（估算会随进度更新）</span
+          ><el-alert
+            v-if="job.error"
+            :title="job.error"
+            type="error"
+            :closable="false"
+          />
+        </div>
+        <div class="actions"><el-button v-if="job?.status==='failed'" type="warning" @click="retryGeneration">重试生成</el-button>
+          <el-button
+            v-if="['draft', 'returned'].includes(selected.batch.status)"
+            @click="editRow()"
+            >新增获奖记录</el-button
+          >
           <el-upload
+            :disabled="!['draft', 'returned'].includes(selected.batch.status)"
             :auto-upload="false"
             :show-file-list="false"
             accept=".xlsx"
@@ -298,20 +435,60 @@ onMounted(async () => {
           ><el-table-column
             prop="source_row"
             label="行"
-            width="60" /><el-table-column label="团队成员" min-width="180"
+            width="60"
+          /><el-table-column label="团队成员" min-width="180"
             ><template #default="s">{{
               s.row.members.join("、")
             }}</template></el-table-column
           ><el-table-column
             min-width="140"
             prop="award_name"
-            label="奖项" /><el-table-column
+            label="奖项"
+          /><el-table-column
             min-width="180"
             prop="team_name"
-            label="团队" /><el-table-column
+            label="团队"
+          /><el-table-column
             prop="work_name"
             label="作品"
-            min-width="200" /></el-table></template></el-drawer
+            min-width="200"
+          /><el-table-column
+            v-if="['draft', 'returned'].includes(selected.batch.status)"
+            label="操作"
+            width="150"
+            ><template #default="s"
+              ><el-button link type="primary" @click.stop="editRow(s.row)"
+                >修改</el-button
+              ><el-button link type="danger" @click.stop="deleteRow(s.row)"
+                >删除</el-button
+              ></template
+            ></el-table-column
+          ></el-table
+        ></template
+      ></el-drawer
+    ><el-dialog
+      v-model="rowDialog"
+      :title="rowSource ? '修改获奖记录' : '新增获奖记录'"
+      width="540px"
+      append-to-body
+      ><el-form label-position="top"
+        ><el-form-item
+          v-for="field in [
+            { key: 'members', label: '团队成员（用顿号分隔）' },
+            { key: 'award_name', label: '奖项' },
+            { key: 'team_name', label: '团队名称' },
+            { key: 'work_name', label: '作品名称' },
+            { key: 'category', label: '项目类别' },
+            { key: 'teachers', label: '指导教师（用顿号分隔）' },
+            { key: 'note', label: '备注' }
+          ]"
+          :key="field.key"
+          :label="field.label"
+          ><el-input v-model="rowForm[field.key]" /></el-form-item></el-form
+      ><template #footer
+        ><el-button @click="rowDialog = false">取消</el-button
+        ><el-button type="primary" @click="saveRow">保存</el-button></template
+      ></el-dialog
     ><RecordDetail
       v-model="awardDetail"
       title="记录与任务详情"
@@ -341,7 +518,14 @@ p {
 .full {
   width: 100%;
 }
+.generation-status {
+  margin-top: 18px;
+  padding: 16px;
+  background: var(--el-fill-color-light);
+  border-radius: 6px;
+}
 .actions {
+  flex-wrap: wrap;
   display: flex;
   gap: 10px;
   margin: 18px 0;

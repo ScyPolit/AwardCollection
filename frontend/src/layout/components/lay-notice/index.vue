@@ -1,114 +1,149 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
-import { http } from "@/utils/http";
-import NoticeList from "./components/NoticeList.vue";
+import { onMounted, onBeforeUnmount } from "vue";
+import { useRouter } from "vue-router";
+import { openNotification, notificationTarget } from "@/utils/notifications";
+import { useLiveStore } from "@/store/modules/live";
 import BellIcon from "~icons/ep/bell";
-
-const noticesNum = ref(0);
-const notices = ref([
-  { key: "1", name: "通知", list: [], emptyText: "暂无通知" },
-  { key: "2", name: "消息", list: [], emptyText: "暂无消息" },
-  { key: "3", name: "待办", list: [], emptyText: "暂无待办" }
-]);
-const activeKey = ref("1");
-
-onMounted(async () => {
-  try {
-    const data = await http.get<any[], never>("/api/v1/notifications/");
-    notices.value[0].list = data.map(item => ({
-      avatar: "",
-      title: item.title,
-      description: item.body,
-      datetime: new Date(item.created_at).toLocaleString("zh-CN"),
-      type: "1"
-    }));
-    noticesNum.value = notices.value[0].list.length;
-  } catch {
-    noticesNum.value = 0;
-  }
+const live = useLiveStore(),
+  router = useRouter();
+function open(notice: any) {
+  openNotification(router, notice);
+}
+function popup(event: Event) {
+  open((event as CustomEvent).detail);
+}
+onMounted(() => {
+  live.start();
+  window.addEventListener("award-notification", popup);
 });
-
-const getLabel = computed(
-  () => item =>
-    item.name + (item.list.length > 0 ? `(${item.list.length})` : "")
-);
+onBeforeUnmount(() => {
+  live.stop();
+  window.removeEventListener("award-notification", popup);
+});
 </script>
-
 <template>
-  <el-dropdown trigger="click" placement="bottom-end">
-    <span
-      :class="[
-        'dropdown-badge',
-        'navbar-bg-hover',
-        'select-none',
-        Number(noticesNum) !== 0 && 'mr-[10px]'
-      ]"
-    >
-      <el-badge :value="Number(noticesNum) === 0 ? '' : noticesNum" :max="99">
-        <span class="header-notice-icon">
-          <IconifyIconOffline :icon="BellIcon" />
-        </span>
-      </el-badge>
-    </span>
-    <template #dropdown>
-      <el-dropdown-menu>
-        <el-tabs
-          v-model="activeKey"
-          :stretch="true"
-          class="dropdown-tabs"
-          :style="{ width: notices.length === 0 ? '200px' : '330px' }"
+  <el-popover trigger="click" placement="bottom-end" :width="370">
+    <template #reference
+      ><button class="notice-trigger" aria-label="通知中心">
+        <el-badge :value="live.unread" :hidden="!live.unread" :max="99"
+          ><IconifyIconOffline :icon="BellIcon"
+        /></el-badge></button
+    ></template>
+    <div class="notice-heading">
+      <strong>通知中心</strong
+      ><el-tag size="small" :type="live.connected ? 'success' : 'warning'">{{
+        live.connected ? "实时连接" : "正在重连"
+      }}</el-tag
+      ><el-button link :loading="live.readingAll" @click="live.readAll"
+        >全部已读</el-button
+      >
+    </div>
+    <el-scrollbar max-height="430px"
+      ><el-empty
+        v-if="!live.notifications.length"
+        description="暂无通知"
+        :image-size="60"
+      /><a
+        v-for="n in live.notifications"
+        :key="n.id"
+        class="notice-item"
+        :href="
+          notificationTarget(n)
+            ? router.resolve(notificationTarget(n)).href
+            : '#'
+        "
+        @click.prevent="open(n)"
+      >
+        <span class="notice-title"><i v-if="!n.read_at" />{{ n.title }}</span
+        ><span>{{ n.body }}</span
+        ><small
+          >{{ new Date(n.created_at).toLocaleString("zh-CN") }} ·
+          {{ n.read_at ? "已读" : "未读" }}</small
+        ><el-button
+          v-if="!n.read_at"
+          link
+          size="small"
+          @click.stop.prevent="live.read(n.id)"
+          >标为已读</el-button
         >
-          <el-empty
-            v-if="notices.length === 0"
-            description="暂无消息"
-            :image-size="60"
-          />
-          <span v-else>
-            <template v-for="item in notices" :key="item.key">
-              <el-tab-pane :label="getLabel(item)" :name="`${item.key}`">
-                <el-scrollbar max-height="330px">
-                  <div class="noticeList-container">
-                    <NoticeList :list="item.list" :emptyText="item.emptyText" />
-                  </div>
-                </el-scrollbar>
-              </el-tab-pane>
-            </template>
-          </span>
-        </el-tabs>
-      </el-dropdown-menu>
-    </template>
-  </el-dropdown>
+      </a></el-scrollbar
+    >
+    <div
+      v-if="live.jobs.some(j => ['queued', 'running'].includes(j.status))"
+      class="live-jobs"
+    >
+      <div
+        v-for="job in live.jobs.filter(j =>
+          ['queued', 'running'].includes(j.status)
+        )"
+        :key="job.id"
+        @click="router.push('/business/batches?batch=' + job.batch_id)"
+      >
+        <span>{{ job.batch_name }} · {{ job.processed }}/{{ job.total }}</span
+        ><el-progress :percentage="job.percent" :stroke-width="6" />{{
+          job.eta_seconds
+            ? `预计剩余 ${Math.ceil(job.eta_seconds / 60)} 分钟`
+            : "正在估算剩余时间"
+        }}
+      </div>
+    </div>
+  </el-popover>
 </template>
-
-<style lang="scss" scoped>
-.dropdown-badge {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+<style scoped>
+.notice-trigger {
   width: 40px;
   height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--el-text-color-primary);
   cursor: pointer;
-
-  .header-notice-icon {
-    font-size: 18px;
-  }
+  font-size: 19px;
 }
-
-.dropdown-tabs {
-  .noticeList-container {
-    padding: 15px 24px 0;
-  }
-
-  :deep(.el-tabs__header) {
-    margin: 0;
-  }
-
-  :deep(.el-tabs__nav-wrap)::after {
-    height: 1px;
-  }
-
-  :deep(.el-tabs__nav-wrap) {
-    padding: 0 36px;
-  }
+.notice-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.notice-heading .el-button {
+  margin-left: auto;
+}
+.notice-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: transparent;
+  color: var(--el-text-color-primary);
+  padding: 12px 4px;
+  cursor: pointer;
+}
+.notice-item:hover {
+  background: var(--el-fill-color-light);
+}
+.notice-title {
+  font-weight: 600;
+}
+.notice-title i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--el-color-danger);
+  border-radius: 50%;
+  margin-right: 7px;
+}
+.notice-item small {
+  color: var(--el-text-color-secondary);
+}
+.live-jobs {
+  padding-top: 12px;
+  border-top: 1px solid var(--el-border-color);
+}
+.live-jobs > div {
+  cursor: pointer;
+  margin-top: 8px;
 }
 </style>

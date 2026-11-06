@@ -1,17 +1,12 @@
 <script setup lang="ts">
+import DetailValue from "./DetailValue.vue";
 defineProps<{
   modelValue: boolean;
   title: string;
   data?: Record<string, unknown> | null;
+  readonlyReason?: string;
 }>();
 defineEmits<{ "update:modelValue": [value: boolean] }>();
-function display(value: unknown) {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "是" : "否";
-  return typeof value === "object"
-    ? JSON.stringify(value, null, 2)
-    : String(value);
-}
 </script>
 <template>
   <el-drawer
@@ -26,10 +21,20 @@ function display(value: unknown) {
         :key="label"
         :label="String(label)"
       >
-        <pre class="value">{{ display(value) }}</pre>
+        <div class="value"><DetailValue :value="value" /></div>
       </el-descriptions-item>
     </el-descriptions>
+    <el-alert
+      v-if="readonlyReason"
+      :title="readonlyReason"
+      :closable="false"
+      type="info"
+      class="extra"
+    />
     <div class="extra"><slot /></div>
+    <template v-if="$slots.actions" #footer
+      ><div class="detail-actions"><slot name="actions" /></div
+    ></template>
   </el-drawer>
 </template>
 <style scoped>
@@ -43,6 +48,16 @@ function display(value: unknown) {
 }
 .extra {
   margin-top: 20px;
+}
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.detail-actions :deep(.el-button) {
+  margin: 0;
 }
 .extra :deep(.el-space) {
   flex-wrap: wrap;

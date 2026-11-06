@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import type { Template } from "@/api/business";
 defineProps<{ product: Template; canCopy: boolean }>();
+function layerCount(product:Template){const canvas:any=product.latest_version?.canvas;return canvas?.engine==='pptist'?canvas.presentation?.slides?.[canvas.slideIndex||0]?.elements?.length||0:canvas?.layers?.length||0}
 defineEmits<{
   preview: [product: Template];
   select: [product: Template];
@@ -51,7 +52,7 @@ defineEmits<{
       <p class="list-card-item_detail--desc text-text_color_regular">
         {{ product.latest_version?.canvas?.page?.width || 842 }} ×
         {{ product.latest_version?.canvas?.page?.height || 595 }} ·
-        {{ product.latest_version?.canvas?.layers?.length || "默认" }} 个图层
+        {{ layerCount(product) }} 个元素
       </p>
       <div class="card-actions">
         <el-button size="small" @click="$emit('preview', product)"

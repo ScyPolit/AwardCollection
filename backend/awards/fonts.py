@@ -36,7 +36,7 @@ def font_catalog(include_inactive=False):
     from .models import CertificateFont
     result = [{**item, 'builtin': True, 'active': True, 'url': f"/api/v1/fonts/{item['id']}/file/?v={item['sha256']}"} for item in json.loads((ASSETS / 'manifest.json').read_text(encoding='utf8'))]
     result += [{'id': item.pk, 'name': item.name, 'sha256': item.pk, 'builtin': False,
-                'active': item.active, 'license': item.license_note, 'url': f'/api/v1/fonts/{item.pk}/file/'} for item in CertificateFont.objects.filter(**({} if include_inactive else {'active': True}))]
+                'active': item.active, 'license': item.license_note, 'url': f'/api/v1/fonts/{item.pk}/file/'} for item in CertificateFont.objects.filter(deleted_at__isnull=True, **({} if include_inactive else {'active': True}))]
     return result
 
 
@@ -49,12 +49,20 @@ def font_file(font_id):
     for item in builtins:
         if item['id'] == font_id:
             persisted = Path(settings.MEDIA_ROOT) / 'protected/font-library/builtin' / (item['sha256'] + '.ttf')
-            return persisted if persisted.exists() else ASSETS / item['file']
+            path=persisted if persisted.exists() else ASSETS / item['file']
+            return verified_font(str(path),item['sha256'],path.stat().st_mtime_ns,path.stat().st_size)
     from .models import CertificateFont
     item = CertificateFont.objects.filter(pk=font_id).first()
     if not item:
         raise ValueError('所选字体不存在，请刷新字体库')
-    return Path(item.file.path)
+    path=Path(item.file.path)
+    return verified_font(str(path),item.pk,path.stat().st_mtime_ns,path.stat().st_size)
+
+
+@lru_cache(maxsize=128)
+def verified_font(path,digest,modified,size):
+    if hashlib.sha256(Path(path).read_bytes()).hexdigest()!=digest:raise ValueError("字体文件完整性校验失败")
+    return Path(path)
 
 
 @lru_cache(maxsize=128)
@@ -133,6 +141,9 @@ def layout_text(text, layer):
 def validate_canvas(canvas):
     if not isinstance(canvas, dict):
         raise ValueError('模板画布必须为对象')
+    if canvas.get('engine')=='pptist':
+        from .presentation import validate_presentation
+        return validate_presentation(canvas)
     page = canvas.get('page') or {'width': 842, 'height': 595}
     def number(value, low, high):
         if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not low <= value <= high:

@@ -2,6 +2,8 @@ from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
 from . import views
+from .management_api import account_detail
+from .realtime import events
 
 
 router = DefaultRouter()
@@ -17,6 +19,7 @@ router.register("revocations", views.RevocationViewSet, basename="revocation")
 router.register("notifications", views.NotificationViewSet, basename="notification")
 
 urlpatterns = [
+    path('events/', events),
     path("health/", views.health),
     path("auth/csrf/", views.csrf),
     path("auth/login/", views.login_view),
@@ -30,6 +33,7 @@ urlpatterns = [
     path("logs/<int:event_id>/", views.audit_logs),
     path("settings/public-verification/", views.public_verification_setting),
     path("management/accounts/", views.account_management),
+    path("management/accounts/<int:user_id>/", account_detail),
     path("management/memberships/", views.membership_management),
     path("routes/", views.public_routes),
     path("excel/template/", views.excel_template_view),

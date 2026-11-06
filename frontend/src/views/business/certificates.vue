@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
+import { useBusinessAccess } from "@/utils/businessAccess";
+import { useRouter } from "vue-router";
+const router = useRouter();
+import { http } from "@/utils/http";
+const { isAdmin } = useBusinessAccess();
 import { onMounted, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -27,6 +33,7 @@ async function show(row: Certificate) {
     项目类别: c.category,
     指导教师: c.teachers,
     备注: c.note,
+    管理备注: c.notes,
     盖章部门: c.departments,
     模板: c.template,
     模板版本: c.template_version,
@@ -54,6 +61,18 @@ async function revoke(row: Certificate) {
   ElMessage.success("作废申请已提交，审批期间证书继续有效");
   await load();
 }
+async function correct(row: Certificate) {
+  await ElMessageBox.confirm(
+    "将以此证书数据创建新的待审批批次；原证书保持原状。",
+    "更正重发"
+  );
+  const data = await http.post<any, object>(
+    `/api/v1/certificates/${row.id}/correction/`,
+    { data: {} }
+  );
+  ElMessage.success("更正批次已创建，请修改后提交审批");
+  router.push({ path: "/business/batches", query: { batch: data.batch } });
+}
 function searchNow() {
   page.value = 1;
   load();
@@ -76,10 +95,13 @@ onMounted(load);
         /><el-button @click="searchNow">查询</el-button>
       </div>
     </header>
-    <el-table :data="rows" border @row-dblclick="show"
+    <el-table
+      :data="rows"
+      border
+      @row-dblclick="row => show(row as Certificate)"
       ><el-table-column label="证书编号" min-width="180"
         ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row)">{{
+          ><el-button link type="primary" @click="show(s.row as Certificate)">{{
             s.row.number
           }}</el-button></template
         ></el-table-column
@@ -99,9 +121,28 @@ onMounted(load);
         prop="status"
         label="状态"
         width="90"
-      /><el-table-column label="操作" width="260"
+      /><el-table-column label="操作" width="420"
         ><template #default="s"
-          ><el-button link @click="show(s.row)">查看</el-button
+          ><el-button link @click="show(s.row as Certificate)">查看</el-button
+          ><ManagementActions
+            :url="`/api/v1/certificates/${s.row.id}/`"
+            :data="s.row"
+            :name="s.row.number"
+            :can-edit="isAdmin"
+            :can-delete="isAdmin"
+            :fields="[
+              {
+                key: 'notes',
+                label: '档案管理备注（不改变证书内容）',
+                type: 'textarea'
+              }
+            ]"
+            @changed="load"
+          /><el-button
+            v-if="isAdmin"
+            link
+            @click="correct(s.row as Certificate)"
+            >更正重发</el-button
           ><el-button
             link
             tag="a"
@@ -116,7 +157,7 @@ onMounted(load);
             link
             type="danger"
             :disabled="s.row.status !== 'active'"
-            @click="revoke(s.row)"
+            @click="revoke(s.row as Certificate)"
             >申请作废</el-button
           ></template
         ></el-table-column
@@ -130,7 +171,11 @@ onMounted(load);
       layout="total, sizes, prev, pager, next"
       @current-change="load"
       @size-change="searchNow"
-    /><RecordDetail v-model="drawer" title="证书档案详情" :data="details"
+    /><RecordDetail
+      v-model="drawer"
+      title="证书档案详情"
+      :data="details"
+      readonly-reason="签名证书原件与签发快照只读；内容更正请新建更正批次，完成会签后重发。"
       ><template v-if="selected"
         ><el-image
           v-if="selected.image_url"
@@ -141,6 +186,25 @@ onMounted(load);
           :preview-teleported="true"
         /><el-button tag="a" target="_blank" :href="selected.pdf_url"
           >预览签名 PDF</el-button
+        ></template
+      ><template #actions
+        ><ManagementActions
+          v-if="selected"
+          :url="`/api/v1/certificates/${selected.id}/`"
+          :data="selected"
+          :name="selected.number"
+          :can-edit="isAdmin"
+          :can-delete="isAdmin"
+          :fields="[{ key: 'notes', label: '档案管理备注', type: 'textarea' }]"
+          @changed="
+            drawer = false;
+            load();
+          "
+        /><el-button
+          v-if="isAdmin && selected"
+          type="primary"
+          @click="correct(selected)"
+          >更正重发</el-button
         ></template
       ></RecordDetail
     >

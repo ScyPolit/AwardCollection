@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ManagementActions from "@/components/ManagementActions.vue";
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -14,10 +15,12 @@ import {
 } from "@/api/business";
 
 const { isSuper } = useBusinessAccess();
+const competitionRow = ref<Competition>();
 const detail = ref(false),
   selected = ref<Record<string, unknown>>({}),
   changing = ref<number>();
 function show(row: Competition) {
+  competitionRow.value = row;
   selected.value = {
     竞赛名称: row.name,
     状态: row.active ? "启用" : "废止",
@@ -94,10 +97,13 @@ onMounted(load);
       </div>
       <el-button type="primary" @click="openCreate">新建竞赛</el-button>
     </header>
-    <el-table :data="rows" border @row-dblclick="show"
+    <el-table
+      :data="rows"
+      border
+      @row-dblclick="row => show(row as Competition)"
       ><el-table-column label="竞赛名称" min-width="220"
         ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row)">{{
+          ><el-button link type="primary" @click="show(s.row as Competition)">{{
             s.row.name
           }}</el-button></template
         ></el-table-column
@@ -115,15 +121,34 @@ onMounted(load);
             s.row.active ? "启用" : "废止"
           }}</el-tag></template
         ></el-table-column
-      ><el-table-column label="操作" width="170"
+      ><el-table-column label="操作" width="290"
         ><template #default="s"
-          ><el-button link @click="show(s.row)">查看</el-button
+          ><el-button link @click="show(s.row as Competition)">查看</el-button
+          ><ManagementActions
+            :url="`/api/v1/competitions/${s.row.id}/`"
+            :data="s.row"
+            :name="s.row.name"
+            :fields="[
+              { key: 'name', label: '竞赛名称', required: true },
+              { key: 'award_presets', label: '常用奖项', type: 'list' },
+              {
+                key: 'collaborators',
+                label: '协作负责人',
+                type: 'list',
+                options: users.map(u => ({
+                  label: u.label || u.username || '',
+                  value: u.id
+                }))
+              }
+            ]"
+            @changed="load"
+          />
           ><el-button
             v-if="isSuper"
             link
             :type="s.row.active ? 'danger' : 'success'"
             :loading="changing === s.row.id"
-            @click="toggle(s.row)"
+            @click="toggle(s.row as Competition)"
             >{{ s.row.active ? "废止" : "启用" }}</el-button
           ></template
         ></el-table-column
@@ -168,7 +193,37 @@ onMounted(load);
           >创建</el-button
         ></template
       ></el-dialog
-    ><RecordDetail v-model="detail" title="竞赛详情" :data="selected" />
+    ><RecordDetail v-model="detail" title="竞赛详情" :data="selected"
+      ><template #actions
+        ><ManagementActions
+          v-if="competitionRow"
+          :url="`/api/v1/competitions/${competitionRow.id}/`"
+          :data="competitionRow"
+          :name="competitionRow.name"
+          :fields="[
+            { key: 'name', label: '竞赛名称', required: true },
+            { key: 'award_presets', label: '常用奖项', type: 'list' },
+            {
+              key: 'collaborators',
+              label: '协作负责人',
+              type: 'list',
+              options: users.map(u => ({
+                label: u.label || u.username || '',
+                value: u.id
+              }))
+            }
+          ]"
+          @changed="
+            detail = false;
+            load();
+          "
+        /><el-button
+          v-if="isSuper && competitionRow"
+          @click="toggle(competitionRow)"
+          >{{ competitionRow.active ? "废止竞赛" : "启用竞赛" }}</el-button
+        ></template
+      ></RecordDetail
+    >
   </div>
 </template>
 <style scoped>

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from types import SimpleNamespace
 
-import fitz
+import pymupdf as fitz
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -209,6 +209,10 @@ def _draw_shape_layer(c, layer, page_height):
 
 
 def render_unsigned(award, number, output, template=None, seals=None):
+    if template and template.get('engine')=='pptist':
+        from .ppt_renderer import renderer, award_values
+        renderer().render(template,seals,award_values(award,number),output)
+        return
     font = font_path()
     pdfmetrics.registerFont(TTFont("CertificateCJK", str(font), subfontIndex=0))
     template = template or {}
@@ -253,7 +257,7 @@ def append_signature(source, destination, department, index):
     with open(source, "rb") as inf, open(destination, "wb") as outf:
         writer = IncrementalPdfFileWriter(inf)
         spec = SigFieldSpec(sig_field_name=field, on_page=0, box=(0, 0, 0, 0))
-        metadata = PdfSignatureMetadata(field_name=field, md_algorithm="sha256", reason="测试专用电子证书部门会签", location="校内测试环境")
+        metadata = PdfSignatureMetadata(field_name=field, md_algorithm="sha256", reason="校赛电子证书部门会签", location="校内竞赛管理平台")
         PdfSigner(metadata, signer=signer, new_field_spec=spec).sign_pdf(writer, output=outf)
 
 
