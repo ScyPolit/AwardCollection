@@ -1,0 +1,51 @@
+[
+  {
+    "id": "hei",
+    "label": "黑体 · 文泉驿正黑",
+    "family": "WenQuanYi Zen Hei",
+    "glyphs": 42285,
+    "sha256": "6ef8bb2033298e1d2e9798db19a84e0d7cae6fbe7faf529c6f3c47f5491e8be9"
+  },
+  {
+    "id": "song",
+    "label": "宋体 · 文鼎明体",
+    "family": "AR PL UMing CN",
+    "glyphs": 24232,
+    "sha256": "d676266572d11ec7b59ec2925c08f176ff198163cd32c3ec33f765b8e7302eb8"
+  },
+  {
+    "id": "kai",
+    "label": "楷体 · 文鼎楷体",
+    "family": "AR PL UKai CN",
+    "glyphs": 23873,
+    "sha256": "ee1cfe44ea6a9e086849bb53d2b80806670fe8ecd36aac8c8361cc121155aaae"
+  },
+  {
+    "id": "liberationmono-regular",
+    "label": "Liberation Mono",
+    "family": "Liberation Mono",
+    "glyphs": 2305,
+    "sha256": "6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c"
+  },
+  {
+    "id": "liberationsans-regular",
+    "label": "Liberation Sans",
+    "family": "Liberation Sans",
+    "glyphs": 2327,
+    "sha256": "8d91388f1d3604b3b8ae0e3ee2d140e50cd6122f9214514f4aca772540a4076d"
+  },
+  {
+    "id": "liberationserif-regular",
+    "label": "Liberation Serif",
+    "family": "Liberation Serif",
+    "glyphs": 2321,
+    "sha256": "29d12439831b7f59194efec85872f24f54eff05738933f9a860220d2abff88ba"
+  },
+  {
+    "id": "fangsong",
+    "label": "仿宋 · 朱雀仿宋（公文风格）",
+    "family": "Zhuque Fangsong (technical preview)",
+    "glyphs": 12882,
+    "sha256": "558c62730844fe54ba220146ed62f859d4e2880188d92d985f8921c6e3743bc4"
+  }
+]

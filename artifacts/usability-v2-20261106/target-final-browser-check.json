@@ -1,0 +1,19 @@
+{
+  "dark": true,
+  "documentWidth": 1600,
+  "favicon": "./school-emblem.svg",
+  "fontCount": 10,
+  "health": {
+    "database": "ok",
+    "status": "ok",
+    "version": "246348db2092261433cfe2f8bafc338f62f03a64"
+  },
+  "logo": "http://192.168.31.12:18080/school-emblem.svg",
+  "shapeCount": 4,
+  "styles": [
+    true,
+    true,
+    true
+  ],
+  "width": 1600
+}

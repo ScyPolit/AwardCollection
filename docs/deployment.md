@@ -23,7 +23,7 @@
 - 正式文件、字体和签名密钥卷：`awardcollection-v1-test_media_data`
 - 备份卷：`awardcollection-v1-test_backup_data`
 - 私密配置：项目目录 `.env`、`secrets/db_password.txt`、`runtime/test-password.txt`，权限限制为部署管理员可读，均不进入 Git。
-- 中文字体：项目媒体卷 `/srv/media/fonts/wqy-zenhei.ttc`，运行时不访问外部字体服务。
+- 字体：七款固定版本免费字体，摘要见 backend/font-assets/manifest.json；启动时缓存到媒体卷 protected/font-library/builtin。授权导入文件保存在 protected/font-library。历史 wqy-zenhei.ttc 保留供旧版兼容，运行时不访问字体服务。
 
 ## 运维命令
 
@@ -38,7 +38,7 @@ docker compose -p awardcollection-v1-test up -d --no-build
 
 构建前设置 `APP_BUILD_VERSION` 为待部署提交号。新版本健康接口返回该值，部署后应分别核对 `api` 健康响应和 `api/worker` 镜像标签。涉及后端与前端修改时使用 `docker compose build api worker web` 后再 `docker compose up -d --no-deps api worker web`；不要使用 `down -v`，不要删除或重建 `db_data`、`media_data`、`backup_data`。
 
-已完成无损更新，实际运行提交 `b136df831171bb6bbb64a948411c41c7b8ad3808`。健康接口与 api、worker、web 三个镜像标签一致，DEBUG=false。批次 2 及其 5000 对 PDF/PNG 已核实保持原状，不重排任务或重新分配编号。完整审计见 artifacts/release-20261106/target-final-audit.json。
+已完成无损更新，实际运行提交 `246348db2092261433cfe2f8bafc338f62f03a64`。健康接口与 api、worker、web 三个镜像标签一致，DEBUG=false。批次 2 及其 5000 对 PDF/PNG 已核实保持原状，不重排任务或重新分配编号。最新审计见 artifacts/usability-v2-20261106/target-final-audit.json；首轮审计保留在 artifacts/release-20261106。
 
 ## 备份与恢复
 
@@ -64,7 +64,7 @@ maintenance.sh 通过现有数据库容器的 pg_dump 备份，避免客户端�
 
 install-maintenance.sh 安装本项目独立的 systemd 服务和计时器，每日北京时间 02:30 后执行备份与七天前临时文件清理。失败写入 app/runtime/maintenance.log，并尝试向超管发送站内消息。正式证书和业务审计不在清理范围。
 
-## 本轮交付记录
+## 首轮交付记录（历史）
 
 最终部署前备份为 `/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx`，数据库、媒体及加密配置三个文件校验均通过。最后应用回滚检查点为 `/opt/awardcollection-v1-test/rollback/20261106-022631`。现有数据库容器保持运行，三个原命名卷保持不变。
 
@@ -80,3 +80,11 @@ cat /opt/awardcollection-v1-test/app/runtime/release-status.json
 ```
 
 首次安装应按 .env.example 和 Compose 准备配置；该升级脚本明确依赖当前环境与受保护历史批次 2，并非通用初始化器。文档与测试证据的后续提交不会改变已运行镜像版本。
+
+## 2026-11-06 交互与字体升级
+
+模板商城复用 Pure Admin 官方 CardList 页面，固定源码和 MIT 许可见 docs/upstream/pure-admin-card-list。字体库入口为 /#/business/fonts，所有登录用户可导入、预览授权静态 TTF/TTC；重命名、停用和启用仅超管可用。内置黑体、宋体、楷体、仿宋和三个英文家族使用免费替代字体；学校指定的商业字体需由学校提供已有授权文件。
+
+构建支持目标主机 /opt/awardcollection-v1-test/font-cache 的离线字体缓存。apply_release.py 逐文件验证 SHA256 后复制到源码构建目录；prepare_fonts.py 在全部文件匹配时无需外网下载。网络隔离部署应提前准备这七个 manifest 指定的文件，禁止用未经核验的同名字体替换。当前主机缓存已核验；不将缓存或私密配置推送到 Git。
+
+最新升级备份 `/opt/awardcollection-v1-test/backups/20261106-071107-wdlX9W`，回滚检查点 `/opt/awardcollection-v1-test/rollback/20261106-071101`。完整50项PostgreSQL回归通过（447.454秒），最终图形空值与全员导入专项3项通过（26.073秒）。新增文字样式、绘图和校徽均已部署，完整验收见 artifacts/usability-v2-20261106/REPORT.md。

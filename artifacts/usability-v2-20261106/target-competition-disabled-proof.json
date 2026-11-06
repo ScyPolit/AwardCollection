@@ -1,0 +1,8 @@
+{
+  "competitionActive": false,
+  "issuedPDFStatus": 200,
+  "newBatchError": [
+    "竞赛已废止，不能新建批次"
+  ],
+  "newBatchStatus": 400
+}

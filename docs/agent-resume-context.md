@@ -1,49 +1,39 @@
-# 首版开发接续上下文
+# 开发接续上下文
 
-更新：2026-11-06，Asia/Shanghai。本文件为当前状态，早先“凭据缺失、尚未部署”的结论已经失效。
+更新：2026-11-06，Asia/Shanghai。当前用户体验、全员字体导入、文字样式、绘图及校徽改进均已完成开发、测试和无损部署。应用 http://192.168.31.12:18080 ，仓库 https://github.com/ScyPolit/AwardCollection 。
 
-## 当前结果
+## 当前运行
 
-本轮无损部署、目标回归和 GitHub 代码推送已完成。应用为 http://192.168.31.12:18080 ，GitHub 为 https://github.com/ScyPolit/AwardCollection 。实际运行代码提交为 `b136df831171bb6bbb64a948411c41c7b8ad3808`；其后的提交只补交测试证据和文档。
+实际运行 `246348db2092261433cfe2f8bafc338f62f03a64`，api/worker/web标签和健康接口一致，DEBUG=false。完整50项回归运行于623c35f，447.454秒；最终仅收紧图形空缺字段和调整授权文字，在当前版本运行3项相关专项，26.073秒。前端类型检查、2.34MB构建通过。本地50项103.137秒通过，随后输入校验3项再次通过。
 
-- api、worker、web 的镜像版本标签与健康接口一致；DEBUG=false，三个应用容器配置每文件 10 MB、最多 5 文件的日志轮换。
-- 目标 PostgreSQL 32 项测试全部通过，288.775 秒。最初一次回归暴露测试中直接关闭流式响应导致事务连接被关闭；已改为通过 Django 测试客户端读取完整流后清理，最终完整重跑通过。
-- 前端 pnpm typecheck、生产构建、Compose 配置验证通过。Pure Admin 模板继续作为前端基础。
-- 浏览器真实完成复制模板、上传背景、文字拖放和字号修改、双部门测试公章上传、负责人创建竞赛与批次、Excel 导入、服务端预览、两位管理员会签及自动签发。
-- 最终批次 4：两队，done=2/2，一次尝试，无错误；编号 2026-AC-00005005、2026-AC-00005006。PDF/PNG 均存在，全部发布时刻一致。四个增量签名 intact/valid=true，信任为预期的自签状态。
-- 图片下载扩展名修正为 .png；批次详情提供下载整批 ZIP。ZIP 超过 8 MB 后使用临时磁盘，实测四个文件与单张下载逐字节一致。
-- PDF 数字签名使用不可见字段，画面保留模板配置的实际部门公章，不再叠加签名库默认说明框。
-- 负责人可读取本部门启用公章的版本元数据以选章，不能取得原图或修改公章。超管可新建部门，管理员可关联已有负责人且不重置密码，越权授权有测试。
+所有登录用户可导入和预览授权TTF/TTC，字体管理重命名/启停仍仅超管；负责人在只读模板也能导入，但不能编辑模板。字体SHA256固定内容，停用保留历史文件。字形和排版共用后端布局，渲染进程预解析字体路径，不查询字体ORM。
 
-## 禁止重置的历史数据
+文字bold/italic/underline可组合，图形支持rect/ellipse/line/freehand、颜色、尺寸、线宽、填充和层级。每条1000点、全模板5000点、80图层限制，缺失几何被拒绝。SVG和PDF几何一致；PNG从PDF渲染。
 
-批次 2 仍为 issued，5000/5000，5000 条证书、5000 PDF、5000 PNG，三份原样本摘要与记录一致。不得重跑、重排队或重新分配编号。所有更新均保留三个现有命名卷，不重建数据库容器。
+商城沿用Pure Admin官方CardList，源文件和MIT许可位于docs/upstream/pure-admin-card-list。全局校徽来自用户PNG左侧，school-emblem.svg嵌入原图并以68×68视口截取，加白底保证深色可见。
 
-批次 3 为本轮首次浏览器验收数据，编号 5003/5004，保留其原件；其默认签名说明框的问题已在后续代码修复。批次 4 是最终版输出证据。所有素材和数据均明确为 TEST ONLY。
+负责人为competition_owners全局组，无部门绑定；旧OWNER行只保留历史/回滚，不参与授权。超管继承管理员，普通审批保留本人回避。竞赛废止阻止新业务、保留原证书。信息详情和账号提交均已修复。
 
-## 部署与维护
+## 数据与禁止操作
 
-- 主机 Ubuntu 24.04，Docker 29.1.2；1Panel http://192.168.31.12:8888/manager 。
-- Compose 项目 awardcollection-v1-test，稳定目录 /opt/awardcollection-v1-test/app 。
-- 源码目录由 APP_SOURCE_DIR 指向独立 releases 目录，不能假定稳定目录内的旧源码就是当前镜像源码。
-- 命名卷 awardcollection-v1-test_db_data、awardcollection-v1-test_media_data、awardcollection-v1-test_backup_data。
-- 本轮最后部署前备份：`/opt/awardcollection-v1-test/backups/20261106-022637-DnI6Wx`，三个文件 SHA256 校验通过，有 COMPLETE。
-- 本轮最后回滚检查点：`/opt/awardcollection-v1-test/rollback/20261106-022631`。升级失败会回退应用镜像和配置，不自动覆盖数据库。
-- awardcollection-maintenance.timer 已 active/enabled，每日北京时间 02:30 后随机延迟最多五分钟执行本机备份及七天前临时文件清理。维护日志有 logrotate；清理实跑删除 0 个过期临时文件。
-- 私密配置与部署账号均不进 Git。已恢复面板 DPAPI 凭据，并在相同受限目录保存应用测试账号 DPAPI 凭据 application-test.credential.xml；不在日志回显口令。
+禁止重排队、重签发或重新编号批次2：issued、5000条、5000PDF和5000PNG，原样本摘要一致。批次3/4为上轮原件，批次5为本轮早期字体与权限验收（5007/5008），继续保留。
 
-## 证据与验证边界
+最终样式批次6：竞赛4、模板3的版本ID6（第3版）、两队、编号5009/5010，2/2会签、done=2/2、attempts=1、无错误。模板含三种文字样式、四类图形和负责人导入的Mono字体；两PDF四个签名intact/valid=true，self-signed trusted=false，ZIP一致。PDF包含5条以上矢量路径和加粗轮廓。
 
-最终审计：artifacts/release-20261106/target-final-audit.json 。目标测试全文：postgres-regression-final.txt 。签名检查：signature-verification.json 。最终输出：issued-5005/5006.pdf、.png 及 batch-4-certificates.zip 。浏览器截图与可复核脚本保存在同目录。
+TEST ONLY部门id4/id5、公章id5/id6、负责人test_v2_owner_20261106和管理员test_v2_adminb_20261106为隔离验收数据。负责人无部门成员行。测试竞赛和导入字体均恢复/保持启用。签发审批由超管普通批准A、部门B管理员批准B。
 
-浏览器自动化的原生下载事件在本机被取消，已通过相同已认证浏览器会话读取原下载接口，核实 HTTP 200、附件头、文件内容及 ZIP 一致性；不将该 CLI 事件当作人工浏览器下载行为已经测完。管理员免验证码和访客验证码查验已在浏览器实际成功。
+## 部署与工具
 
-A29 仍为部分验证：旧 5000 队生成确已完成，生成期间查询延迟没有历史测量数据；本轮没有重跑 5000 队。新 worker 的强制中止、租约抢占及大包下载内存峰值也没有在本轮额外做故障注入/压力实测。不能把普通小批次成功写成全部并发、恢复和安全场景均已验收。
+Ubuntu24.04、Docker29.1.2，Compose项目awardcollection-v1-test。稳定目录/opt/awardcollection-v1-test/app；APP_SOURCE_DIR指向releases，不能将稳定目录旧源码当当前镜像源码。原db/media/backup三个命名卷与数据库容器保留。
 
-当前仍为同机备份、自签身份和校园网测试环境；图片本身不携带 PDF 数字签名。独立防伪、学生凭编号下载及商业签章等继续按原后期任务管理。
+最终备份 `/opt/awardcollection-v1-test/backups/20261106-071107-wdlX9W`，回滚检查点 `/opt/awardcollection-v1-test/rollback/20261106-071101`。备份晚于样式批次完成，包含新字体、模板和证书。字体离线缓存/opt/awardcollection-v1-test/font-cache按manifest校验；启动时缓存到媒体卷protected/font-library/builtin。timer active/enabled，日志10m×5。
 
-## 工具接续
+凭据仅在用户本机受限目录的DPAPI XML：application-test.credential.xml、v2-target-qa.credential.xml等；密码不写仓库/报告。已有更新器apply-release-current.py只重建api/worker/web，不删除卷或重建数据库。
 
-agent-browser 使用独立命名会话，每次保持 NO_PROXY/no_proxy=192.168.31.12,localhost,127.0.0.1 。页面路由变化、API 异步加载和弹窗动画后，先等实际目标元素再操作；应用更新后刷新页面以加载新资源。Windows npm 包装器不传 stdin 时，使用原生 agent-browser-win32-x64.exe。
+agent-browser使用命名会话并保持NO_PROXY/no_proxy=192.168.31.12,localhost,127.0.0.1；原生exe支持stdin。页面加载、弹窗动画和绘图后的排版完成后再操作。部署后刷新加载新资源；异步wait函数可能只返回一次false，读取真实任务状态后再认定完成。
 
-后续只在有新需求、失败或证据缺口时扩大验证，不要为了恢复上下文而重复签发历史批次。
+## 证据和边界
+
+最新报告artifacts/usability-v2-20261106/REPORT.md，target-final-audit.json、postgres-regression-final.txt和postgres-focused-final.txt；新输出target-5009/5010.pdf/.png、target-batch-6.zip和target-styles-signatures-fonts-zip.json。旧首期证据保留在artifacts/release-20261106。
+
+没有重跑5000队或补测其历史生成期延迟；未对最新worker额外做中断、租约抢占和大包内存峰值注入。CLI原生下载事件受限，以同一认证会话核实正式HTTP接口。自签信任、同机备份、图片不含数字签名和后期独立防伪范围保持明确。

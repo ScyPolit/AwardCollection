@@ -1,0 +1,17 @@
+{
+  "source_revision": "1f685ecc07acc0c11701c5f5c1d302c7fa2784b0",
+  "business_and_dashboard": {
+    "dark": 26,
+    "light": 26
+  },
+  "public_and_login": 8,
+  "total": 60,
+  "widths": [
+    1440,
+    390
+  ],
+  "document_overflow": false,
+  "gallery_card_bottoms_and_actions_aligned": true,
+  "public_theme_method": "CSS class simulation; signed-in theme toggled in Pure Admin settings",
+  "unchanged_business_frontend_revision": "0dbe338957e105699bfc709b76778cf81590d976"
+}

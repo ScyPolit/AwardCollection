@@ -1,0 +1,26 @@
+[
+  {
+    "file": "local-v2-3.pdf",
+    "intact": true,
+    "valid": true,
+    "signatures": 2,
+    "fonts": [
+      "Helvetica",
+      "AAAAAA+ZhuqueFangsong-Regular",
+      "AAAAAA+WenQuanYiZenHei",
+      "AAAAAA+MicrosoftYaHei-0"
+    ]
+  },
+  {
+    "file": "local-v2-4.pdf",
+    "intact": true,
+    "valid": true,
+    "signatures": 2,
+    "fonts": [
+      "Helvetica",
+      "AAAAAA+ZhuqueFangsong-Regular",
+      "AAAAAA+WenQuanYiZenHei",
+      "AAAAAA+MicrosoftYaHei-0"
+    ]
+  }
+]

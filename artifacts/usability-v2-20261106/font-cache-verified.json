@@ -1,0 +1,22 @@
+[
+  {
+    "file": "kai.ttf",
+    "bytes": 16810492,
+    "sha256": "ee1cfe44ea6a9e086849bb53d2b80806670fe8ecd36aac8c8361cc121155aaae"
+  },
+  {
+    "file": "song.ttf",
+    "bytes": 20651572,
+    "sha256": "d676266572d11ec7b59ec2925c08f176ff198163cd32c3ec33f765b8e7302eb8"
+  },
+  {
+    "file": "hei.ttf",
+    "bytes": 11640932,
+    "sha256": "6ef8bb2033298e1d2e9798db19a84e0d7cae6fbe7faf529c6f3c47f5491e8be9"
+  },
+  {
+    "file": "fangsong.ttf",
+    "bytes": 8824084,
+    "sha256": "558c62730844fe54ba220146ed62f859d4e2880188d92d985f8921c6e3743bc4"
+  }
+]

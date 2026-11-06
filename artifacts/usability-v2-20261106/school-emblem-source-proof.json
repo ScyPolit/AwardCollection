@@ -1,0 +1,12 @@
+{
+  "source": "User attachment codex-clipboard-5596d059-c5fd-4b1a-9ddd-fa428151479a.png",
+  "sha256": "bf183faa5e6aa22364e3460e5801e8660c1ca8258126d08321474fb0ee24fbdf",
+  "method": "Original PNG embedded unchanged in a clipped SVG viewBox 0 0 68 68; white circular backing for dark mode",
+  "uses": [
+    "login",
+    "sidebar",
+    "horizontal navigation",
+    "favicon"
+  ],
+  "frontend_file": "frontend/public/school-emblem.svg"
+}

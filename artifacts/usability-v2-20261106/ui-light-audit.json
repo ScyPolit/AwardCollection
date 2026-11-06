@@ -1,0 +1,210 @@
+[
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/welcome",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/competitions",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/batches",
+    "width": 1440
+  },
+  {
+    "cards": [
+      {
+        "actions": 553,
+        "bottom": 641,
+        "height": 468,
+        "top": 173
+      },
+      {
+        "actions": 553,
+        "bottom": 641,
+        "height": 468,
+        "top": 173
+      }
+    ],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/template-library",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/templates?template=2",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/fonts",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/seals",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/approvals",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/certificates",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/administration",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/logs",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/emergency",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 1440,
+    "url": "#/business/verification",
+    "width": 1440
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/welcome",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/competitions",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/batches",
+    "width": 390
+  },
+  {
+    "cards": [
+      {
+        "actions": 629,
+        "bottom": 713,
+        "height": 460,
+        "top": 253
+      },
+      {
+        "actions": 1105,
+        "bottom": 1189,
+        "height": 460,
+        "top": 729
+      }
+    ],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/template-library",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/templates?template=2",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/fonts",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/seals",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/approvals",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/certificates",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/administration",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/logs",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/emergency",
+    "width": 390
+  },
+  {
+    "cards": [],
+    "dark": false,
+    "documentWidth": 390,
+    "url": "#/business/verification",
+    "width": 390
+  }
+]

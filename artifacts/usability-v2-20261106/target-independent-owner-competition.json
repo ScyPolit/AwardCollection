@@ -1,0 +1,36 @@
+{
+  "competition": {
+    "active": true,
+    "award_presets": [
+      "一等奖",
+      "创新特等奖"
+    ],
+    "collaborator_names": [
+      "TEST ONLY V2 独立负责人"
+    ],
+    "collaborators": [
+      9
+    ],
+    "created_at": "2026-11-06T13:48:19.264701+08:00",
+    "created_by_name": "test_v2_owner_20261106",
+    "department_names": [
+      "TEST ONLY V2 验收部门 A",
+      "TEST ONLY V2 验收部门 B"
+    ],
+    "departments": [
+      4,
+      5
+    ],
+    "id": 4,
+    "name": "TEST ONLY V2 交互验收竞赛"
+  },
+  "profile": {
+    "isSuperuser": false,
+    "managedDepartmentIds": [],
+    "name": "TEST ONLY V2 独立负责人",
+    "roles": [
+      "owner"
+    ],
+    "username": "test_v2_owner_20261106"
+  }
+}

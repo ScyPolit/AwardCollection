@@ -1,0 +1,29 @@
+{
+  "id": 6,
+  "number": 3,
+  "ownerFont": "6b3809450cf6253b36d157198dc15004a5fbade9abad5543c377feb7bb29139c",
+  "shapes": [
+    {
+      "kind": "rect",
+      "points": 0
+    },
+    {
+      "kind": "ellipse",
+      "points": 0
+    },
+    {
+      "kind": "line",
+      "points": 2
+    },
+    {
+      "kind": "freehand",
+      "points": 5
+    }
+  ],
+  "styles": {
+    "bold": true,
+    "italic": true,
+    "underline": true
+  },
+  "template": 3
+}
