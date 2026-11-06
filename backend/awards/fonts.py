@@ -5,6 +5,8 @@ import json
 import math
 import re
 from functools import lru_cache
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from django.conf import settings
@@ -14,6 +16,16 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 ASSETS = Path(__file__).resolve().parent.parent / 'font-assets'
 FIELDS = {'static', 'team_name', 'members', 'award_name', 'work_name', 'category', 'teachers', 'number'}
+_resolved_files = ContextVar('certificate_font_files', default={})
+
+
+@contextmanager
+def resolved_font_files(files):
+    token = _resolved_files.set(files or {})
+    try:
+        yield
+    finally:
+        _resolved_files.reset(token)
 
 
 def font_catalog():
@@ -27,6 +39,8 @@ def font_catalog():
 def font_file(font_id):
     if not re.fullmatch(r'[a-z0-9-]{1,80}', str(font_id)):
         raise ValueError('字体编号无效')
+    if font_id in _resolved_files.get():
+        return Path(_resolved_files.get()[font_id])
     builtins = json.loads((ASSETS / 'manifest.json').read_text(encoding='utf8'))
     for item in builtins:
         if item['id'] == font_id:
