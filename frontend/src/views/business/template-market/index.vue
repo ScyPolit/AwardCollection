@@ -35,6 +35,7 @@ const visible = computed(() =>
     pagination.current * pagination.pageSize
   )
 );
+const filterDepartments = computed(() => [...new Map(productList.value.map(item => [item.department, {id:item.department, name:item.department_name}])).values()]);
 const managed = computed(() =>
   departments.value.filter(
     d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
@@ -111,7 +112,7 @@ onMounted(load);
           placeholder="全部维护部门"
           style="width: 200px"
           ><el-option
-            v-for="d in departments"
+            v-for="d in filterDepartments"
             :key="d.id"
             :label="d.name"
             :value="d.id"
