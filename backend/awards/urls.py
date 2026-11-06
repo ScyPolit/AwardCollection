@@ -25,6 +25,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard),
     path("fonts/", views.fonts_view),
     path("fonts/<str:font_id>/file/", views.font_download),
+    path("fonts/<str:font_id>/", views.font_management),
     path("logs/", views.audit_logs),
     path("logs/<int:event_id>/", views.audit_logs),
     path("settings/public-verification/", views.public_verification_setting),

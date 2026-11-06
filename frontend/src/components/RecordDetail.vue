@@ -44,4 +44,14 @@ function display(value: unknown) {
 .extra {
   margin-top: 20px;
 }
+.extra :deep(.el-space) {
+  flex-wrap: wrap;
+}
+:deep(.el-descriptions__label) {
+  width: 120px;
+}
+:deep(.el-descriptions__content) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 </style>

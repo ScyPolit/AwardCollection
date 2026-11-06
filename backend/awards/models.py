@@ -85,6 +85,7 @@ class SealVersion(TimeStampedModel):
 class CertificateFont(TimeStampedModel):
     sha256 = models.CharField(max_length=64, primary_key=True)
     name = models.CharField(max_length=160)
+    active = models.BooleanField(default=True)
     file = models.FileField(upload_to="protected/font-library")
     license_note = models.CharField(max_length=240)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)

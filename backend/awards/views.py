@@ -859,7 +859,10 @@ def certificate_download(request, certificate_id, kind):
 @api_view(["GET", "POST"])
 def fonts_view(request):
     if request.method == 'GET':
-        return Response(font_catalog())
+        include_inactive = request.query_params.get('include_inactive') == '1'
+        if include_inactive and not request.user.is_superuser:
+            raise PermissionDenied('只有超级管理员可以管理完整字体库')
+        return Response(font_catalog(include_inactive=include_inactive))
     if not is_department_admin(request.user):
         raise PermissionDenied('只有管理员可以导入字体')
     if request.data.get('license_confirmed') not in (True, 'true', '1'):
@@ -881,7 +884,33 @@ def fonts_view(request):
         })
         if created:
             AuditEvent.objects.create(actor=request.user, action='font.imported', object_type='CertificateFont', object_id=digest, detail={'name': name, 'sha256': digest})
-    return Response(next(item for item in font_catalog() if item['id'] == font.pk), status=201 if created else 200)
+    return Response(next(item for item in font_catalog(include_inactive=True) if item['id'] == font.pk), status=201 if created else 200)
+
+
+@api_view(["PATCH"])
+@transaction.atomic
+def font_management(request, font_id):
+    if not request.user.is_superuser:
+        raise PermissionDenied('只有超级管理员可以管理字体')
+    font = CertificateFont.objects.select_for_update().filter(pk=font_id).first()
+    if not font:
+        raise ValidationError('内置字体随系统维护，不可修改；或字体不存在')
+    if set(request.data) - {'name', 'active'}:
+        raise ValidationError('只能修改显示名称和启用状态，字体文件不可替换')
+    before = {'name': font.name, 'active': font.active}
+    if 'name' in request.data:
+        name = str(request.data['name']).strip()
+        if not name or len(name) > 160:
+            raise ValidationError('字体名称需要 1～160 个字符')
+        font.name = name
+    if 'active' in request.data:
+        if not isinstance(request.data['active'], bool):
+            raise ValidationError('启用状态必须为布尔值')
+        font.active = request.data['active']
+    font.save(update_fields=['name', 'active', 'updated_at'])
+    AuditEvent.objects.create(actor=request.user, action='font.updated', object_type='CertificateFont', object_id=font.pk,
+                              detail={'before': before, 'after': {'name': font.name, 'active': font.active}})
+    return Response(next(item for item in font_catalog(include_inactive=True) if item['id'] == font.pk))
 
 
 @api_view(["GET"])

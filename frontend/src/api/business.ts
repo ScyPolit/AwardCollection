@@ -105,11 +105,16 @@ export type CertificateFont = {
   name: string;
   url: string;
   builtin: boolean;
+  active: boolean;
   license: string;
   sha256: string;
 };
 export const listFonts = () =>
   http.get<CertificateFont[], never>("/api/v1/fonts/");
+export const manageFonts = () =>
+  http.get<CertificateFont[], never>("/api/v1/fonts/?include_inactive=1");
+export const updateFont = (id: string, data: object) =>
+  http.request<CertificateFont>("patch", `/api/v1/fonts/${id}/`, { data });
 export const importFont = (data: FormData) =>
   http.post<CertificateFont, FormData>("/api/v1/fonts/", {
     data,

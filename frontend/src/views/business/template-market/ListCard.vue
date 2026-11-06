@@ -25,8 +25,13 @@ defineEmits<{
           ><template #error><span>点击查看模板详情</span></template></el-image
         >
       </button>
-      <el-row justify="space-between"
-        ><el-tag size="small">{{ product.department_name }}</el-tag>
+      <el-row justify="space-between" class="card-meta"
+        ><el-tag
+          size="small"
+          class="department-tag"
+          :title="product.department_name"
+          >{{ product.department_name }}</el-tag
+        >
         <div class="list-card-item_detail--operation">
           <el-tag :type="product.published ? 'success' : 'info'" size="small"
             >{{ product.published ? "共享模板" : "部门模板" }} · v{{
@@ -36,17 +41,20 @@ defineEmits<{
         </div></el-row
       >
       <p class="list-card-item_detail--name text-text_color_primary">
-        <el-button link @click="$emit('preview', product)">{{
-          product.name
-        }}</el-button>
+        <el-button
+          link
+          :title="product.name"
+          @click="$emit('preview', product)"
+          >{{ product.name }}</el-button
+        >
       </p>
       <p class="list-card-item_detail--desc text-text_color_regular">
         {{ product.latest_version?.canvas?.page?.width || 842 }} ×
         {{ product.latest_version?.canvas?.page?.height || 595 }} ·
         {{ product.latest_version?.canvas?.layers?.length || "默认" }} 个图层
       </p>
-      <el-space wrap
-        ><el-button size="small" @click="$emit('preview', product)"
+      <div class="card-actions">
+        <el-button size="small" @click="$emit('preview', product)"
           >预览</el-button
         ><el-button
           size="small"
@@ -58,8 +66,8 @@ defineEmits<{
           >复制后编辑</el-button
         ><el-button size="small" link @click="$emit('edit', product)"
           >进入编辑器</el-button
-        ></el-space
-      >
+        >
+      </div>
     </div>
   </div>
 </template>
@@ -67,7 +75,8 @@ defineEmits<{
 .list-card-item {
   display: flex;
   flex-direction: column;
-  margin-bottom: 12px;
+  width: 100%;
+  margin-bottom: 16px;
   overflow: hidden;
   cursor: pointer;
   border-radius: 3px;
@@ -87,7 +96,10 @@ defineEmits<{
     height: 100%;
   }
   &_detail {
+    display: flex;
+    flex-direction: column;
     flex: 1;
+    min-width: 0;
     min-height: 140px;
     padding: 24px 32px;
 
@@ -109,7 +121,7 @@ defineEmits<{
 
     &--operation {
       display: flex;
-      height: 100%;
+      flex-shrink: 0;
 
       &--tag {
         border: 0;
@@ -117,7 +129,9 @@ defineEmits<{
     }
 
     &--name {
-      margin: 24px 0 8px;
+      height: 48px;
+      margin: 16px 0 8px;
+      overflow: hidden;
       font-size: 16px;
       font-weight: 400;
     }
@@ -144,6 +158,50 @@ defineEmits<{
     .list-card-item_detail--operation--tag {
       color: #bababa;
     }
+  }
+}
+.card-meta {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+}
+.department-tag {
+  min-width: 0;
+}
+.department-tag :deep(.el-tag__content) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-card-item_detail--name :deep(.el-button) {
+  display: block;
+  width: 100%;
+  height: 48px;
+  white-space: normal;
+  text-align: left;
+}
+.list-card-item_detail--name :deep(.el-button > span) {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 24px;
+}
+.card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 28px;
+  gap: 8px;
+  margin-top: auto;
+}
+.card-actions :deep(.el-button) {
+  width: 100%;
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .list-card-item_detail {
+    padding: 20px;
   }
 }
 </style>

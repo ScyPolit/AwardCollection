@@ -77,6 +77,13 @@ const selectedTemplate = computed(() =>
 const selectedLayer = computed(() =>
   canvas.value.layers.find(l => l.id === selectedLayerId.value)
 );
+const selectedFontMissing = computed(() => {
+  const layer = selectedLayer.value;
+  return (
+    layer?.type === "text" &&
+    !fonts.value.some(font => font.id === layer.fontFamily)
+  );
+});
 const managedDepartments = computed(() =>
   departments.value.filter(
     d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
@@ -212,8 +219,9 @@ watch(selectedTemplate, item => {
 });
 async function ensureFont(id: string) {
   if (fontPromises.has(id)) return fontPromises.get(id)!;
-  const font = fonts.value.find(f => f.id === id);
-  if (!font) throw Error("所选字体已不存在，请刷新字体库");
+  const font = fonts.value.find(f => f.id === id) || {
+    url: `/api/v1/fonts/${encodeURIComponent(id)}/file/`
+  };
   const face = new FontFace(
     "AC_" + id.replaceAll("-", "_"),
     `url("${font.url}")`
@@ -238,9 +246,10 @@ function scheduleLayout() {
 }
 async function refreshLayout(id: number) {
   try {
-    const result = await layoutTemplate(
-        { ...JSON.parse(JSON.stringify(canvas.value)), background: "" }
-    );
+    const result = await layoutTemplate({
+      ...JSON.parse(JSON.stringify(canvas.value)),
+      background: ""
+    });
     const ids = new Set<string>();
     for (const layer of Object.values(result) as any[])
       for (const line of layer.lines)
@@ -637,6 +646,11 @@ onMounted(load);
           <el-form-item label="字体"
             ><el-select v-model="selectedLayer.fontFamily" filterable
               ><el-option
+                v-if="selectedFontMissing"
+                :label="'历史字体（已停用）'"
+                :value="selectedLayer.fontFamily"
+                disabled />
+              <el-option
                 v-for="font in fonts"
                 :key="font.id"
                 :label="font.name"
@@ -791,17 +805,17 @@ onMounted(load);
   display: grid;
   grid-template-columns: 220px minmax(260px, 1fr) 280px;
   min-height: calc(100vh - 125px);
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
 }
 .editor aside {
-  background: white;
+  background: var(--el-bg-color);
   padding: 18px;
   overflow: auto;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--el-border-color);
 }
 .editor aside:last-of-type {
   border-right: 0;
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--el-border-color);
 }
 h3 {
   margin: 0 0 14px;
@@ -833,7 +847,7 @@ h3 {
 .preview-status {
   width: 100%;
   font-size: 12px;
-  color: #73767a;
+  color: var(--el-text-color-secondary);
   margin-bottom: 16px;
 }
 .canvas-wrap {
@@ -883,7 +897,7 @@ h3 {
   pointer-events: none;
 }
 .layers {
-  border-top: 1px solid #ebeef5;
+  border-top: 1px solid var(--el-border-color-light);
   margin-top: 18px;
   padding-top: 8px;
 }
@@ -894,10 +908,10 @@ h3 {
   background: transparent;
   text-align: left;
   padding: 8px;
-  color: #606266;
+  color: var(--el-text-color-regular);
 }
 .layers button.active {
-  background: #ecf5ff;
+  background: var(--el-color-primary-light-9);
   color: #409eff;
 }
 .full {

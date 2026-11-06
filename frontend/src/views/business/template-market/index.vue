@@ -35,7 +35,14 @@ const visible = computed(() =>
     pagination.current * pagination.pageSize
   )
 );
-const filterDepartments = computed(() => [...new Map(productList.value.map(item => [item.department, {id:item.department, name:item.department_name}])).values()]);
+const filterDepartments = computed(() => [
+  ...new Map(
+    productList.value.map(item => [
+      item.department,
+      { id: item.department, name: item.department_name }
+    ])
+  ).values()
+]);
 const managed = computed(() =>
   departments.value.filter(
     d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
@@ -101,7 +108,7 @@ async function copy() {
 onMounted(load);
 </script>
 <template>
-  <div class="market-page">
+  <div class="market-page business-page">
     <div class="w-full flex justify-between mb-4 toolbar">
       <div>
         <el-button v-if="isAdmin" @click="router.push('/business/templates')"
@@ -129,15 +136,15 @@ onMounted(load);
       <el-empty
         v-if="!dataLoading && !filtered.length"
         description="未找到模板，可由管理员新建或复制共享模板"
-      /><el-row :gutter="16"
+      /><el-row :gutter="16" class="template-grid"
         ><el-col
           v-for="product in visible"
           :key="product.id"
           :xs="24"
           :sm="12"
-          :md="8"
-          :lg="6"
-          :xl="4"
+          :md="12"
+          :lg="8"
+          :xl="6"
           ><ListCard
             :product="product"
             :can-copy="isAdmin"
@@ -213,6 +220,17 @@ onMounted(load);
 .toolbar > div {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+.template-grid > .el-col {
+  display: flex;
+  min-width: 0;
+}
+.toolbar :deep(.el-input) {
+  max-width: 100%;
+}
+:deep(.el-pagination) {
+  float: none;
 }
 :deep(.el-pagination) {
   margin: 20px 0;
