@@ -105,7 +105,11 @@ def main():
     for name in ("maintenance.sh", "install-maintenance.sh"):
         shutil.copyfile(source / "deploy" / name, PROJECT / "deploy" / name)
     progress("backup", checkpoint=str(checkpoint))
-    run(["sh", str(PROJECT / "deploy/maintenance.sh"), "backup"], timeout=3600)
+    try:
+        run(["sh", str(PROJECT / "deploy/maintenance.sh"), "backup"], timeout=3600)
+    except Exception:
+        progress("failed", error="Backup failed before application containers were changed")
+        raise
     backup = (runtime / "last-backup-path").read_text().strip()
     (checkpoint / "backup-path").write_text(backup + "\n")
     started_services = False
