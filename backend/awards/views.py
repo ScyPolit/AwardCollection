@@ -332,6 +332,7 @@ class CompetitionViewSet(ModelViewSet):
     @transaction.atomic
     def perform_update(self, serializer):
         competition = self.get_object()
+        self.assert_current_department(competition)
         requested = serializer.validated_data
         if 'departments' in requested and not requested['departments']:
             raise ValidationError('至少选择一个拟盖章部门')
@@ -346,8 +347,14 @@ class CompetitionViewSet(ModelViewSet):
         AuditEvent.objects.create(actor=self.request.user, action="competition.updated", object_type="Competition", object_id=str(saved.pk), detail={"name": saved.name, "previous_active": previous, "active": saved.active})
 
     def perform_destroy(self, instance):
+        self.assert_current_department(instance)
         if instance.batches.filter(status=AwardBatch.Status.QUEUED).exists(): raise ValidationError("仍有生成中的批次")
         archive(self.request.user, instance)
+
+    def assert_current_department(self, competition):
+        user = self.request.user
+        if not user.is_superuser and is_department_admin(user) and not competition.departments.filter(pk__in=managed_departments(user)).exists():
+            raise PermissionDenied("历史会签仅授予历史记录查看权限，不能修改当前不属于本部门的竞赛")
 
 
 class BatchViewSet(ModelViewSet):
