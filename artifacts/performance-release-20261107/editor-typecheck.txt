@@ -1,0 +1,4 @@
+
+> pptist@2.0.0 type-check
+> vue-tsc --build --force
+

@@ -32,7 +32,7 @@ export interface SlidesState {
 
 export const useSlidesStore = defineStore('slides', {
   state: (): SlidesState => ({
-    title: '未命名演示文稿', // 幻灯片标题
+    title: '未命名证书模板', // 证书页面标题
     theme: {
       themeColors: ['#5b9bd5', '#ed7d31', '#a5a5a5', '#ffc000', '#4472c4', '#70ad47'],
       fontColor: '#333',
@@ -50,7 +50,7 @@ export const useSlidesStore = defineStore('slides', {
         style: 'solid',
       },
     }, // 主题样式
-    slides: [], // 幻灯片页面数据
+    slides: [], // 证书页面页面数据
     slideIndex: 0, // 当前页面索引
     viewportSize: 1000, // 可视区域宽度基数
     viewportRatio: 0.5625, // 可视区域比例，默认16:9
@@ -115,7 +115,7 @@ export const useSlidesStore = defineStore('slides', {
 
   actions: {
     setTitle(title: string) {
-      if (!title) this.title = '未命名演示文稿'
+      if (!title) this.title = '未命名证书模板'
       else this.title = title
     },
 

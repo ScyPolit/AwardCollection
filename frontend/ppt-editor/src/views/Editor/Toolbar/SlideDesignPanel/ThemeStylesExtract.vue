@@ -89,7 +89,7 @@ interface TabItem {
 
 const tabs: TabItem[] = [
   { key: 'single', label: '从当前页中提取' },
-  { key: 'all', label: '从全部幻灯片提取' },
+  { key: 'all', label: '从全部证书页面提取' },
 ]
 const activeTab = ref<'single' | 'all'>('single')
 

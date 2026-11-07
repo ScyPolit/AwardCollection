@@ -1,7 +1,6 @@
 <template>
   <template v-if="ready && slides.length">
-    <Screen v-if="screening" />
-    <Editor v-else-if="!readonly" />
+    <Editor v-if="!readonly" />
     <div v-else class="readonly">
       <ThumbnailSlide
         :slide="slides[slidesStore.slideIndex]"
@@ -14,18 +13,16 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import { storeToRefs } from "pinia";
-import { useScreenStore, useSnapshotStore, useSlidesStore } from "@/store";
+import { useSnapshotStore, useSlidesStore } from "@/store";
 import { legacyDocument, registerFonts } from "@/award";
 import useImport from "@/hooks/useImport";
 import { sanitizeSlides, normalizeMedia } from "@/awardSecurity";
 import Editor from "./views/Editor/index.vue";
-import Screen from "./views/Screen/index.vue";
 import ThumbnailSlide from "./views/components/ThumbnailSlide/index.vue";
 import FullscreenSpin from "@/components/FullscreenSpin.vue";
 const slidesStore = useSlidesStore(),
   snapshotStore = useSnapshotStore();
-const { slides } = storeToRefs(slidesStore),
-  { screening } = storeToRefs(useScreenStore());
+const { slides } = storeToRefs(slidesStore);
 const ready = ref(false),
   readonly = ref(true),
   width = ref(window.innerWidth);

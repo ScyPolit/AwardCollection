@@ -1,0 +1,17 @@
+{
+  "tested_revision": "c0f3a075699e8ad8729519ac1b907bcf9952813b",
+  "memory_limit_mib": 512,
+  "swap_limit_mib": 512,
+  "certificates": 300,
+  "entries": 600,
+  "bytes": 2001382026,
+  "seconds": 163.34,
+  "peak_rss_mib": 71.61,
+  "cgroup_memory_peak": 536879104,
+  "oom": 0,
+  "oom_kill": 0,
+  "database_read_only": true,
+  "media_read_only": true,
+  "crc_verified": true,
+  "note": "打包核心在后续提交中未改变；容器总内存含文件缓存，达到限额时正常回收，未发生 OOM。"
+}

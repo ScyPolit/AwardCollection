@@ -67,7 +67,7 @@ const inputRef = useTemplateRef<InstanceType<typeof Input>>('inputRef')
 
 const slideOptions = computed(() => {
   return slides.value.map((item, index) => ({
-    label: `幻灯片 ${index + 1}`,
+    label: `证书页面 ${index + 1}`,
     value: item.id,
     disabled: currentSlide.value.id === item.id,
   }))
@@ -83,7 +83,7 @@ const selectedSlide = computed(() => {
 
 const tabs = computed<TabItem[]>(() => [
   { key: 'web', label: '网页链接' },
-  { key: 'slide', label: '幻灯片页面', disabled: slides.value.length <= 1 },
+  { key: 'slide', label: '证书页面页面', disabled: slides.value.length <= 1 },
 ])
 
 const { setLink } = useLink()

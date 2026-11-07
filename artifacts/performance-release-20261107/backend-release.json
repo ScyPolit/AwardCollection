@@ -1,0 +1,14 @@
+{
+  "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e",
+  "stage": "done",
+  "started_at": "20261107-081738",
+  "checkpoint": "/opt/awardcollection-v1-test/rollback/20261107-081738",
+  "source": "/opt/awardcollection-v1-test/releases/6e722dc2f07b78fc8126a0686eb82ea8db677d3e-20261107-081738/AwardCollection-6e722dc2f07b78fc8126a0686eb82ea8db677d3e",
+  "backup": "/opt/awardcollection-v1-test/backups/20261107-081745-O7Ifmt",
+  "existing_content_preserved": true,
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+  }
+}

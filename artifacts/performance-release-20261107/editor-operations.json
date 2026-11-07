@@ -1,0 +1,16 @@
+{
+  "environment": "local QA template only",
+  "pages_before": 1,
+  "pages_after_blank_add": 2,
+  "pages_after_preset_add": 3,
+  "pages_after_replace": 3,
+  "replace_changed_red_to_blue": true,
+  "undo_restored_red": true,
+  "f5_did_not_start_presentation": true,
+  "right_github_buttons": 0,
+  "visible_presentation_words": false,
+  "certificate_presets": 4,
+  "dynamic_certificate_number": true,
+  "saved_template_version": 2,
+  "server_formal_template_modified": false
+}

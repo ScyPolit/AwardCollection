@@ -20,9 +20,7 @@ import { ToolbarStates } from '@/types/toolbar'
 
 import ElementStylePanel from './ElementStylePanel/index.vue'
 import ElementPositionPanel from './ElementPositionPanel.vue'
-import ElementAnimationPanel from './ElementAnimationPanel.vue'
 import SlideDesignPanel from './SlideDesignPanel/index.vue'
-import SlideAnimationPanel from './SlideAnimationPanel.vue'
 import MultiPositionPanel from './MultiPositionPanel.vue'
 import MultiStylePanel from './MultiStylePanel.vue'
 import Tabs from '@/components/Tabs.vue'
@@ -33,12 +31,9 @@ const { activeElementIdList, activeElementList, activeGroupElementId, toolbarSta
 const elementTabs = [
   { label: '样式', key: ToolbarStates.EL_STYLE },
   { label: '位置', key: ToolbarStates.EL_POSITION },
-  { label: '动画', key: ToolbarStates.EL_ANIMATION },
 ]
 const slideTabs = [
-  { label: '设计', key: ToolbarStates.SLIDE_DESIGN },
-  { label: '切换', key: ToolbarStates.SLIDE_ANIMATION },
-  { label: '动画', key: ToolbarStates.EL_ANIMATION },
+  { label: '页面设计', key: ToolbarStates.SLIDE_DESIGN },
 ]
 const multiSelectTabs = [
   { label: '样式（多选）', key: ToolbarStates.MULTI_STYLE },
@@ -69,12 +64,10 @@ watch(currentTabs, () => {
 })
 
 const currentPanelComponent = computed(() => {
-  const panelMap = {
+  const panelMap: Partial<Record<ToolbarStates, unknown>> = {
     [ToolbarStates.EL_STYLE]: ElementStylePanel,
     [ToolbarStates.EL_POSITION]: ElementPositionPanel,
-    [ToolbarStates.EL_ANIMATION]: ElementAnimationPanel,
     [ToolbarStates.SLIDE_DESIGN]: SlideDesignPanel,
-    [ToolbarStates.SLIDE_ANIMATION]: SlideAnimationPanel,
     [ToolbarStates.MULTI_STYLE]: MultiStylePanel,
     [ToolbarStates.MULTI_POSITION]: MultiPositionPanel,
   }

@@ -53,6 +53,8 @@ docker compose exec api python manage.py createsuperuser
 
 当前验收主机的专用发布器是 `deploy/apply_release.py`：将固定提交下载到独立 release 目录，验证缓存，备份后更新 `api worker web converter`；检查历史模板与文件摘要；失败时尝试回退应用镜像与配置，不自动覆盖数据库。其基础目录、项目名和地址针对已有实例，不是通用安装器。
 
+仅前端改动可使用 `deploy/apply_web_release.py`，参数同样要求固定提交、归档与 SHA256。发布器逐文件核对后端和转换服务源码完全相同，才允许只重建 web；API、worker、数据库和转换容器的身份及创建时间必须保持不变。`WEB_SOURCE_DIR` 和 `WEB_BUILD_VERSION` 仅覆盖 web，未设置时沿用应用配置。全量发布器会同步重置两个 web 配置。
+
 离线源码可通过 `--archive` 与 `--archive-sha256` 指定，要求归档位于该实例的 incoming 目录且摘要匹配。不能以未经核验的同名文件代替依赖。
 
 ## 备份与恢复

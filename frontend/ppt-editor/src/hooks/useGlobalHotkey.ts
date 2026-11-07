@@ -13,7 +13,6 @@ import useSelectElement from './useSelectElement'
 import useMoveElement from './useMoveElement'
 import useOrderElement from './useOrderElement'
 import useHistorySnapshot from './useHistorySnapshot'
-import useScreening from './useScreening'
 import useScaleCanvas from './useScaleCanvas'
 
 export default () => {
@@ -49,7 +48,6 @@ export default () => {
   const { moveElement } = useMoveElement()
   const { orderElement } = useOrderElement()
   const { redo, undo } = useHistorySnapshot()
-  const { enterScreening, enterScreeningFromStart } = useScreening()
   const { scaleCanvas, resetCanvas } = useScaleCanvas()
 
   const copy = () => {
@@ -141,15 +139,8 @@ export default () => {
       mainStore.setDialogForExport('pdf')
       return
     }
-    if (shiftKey && key === KEYS.F5) {
-      e.preventDefault()
-      enterScreening()
-      keyboardStore.setShiftKeyState(false)
-      return
-    }
     if (key === KEYS.F5) {
       e.preventDefault()
-      enterScreeningFromStart()
       return
     }
     if (ctrlKey && key === KEYS.F) {

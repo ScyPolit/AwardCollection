@@ -177,7 +177,7 @@ onMounted(() => {
       input: handleInput,
     },
   }, {
-    placeholder: '点击输入演讲者备注',
+    placeholder: '点击输入页面备注（不显示在证书上）',
   })
 
   menuInstance.value = tippy(editorViewRef.value!, {
