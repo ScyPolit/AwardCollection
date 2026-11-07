@@ -1,7 +1,8 @@
 """One source of truth for object-level visibility, including frozen approvals."""
 
-from django.db.models import Q, F
-from .models import Competition, AwardBatch, BatchVersion, Certificate, DepartmentMembership, Notification
+from django.db.models import Q, F, Value, CharField
+from django.db.models.functions import Cast, Concat
+from .models import Competition, AwardBatch, BatchVersion, Certificate, DepartmentMembership, Notification, RevocationRequest
 
 
 def managed_departments(user):
@@ -59,4 +60,10 @@ def visible_notifications(user):
     qs = Notification.objects.filter(user=user)
     if user.is_superuser:
         return qs
-    return qs.filter(Q(batch_id__in=accessible_batches(user)) | (Q(batch__isnull=True) & ~Q(target__contains="batch=")))
+    # Older revocation messages predate the batch FK. Resolve their target in SQL,
+    # so removing a department role also removes obsolete certificate notices.
+    revocation_targets = RevocationRequest.objects.filter(certificate__in=visible_certificates(user)).annotate(
+        path=Concat(Value("/business/approvals?revocation="), Cast("pk", CharField()))
+    ).values("path")
+    unscoped = Q(batch__isnull=True) & ~Q(target__contains="batch=") & ~Q(target__contains="revocation=") & ~Q(title__in=["超管应急签发", "超管应急作废"])
+    return qs.filter(Q(batch_id__in=accessible_batches(user)) | Q(batch__isnull=True, target__in=revocation_targets) | unscoped)
