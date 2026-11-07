@@ -72,6 +72,14 @@ class PerformancePermissionTests(TestCase):
         self.assertEqual(self.client.get('/api/v1/notifications/').data, [])
         self.assertEqual(snapshot_for(self.admin_a.pk)['jobs'], [])
 
+    def test_historical_approval_does_not_grant_current_competition_write_permission(self):
+        competition=self.batch.competition
+        competition.departments.set([self.departments[1]])
+        self.client.force_authenticate(self.admin_a)
+        self.assertEqual(self.client.get(f'/api/v1/competitions/{competition.pk}/').status_code,200)
+        self.assertEqual(self.client.patch(f'/api/v1/competitions/{competition.pk}/',{'name':'越权'},format='json').status_code,403)
+        self.assertEqual(self.client.delete(f'/api/v1/competitions/{competition.pk}/').status_code,403)
+
     def test_archive_is_queued_deduplicated_persisted_and_authorized(self):
         certificate = self.certificate()
         data={'kind':'batch_zip','batch':self.batch.pk}
