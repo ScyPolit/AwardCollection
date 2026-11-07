@@ -1,0 +1,13 @@
+{
+  "baseline_accounts_preserved": true,
+  "batch_status": "issued",
+  "certificates": 300,
+  "published": 300,
+  "template_versions": 7,
+  "prepared": {
+    "id": "b4bc1ce4-25a9-42d2-ad05-6fb4e3b6b885",
+    "status": "ready",
+    "bytes": 2001382026,
+    "sha256": "39e1a27993c6c0382889df5f34f79473e7dd8064ee94a9072ba273af981de68b"
+  }
+}

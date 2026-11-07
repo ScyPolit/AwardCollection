@@ -1,0 +1,56 @@
+{
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+  },
+  "containers": {
+    "web": {
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "created": "2026-11-07T08:43:55.404385134Z",
+      "revision": "49418cf5fce37605494f822d9ea9187f6332b858"
+    },
+    "api": {
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "created": "2026-11-07T08:22:15.721013434Z",
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    },
+    "worker": {
+      "running": true,
+      "oom_killed": false,
+      "health": "not-configured",
+      "created": "2026-11-07T08:22:51.011798155Z",
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    },
+    "db": {
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "created": "2026-11-05T19:20:01.632110387Z",
+      "revision": ""
+    },
+    "converter": {
+      "running": true,
+      "oom_killed": false,
+      "health": "not-configured",
+      "created": "2026-11-07T08:22:15.49864218Z",
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    }
+  },
+  "api_memory_events": {
+    "low": 0,
+    "high": 0,
+    "max": 0,
+    "oom": 0,
+    "oom_kill": 0,
+    "oom_group_kill": 0
+  },
+  "recent_api_sigkill_or_oom": 0,
+  "recent_web_502": 0,
+  "log_window_minutes": 20,
+  "protected_internal_direct_http_status": "404"
+}
