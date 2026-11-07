@@ -31,6 +31,7 @@ const settings = reactive({
   show_members: true,
   mask_members: true
 });
+const settingsSaving = ref(false);
 const form = reactive({
   username: "",
   name: "",
@@ -165,10 +166,15 @@ async function toggle(item: any) {
   } catch {}
 }
 async function saveSettings() {
+  if (listLoading.value || listError.value || settingsSaving.value) return;
+  settingsSaving.value = true;
   try {
     await updatePublicSettings({ ...settings });
     ElMessage.success("全校公开设置已保存");
-  } catch {}
+  } catch {
+  } finally {
+    settingsSaving.value = false;
+  }
 }
 onMounted(load);
 </script>
@@ -277,7 +283,11 @@ onMounted(load);
                 @changed="load" /></template></el-table-column></el-table
       ></ModuleRegion>
     </section>
-    <section v-if="isSuper">
+    <section
+      v-if="isSuper"
+      v-loading="listLoading"
+      element-loading-text="正在加载公开查验设置…"
+    >
       <h3>公开查验字段</h3>
       <el-checkbox v-model="settings.show_team">显示团队名称</el-checkbox
       ><el-checkbox v-model="settings.show_members">显示成员姓名</el-checkbox
@@ -285,7 +295,13 @@ onMounted(load);
         v-model="settings.mask_members"
         :disabled="!settings.show_members"
         >成员姓名脱敏</el-checkbox
-      ><el-button type="primary" @click="saveSettings">保存设置</el-button>
+      ><el-button
+        type="primary"
+        :loading="settingsSaving"
+        :disabled="listLoading || !!listError"
+        @click="saveSettings"
+        >保存设置</el-button
+      >
     </section>
     <el-dialog
       v-model="dialog"
@@ -333,7 +349,10 @@ onMounted(load);
           ><el-segmented v-model="form.role" :options="roleOptions"
         /></el-form-item>
         <el-form-item v-if="form.role === 'admin'" label="管理部门" required
-          ><el-select v-model="form.department" class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.department"
+            class="full"
             ><el-option
               v-for="d in departments"
               :key="d.id"
@@ -393,7 +412,10 @@ onMounted(load);
             v-model="linkForm.role"
             :options="roleOptions" /></el-form-item
         ><el-form-item v-if="linkForm.role === 'admin'" label="管理部门"
-          ><el-select v-model="linkForm.department" class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="linkForm.department"
+            class="full"
             ><el-option
               v-for="d in departments"
               :key="d.id"

@@ -182,14 +182,22 @@ onMounted(load);
         ><el-form-item label="竞赛名称" required
           ><el-input v-model="form.name" /></el-form-item
         ><el-form-item label="拟盖章部门" required
-          ><el-select v-model="form.departments" multiple class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.departments"
+            multiple
+            class="full"
             ><el-option
               v-for="item in departments"
               :key="item.id"
               :label="item.name"
               :value="item.id" /></el-select></el-form-item
         ><el-form-item label="协作负责人"
-          ><el-select v-model="form.collaborators" multiple class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.collaborators"
+            multiple
+            class="full"
             ><el-option
               v-for="item in users"
               :key="item.id"
@@ -197,6 +205,7 @@ onMounted(load);
               :value="item.id" /></el-select></el-form-item
         ><el-form-item label="常用奖项"
           ><el-select
+            :loading="listLoading"
             v-model="form.award_presets"
             multiple
             filterable

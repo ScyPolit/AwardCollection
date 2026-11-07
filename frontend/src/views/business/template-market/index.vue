@@ -119,6 +119,7 @@ onMounted(load);
         <el-button v-if="isAdmin" @click="router.push('/business/templates')"
           >新建与编辑模板</el-button
         ><el-select
+          :loading="dataLoading"
           v-model="department"
           clearable
           placeholder="全部维护部门"
@@ -198,7 +199,10 @@ onMounted(load);
         ><el-form-item label="模板名称"
           ><el-input v-model.trim="form.name" /></el-form-item
         ><el-form-item label="维护部门"
-          ><el-select v-model="form.department" style="width: 100%"
+          ><el-select
+            :loading="dataLoading"
+            v-model="form.department"
+            style="width: 100%"
             ><el-option
               v-for="d in managed"
               :key="d.id"

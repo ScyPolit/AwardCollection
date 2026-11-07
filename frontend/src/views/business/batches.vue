@@ -343,7 +343,10 @@ onMounted(async () => {
         ><el-form-item label="批次名称"
           ><el-input v-model="form.name" /></el-form-item
         ><el-form-item label="竞赛"
-          ><el-select v-model="form.competition" class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.competition"
+            class="full"
             ><el-option
               v-for="c in competitions"
               :key="c.id"
@@ -351,7 +354,10 @@ onMounted(async () => {
               :value="c.id"
               :disabled="!c.active" /></el-select></el-form-item
         ><el-form-item label="证书模板"
-          ><el-select v-model="form.template_version" class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.template_version"
+            class="full"
             ><el-option
               v-for="t in templates"
               :key="t.latest_version?.id"
@@ -370,6 +376,7 @@ onMounted(async () => {
           :key="competition!.departments[index]"
           :label="`${name}公章`"
           ><el-select
+            :loading="listLoading"
             v-model="
               form.seal_versions[String(competition!.departments[index])]
             "

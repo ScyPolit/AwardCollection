@@ -203,7 +203,10 @@ onMounted(load);
         ><el-form-item label="名称"
           ><el-input v-model.trim="form.name" /></el-form-item
         ><el-form-item label="所属部门"
-          ><el-select v-model="form.department" class="full"
+          ><el-select
+            :loading="listLoading"
+            v-model="form.department"
+            class="full"
             ><el-option
               v-for="d in managed"
               :key="d.id"
@@ -221,7 +224,11 @@ onMounted(load);
       ></el-dialog
     >
     <RecordDetail v-model="drawer" title="公章详情与预览" :data="info"
-      ><el-select v-model="versionId" placeholder="选择历史版本" class="full"
+      ><el-select
+        :loading="listLoading"
+        v-model="versionId"
+        placeholder="选择历史版本"
+        class="full"
         ><el-option
           v-for="v in selected?.versions || []"
           :key="v.id"
