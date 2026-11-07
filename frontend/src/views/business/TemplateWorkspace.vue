@@ -340,6 +340,7 @@ onBeforeUnmount(() => {
         @change="togglePublished"
       />
       <el-select
+        :loading="metadataTask.loading.value"
         :model-value="selectedId"
         placeholder="选择证书模板"
         filterable
@@ -428,7 +429,9 @@ onBeforeUnmount(() => {
         ><el-form-item label="模板名称"
           ><el-input v-model="form.name" maxlength="160" /></el-form-item
         ><el-form-item label="所属部门"
-          ><el-select v-model="form.department"
+          ><el-select
+            :loading="metadataTask.loading.value"
+            v-model="form.department"
             ><el-option
               v-for="d in managed"
               :key="d.id"
