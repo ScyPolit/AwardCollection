@@ -80,6 +80,16 @@ class PerformancePermissionTests(TestCase):
         self.assertEqual(self.client.patch(f'/api/v1/competitions/{competition.pk}/',{'name':'越权'},format='json').status_code,403)
         self.assertEqual(self.client.delete(f'/api/v1/competitions/{competition.pk}/').status_code,403)
 
+    def test_legacy_revocation_notice_is_scoped_after_department_change(self):
+        from .models import RevocationRequest
+        certificate=self.certificate()
+        request=RevocationRequest.objects.create(certificate=certificate,requested_by=self.owner,reason='测试')
+        Notification.objects.create(user=self.admin_a,title='证书作废审批',body='测试',target=f'/business/approvals?revocation={request.pk}')
+        self.client.force_authenticate(self.admin_a)
+        self.assertEqual(len(self.client.get('/api/v1/notifications/').data),1)
+        DepartmentMembership.objects.filter(user=self.admin_a).update(active=False)
+        self.assertEqual(self.client.get('/api/v1/notifications/').data,[])
+
     def test_archive_is_queued_deduplicated_persisted_and_authorized(self):
         certificate = self.certificate()
         data={'kind':'batch_zip','batch':self.batch.pk}

@@ -234,7 +234,7 @@ def emergency_issue(batch_id, actor, reason, password):
         department__competitions=batch.competition, role=DepartmentMembership.Role.ADMIN, active=True,
     ).values_list("user_id", flat=True))
     Notification.objects.bulk_create([
-        Notification(user_id=user_id, title="超管应急签发", body=f"批次“{batch.name}”已应急进入签发队列：{reason}")
+        Notification(user_id=user_id, batch=batch, title="超管应急签发", body=f"批次“{batch.name}”已应急进入签发队列：{reason}", target=f"/business/batches?batch={batch.pk}")
         for user_id in related_ids if user_id != actor.id
     ])
     return task
@@ -253,7 +253,7 @@ def request_revocation(certificate_id, actor, reason):
         department_id__in=departments, role=DepartmentMembership.Role.ADMIN, active=True,
     ).values_list("user_id", flat=True)
     Notification.objects.bulk_create([
-        Notification(user_id=user_id, title="证书作废审批", body=f"证书 {certificate.number} 申请作废：{reason}",kind="review",target=f"/business/approvals?revocation={request.pk}")
+        Notification(user_id=user_id, batch_id=certificate.award.version.batch_id, title="证书作废审批", body=f"证书 {certificate.number} 申请作废：{reason}",kind="review",target=f"/business/approvals?revocation={request.pk}")
         for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).exclude(pk=actor.pk).values_list('pk',flat=True))
     ])
     AuditEvent.objects.create(actor=actor, action="revocation.requested", object_type="Certificate", object_id=str(certificate.id), detail={"reason": reason})
@@ -302,7 +302,7 @@ def emergency_void(certificate_id, actor, reason, password):
     AuditEvent.objects.create(actor=actor, action="emergency.void", object_type="Certificate", object_id=str(certificate.id), detail={"reason": reason})
     related_ids = set(certificate.award.version.batch.competition.collaborators.values_list("id", flat=True))
     related_ids.update(DepartmentMembership.objects.filter(department__competitions=certificate.award.version.batch.competition, role=DepartmentMembership.Role.ADMIN).values_list("user_id", flat=True))
-    Notification.objects.bulk_create([Notification(user_id=user_id, title="超管应急作废", body=f"证书 {certificate.number} 已应急作废：{reason}") for user_id in related_ids if user_id != actor.id])
+    Notification.objects.bulk_create([Notification(user_id=user_id, batch_id=certificate.award.version.batch_id, title="超管应急作废", body=f"证书 {certificate.number} 已应急作废：{reason}", target=f"/business/batches?batch={certificate.award.version.batch_id}") for user_id in related_ids if user_id != actor.id])
     return certificate
 
 
