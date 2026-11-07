@@ -7,7 +7,7 @@ case "$action" in backup|cleanup|all) ;; *) echo "Expected backup, cleanup or al
 cd "$project"
 mkdir -p runtime
 exec 9>runtime/maintenance.lock
-flock -n 9 || exit 0
+flock -n 9 || { echo "Another maintenance job is running; no backup was created" >&2; exit 1; }
 
 notify_failure() {
   result=$?
@@ -32,7 +32,7 @@ if [ "$action" = backup ] || [ "$action" = all ]; then
   test -s .env
   test -s secrets/db_password.txt
   docker compose -p awardcollection-v1-test exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' >"$target/database.dump"
-  media_code='import sys,tarfile; from pathlib import Path; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz"); [t.add(str(p),arcname=p.name) for p in Path("/srv/media").iterdir() if p.name!="temporary"]; t.close()'
+  media_code='import sys,tarfile; from pathlib import Path; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz",compresslevel=1); [t.add(str(p),arcname=p.name) for p in Path("/srv/media").iterdir() if p.name!="temporary"]; t.close()'
   docker compose -p awardcollection-v1-test exec -T api python -c "$media_code" >"$target/media.tar.gz"
   config_code='import sys,tarfile; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz"); t.add(".env"); t.add("secrets/db_password.txt"); t.close()'
   python3 -c "$config_code" | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass "file:$key" -out "$target/deployment-config.tar.gz.enc"
