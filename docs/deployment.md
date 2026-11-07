@@ -73,7 +73,7 @@ Python Linux x86_64 / CPython 3.12 离线 wheel 清单位于 `backend/wheel-asse
 
 后端构建使用中科大 Debian HTTPS 镜像，保留 Debian 官方签名验证；运行服务不依赖该镜像站。
 
-## 本轮目标实例验收
+## 2026-11-06 历史验收
 
 内网地址为 `https://192.168.31.12:18443`，HTTP 18080 跳转；这不是公开在线演示站。主机为 Ubuntu 24.04、Docker 29.1.2，项目目录 `/opt/awardcollection-v1-test/app`。
 
@@ -82,3 +82,13 @@ Python Linux x86_64 / CPython 3.12 离线 wheel 清单位于 `backend/wheel-asse
 75 项目标 PostgreSQL 回归通过。新建两队双部门批次完成 2/2，PDF / PNG 和 ZIP 可下载，两个 PDF 各有两个完整且数学有效的增量签名；自签信任警告符合预期。已核对通知跳转、已读持久化和无需刷新显示生成结果，PPTX 与旧 PPT 导入后可编辑并保存。
 
 测试业务按系统所有者明确要求清理，保留超管、模板 id=4 最新内容及正式素材。旧文档中“永久保留批次 2”属于历史验收要求，已被本次授权替代。编号序列不重置，审计保留。详细结果见 [本轮验收](../artifacts/ppt-release-20261106/REPORT.md)。后续纯文档提交不会改变已运行镜像的版本号。
+
+## 2026-11-07 权限、下载与编辑器更新
+
+后端运行 `6e722dc2f07b78fc8126a0686eb82ea8db677d3e`，前端运行 `49418cf5fce37605494f822d9ea9187f6332b858`。最终前端使用仅 web 发布器，API / worker / db / converter 均未因前端更新重建。线上已产生新的正式业务，必须保留全部现有账号和数据，不能重用上一节的历史清理授权。
+
+完整升级前备份 `/opt/awardcollection-v1-test/backups/20261107-081745-O7Ifmt` 的四项摘要通过；后端回滚检查点 `/opt/awardcollection-v1-test/rollback/20261107-081738`，最终前端检查点 `/opt/awardcollection-v1-test/rollback/web-20261107-084123`。
+
+批量 ZIP 改为服务器后台落盘，再经鉴权由 Nginx 发送；可用 Range 下载，客户端无需整体读取为 Blob。工作进程生成并发默认 1，PNG 像素数量受限。512 MiB、无额外 swap 的只读容器完成实际 300 份 / 600 文件打包及 CRC 检查，进程峰值 RSS 71.61 MiB；这是打包验证，不代表整个数据库、转换器和 Web 应用能够共同运行在 512 MiB 主机上。
+
+目标 PostgreSQL 87 项全量回归及最终 20 项权限 / 通知专项通过，类型检查和生产构建通过，正式模板与历史证书摘要保留。完整证据见 [本轮验收](../artifacts/performance-release-20261107/REPORT.md)。

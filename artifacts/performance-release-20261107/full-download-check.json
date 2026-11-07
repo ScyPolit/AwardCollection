@@ -1,0 +1,18 @@
+{
+  "method": "authenticated HTTPS download streamed to disk",
+  "browser_link_received_http_status": 200,
+  "bytes": 2001382026,
+  "sha256_matches_server": true,
+  "entries": 600,
+  "pdf_files": 300,
+  "png_files": 300,
+  "zip_crc_passed": true,
+  "seconds": 171.67,
+  "read_buffer_bytes": 262144,
+  "headers": {
+    "Content-Length": "2001382026",
+    "Content-Disposition": "attachment; filename=\"batch-10-certificates.zip\"",
+    "Accept-Ranges": "bytes"
+  },
+  "browser_automation_limit": "Native save attempt was canceled; complete transfer verified through the same authenticated server URL."
+}

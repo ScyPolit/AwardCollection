@@ -1,0 +1,4 @@
+database.dump: OK
+media.tar.gz: OK
+deployment-config.tar.gz.enc: OK
+tls.tar.gz.enc: OK

@@ -1,0 +1,8 @@
+{
+  "stage": "done",
+  "revision": "49418cf5fce37605494f822d9ea9187f6332b858",
+  "checkpoint": "/opt/awardcollection-v1-test/rollback/web-20261107-084123",
+  "backend_version": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e",
+  "server_containers_preserved": true,
+  "existing_content_preserved": true
+}
