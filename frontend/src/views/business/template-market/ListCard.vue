@@ -1,8 +1,11 @@
 <!-- Adapted from pure-admin/vue-pure-admin ListCard.vue, MIT; pinned source in docs/upstream/pure-admin-card-list. -->
 <script setup lang="ts">
 import type { Template } from "@/api/business";
+import PreparedPreview from "@/components/PreparedPreview.vue";
 defineProps<{ product: Template; canCopy: boolean }>();
-function layerCount(product:Template){const canvas:any=product.latest_version?.canvas;return canvas?.engine==='pptist'?canvas.presentation?.slides?.[canvas.slideIndex||0]?.elements?.length||0:canvas?.layers?.length||0}
+function layerCount(product: Template) {
+  return product.latest_version?.summary?.element_count || 0;
+}
 defineEmits<{
   preview: [product: Template];
   select: [product: Template];
@@ -13,19 +16,21 @@ defineEmits<{
 <template>
   <div class="list-card-item">
     <div class="list-card-item_detail bg-bg_color">
-      <button
+      <div
         class="thumbnail"
-        type="button"
+        role="button"
+        tabindex="0"
         :aria-label="`预览${product.name}`"
         @click="$emit('preview', product)"
+        @keydown.enter.self="$emit('preview', product)"
+        @keydown.space.self.prevent="$emit('preview', product)"
       >
-        <el-image
-          :src="`/api/v1/templates/${product.id}/thumbnail/?version=${product.latest_version?.id}`"
-          fit="contain"
-          loading="lazy"
-          ><template #error><span>点击查看模板详情</span></template></el-image
-        >
-      </button>
+        <PreparedPreview
+          v-if="product.latest_version"
+          :version="product.latest_version.id"
+          :alt="product.name"
+        />
+      </div>
       <el-row justify="space-between" class="card-meta"
         ><el-tag
           size="small"
@@ -50,8 +55,8 @@ defineEmits<{
         >
       </p>
       <p class="list-card-item_detail--desc text-text_color_regular">
-        {{ product.latest_version?.canvas?.page?.width || 842 }} ×
-        {{ product.latest_version?.canvas?.page?.height || 595 }} ·
+        {{ product.latest_version?.summary?.page?.width || 842 }} ×
+        {{ product.latest_version?.summary?.page?.height || 595 }} ·
         {{ layerCount(product) }} 个元素
       </p>
       <div class="card-actions">
@@ -65,7 +70,11 @@ defineEmits<{
           >选用模板</el-button
         ><el-button v-if="canCopy" size="small" @click="$emit('copy', product)"
           >复制后编辑</el-button
-        ><el-button size="small" link @click="$emit('edit', product)"
+        ><el-button
+          v-if="canCopy"
+          size="small"
+          link
+          @click="$emit('edit', product)"
           >进入编辑器</el-button
         >
       </div>

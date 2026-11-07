@@ -74,6 +74,20 @@ class TemplateVersion(TimeStampedModel):
     template = models.ForeignKey(Template, on_delete=models.CASCADE, related_name="versions")
     number = models.PositiveIntegerField()
     canvas = models.JSONField(default=dict)
+    summary = models.JSONField(default=dict, db_default={})
+
+    def save(self, *args, **kwargs):
+        fields = kwargs.get("update_fields")
+        if fields is None or "canvas" in fields:
+            canvas = self.canvas
+            native = canvas.get("engine") == "pptist"
+            slides = canvas.get("presentation", {}).get("slides", [])
+            index = canvas.get("slideIndex", 0)
+            elements = slides[index].get("elements", []) if native and 0 <= index < len(slides) else canvas.get("layers", [])
+            self.summary = {"engine": "pptist" if native else "legacy", "page": canvas.get("page", {"width": 842, "height": 595}), "element_count": len(elements)}
+            if fields is not None:
+                kwargs["update_fields"] = set(fields) | {"summary"}
+        super().save(*args, **kwargs)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["template", "number"], name="uniq_template_version")]
@@ -206,6 +220,26 @@ class Certificate(ManagedModel):
     notes = models.TextField(blank=True, db_default="")
 
 
+class PreparedFile(TimeStampedModel):
+    """Deduplicated, leased disk jobs; no browser request performs bulk rendering."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.CharField(max_length=64, unique=True)
+    kind = models.CharField(max_length=24)
+    version = models.ForeignKey(BatchVersion, null=True, on_delete=models.CASCADE, related_name="prepared_files")
+    template_version = models.ForeignKey(TemplateVersion, null=True, on_delete=models.CASCADE, related_name="prepared_files")
+    status = models.CharField(max_length=16, default="queued", db_index=True)
+    processed = models.PositiveIntegerField(default=0)
+    total = models.PositiveIntegerField(default=0)
+    attempts = models.PositiveIntegerField(default=0)
+    lease_token = models.UUIDField(null=True)
+    lease_expires_at = models.DateTimeField(null=True)
+    file = models.FileField(upload_to="protected/prepared", blank=True)
+    sha256 = models.CharField(max_length=64, blank=True)
+    byte_size = models.PositiveBigIntegerField(default=0)
+    error = models.TextField(blank=True)
+    subscribers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="prepared_files", blank=True)
+
+
 class RevocationRequest(TimeStampedModel):
     class Status(models.TextChoices):
         REVIEW = "review", "审批中"
@@ -249,6 +283,15 @@ class Notification(TimeStampedModel):
     read_at = models.DateTimeField(null=True)
     target = models.CharField(max_length=240, blank=True, db_default='')
     kind = models.CharField(max_length=24, default='info', db_default='info')
+    batch = models.ForeignKey(AwardBatch, null=True, blank=True, on_delete=models.SET_NULL, related_name="notifications")
+
+    def __init__(self, *args, **kwargs):
+        if not args and kwargs.get("target") and not kwargs.get("batch") and not kwargs.get("batch_id"):
+            import re
+            match = re.search(r"[?&]batch=([0-9]+)(?:&|$)", kwargs["target"])
+            if match:
+                kwargs["batch_id"] = int(match.group(1))
+        super().__init__(*args, **kwargs)
 
 
 class CertificateSequence(models.Model):

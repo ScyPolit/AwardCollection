@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from . import views
 from .management_api import account_detail
 from .realtime import events
+from .prepared import prepare_view, status_view, download_view
 
 
 router = DefaultRouter()
@@ -19,6 +20,9 @@ router.register("revocations", views.RevocationViewSet, basename="revocation")
 router.register("notifications", views.NotificationViewSet, basename="notification")
 
 urlpatterns = [
+    path('prepared-files/', prepare_view),
+    path('prepared-files/<uuid:asset_id>/', status_view),
+    path('prepared-files/<uuid:asset_id>/download/', download_view),
     path('events/', events),
     path("health/", views.health),
     path("auth/csrf/", views.csrf),

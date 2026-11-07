@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import { onMounted, ref } from "vue";
 import RecordDetail from "@/components/RecordDetail.vue";
 import { listLogs, logDetail } from "@/api/business";
@@ -9,22 +15,37 @@ const rows = ref<any[]>([]),
   drawer = ref(false),
   selected = ref<Record<string, unknown>>({});
 async function load() {
-  const data = await listLogs(page.value, search.value);
-  rows.value = data.results;
-  total.value = data.count;
+  try {
+    await listTask.run(
+      () => listLogs(page.value, search.value),
+      data => {
+        rows.value = data.results;
+        total.value = data.count;
+      }
+    );
+  } catch {}
 }
+const detailTask = useModuleTask(),
+  detailLoading = detailTask.loading;
 async function show(row: any) {
-  const log = await logDetail(row.id);
-  selected.value = {
-    日志编号: log.id,
-    时间: log.created_at,
-    操作人: log.actor,
-    操作: log.action,
-    对象类型: log.object_type,
-    对象编号: log.object_id,
-    详细内容: log.detail
-  };
   drawer.value = true;
+  try {
+    await detailTask.run(
+      () => logDetail(row.id),
+      log => {
+        selected.value = {
+          日志编号: log.id,
+          时间: log.created_at,
+          操作人: log.actor,
+          操作: log.action,
+          对象类型: log.object_type,
+          对象编号: log.object_id,
+          详细内容: log.detail
+        };
+        drawer.value = true;
+      }
+    );
+  } catch {}
 }
 function query() {
   page.value = 1;
@@ -48,41 +69,54 @@ onMounted(load);
         /><el-button @click="query">查询</el-button>
       </div>
     </header>
-    <el-table :data="rows" border @row-dblclick="show"
-      ><el-table-column label="日志编号" width="110"
-        ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row)">{{
-            s.row.id
-          }}</el-button></template
-        ></el-table-column
-      ><el-table-column
-        prop="created_at"
-        label="时间"
-        min-width="200"
-      /><el-table-column
-        min-width="160"
-        prop="actor"
-        label="操作人"
-      /><el-table-column
-        prop="action"
-        label="操作"
-        min-width="180"
-      /><el-table-column
-        min-width="160"
-        prop="object_type"
-        label="对象"
-      /><el-table-column label="操作" width="90"
-        ><template #default="s"
-          ><el-button link @click="show(s.row)">查看</el-button></template
-        ></el-table-column
-      ></el-table
+    <ModuleRegion
+      :loading="listLoading"
+      :error="listError"
+      :empty="!rows.length"
+      @retry="load"
+      ><el-table :data="rows" border @row-dblclick="show"
+        ><el-table-column label="日志编号" width="110"
+          ><template #default="s"
+            ><el-button link type="primary" @click="show(s.row)">{{
+              s.row.id
+            }}</el-button></template
+          ></el-table-column
+        ><el-table-column
+          prop="created_at"
+          label="时间"
+          min-width="200"
+        /><el-table-column
+          min-width="160"
+          prop="actor"
+          label="操作人"
+        /><el-table-column
+          prop="action"
+          label="操作"
+          min-width="180"
+        /><el-table-column
+          min-width="160"
+          prop="object_type"
+          label="对象"
+        /><el-table-column label="操作" width="90"
+          ><template #default="s"
+            ><el-button link @click="show(s.row)">查看</el-button></template
+          ></el-table-column
+        ></el-table
+      ></ModuleRegion
     ><el-pagination
       v-model:current-page="page"
       :total="total"
       :page-size="30"
       layout="total,prev,pager,next"
       @current-change="load"
-    /><RecordDetail v-model="drawer" title="日志完整内容" :data="selected" readonly-reason="审计日志记录已发生的操作，为保护追溯记录，日志原文不允许修改或删除。" />
+    /><RecordDetail
+      :loading="detailLoading"
+      :error="detailTask.error.value"
+      v-model="drawer"
+      title="日志完整内容"
+      :data="selected"
+      readonly-reason="审计日志记录已发生的操作，为保护追溯记录，日志原文不允许修改或删除。"
+    />
   </div>
 </template>
 <style scoped>

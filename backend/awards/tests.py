@@ -120,6 +120,7 @@ class WorkflowTests(TestCase):
             award=self.award, number=allocate_number(), published_at=timezone.now(),
             pdf=ContentFile(b"pdf", name="certificate.pdf"),
             image=ContentFile(b"png", name="certificate.png"),
+            pdf_sha256=hashlib.sha256(b"pdf").hexdigest(), image_sha256=hashlib.sha256(b"png").hexdigest(),
         )
 
     def test_revocation_partial_approval_keeps_certificate_active(self):
@@ -173,9 +174,12 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(f'{certificate.number}.png', response["Content-Disposition"])
         self.assertEqual(b"".join(response.streaming_content), b"png")
-        response = client.get(f"/api/v1/certificates/batch/{self.batch.id}/archive/")
-        self.assertEqual(response.status_code, 200)
-        archive_data = b"".join(response.streaming_content)
+        response = client.post('/api/v1/prepared-files/', {'kind':'batch_zip','batch':self.batch.pk},format='json')
+        self.assertEqual(response.status_code,202)
+        from .prepared import claim_file, process_file
+        asset=process_file(claim_file());self.assertEqual(asset.status,'ready',asset.error)
+        response=client.get(f'/api/v1/prepared-files/{asset.pk}/download/')
+        archive_data=b''.join(response.streaming_content)
         with zipfile.ZipFile(io.BytesIO(archive_data)) as archive:
             self.assertEqual(set(archive.namelist()), {f"{certificate.number}.pdf", f"{certificate.number}.png"})
         client.force_authenticate(self.outsider)
@@ -341,21 +345,17 @@ class WorkflowTests(TestCase):
         client = APIClient(); client.force_authenticate(self.owner)
         response = client.get(f"/api/v1/batches/{self.batch.id}/preview/")
         self.assertEqual(response.status_code, 200)
+        from .prepared import claim_file, process_file
+        asset = process_file(claim_file())
+        self.assertEqual(asset.status, "ready", asset.error)
+        response = client.get(f"/api/v1/prepared-files/{asset.pk}/download/")
         self.assertEqual(response["Content-Type"], "application/pdf")
-        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertTrue(b"".join(response.streaming_content).startswith(b"%PDF"))
         self.assertFalse(Certificate.objects.filter(award=self.award).exists())
 
-    def test_owner_can_choose_active_seal_metadata_without_accessing_originals(self):
-        DepartmentMembership.objects.create(
-            department=self.departments[0], user=self.owner, role="owner",
-        )
-        client = APIClient()
-        client.force_authenticate(self.owner)
-        response = client.get("/api/v1/seals/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 2)
-        self.assertEqual(set(item["department"] for item in response.data), set(d.id for d in self.departments))
-        self.assertNotIn("image", response.data[0]["versions"][0])
+    def test_owner_cannot_browse_seal_metadata(self):
+        client=APIClient(); client.force_authenticate(self.owner)
+        self.assertEqual(client.get('/api/v1/seals/').status_code,403)
 
     def test_owner_metadata_access_does_not_allow_seal_changes(self):
         DepartmentMembership.objects.create(
@@ -365,7 +365,7 @@ class WorkflowTests(TestCase):
         client = APIClient()
         client.force_authenticate(self.owner)
         response = client.patch(f"/api/v1/seals/{seal.id}/", {"active": False}, format="json")
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 403)
         seal.refresh_from_db()
         self.assertTrue(seal.active)
         response = client.post("/api/v1/seals/", {
@@ -492,7 +492,7 @@ class WorkflowTests(TestCase):
         from django.core.management import call_command
         call_command('cache_builtin_fonts', verbosity=0)
         from .fonts import font_file
-        client = APIClient(); client.force_authenticate(self.owner)
+        client = APIClient(); client.force_authenticate(self.admin_a)
         catalog = client.get('/api/v1/fonts/')
         self.assertEqual(catalog.status_code, 200)
         self.assertTrue({'hei','song','kai','fangsong'}.issubset({f['id'] for f in catalog.data}))
@@ -526,7 +526,7 @@ class WorkflowTests(TestCase):
         from django.core.files.uploadedfile import SimpleUploadedFile
         from .fonts import font_file
         self.assertEqual(APIClient().post('/api/v1/fonts/',{},format='multipart').status_code,403)
-        client = APIClient(); client.force_authenticate(self.owner)
+        client = APIClient(); client.force_authenticate(self.admin_a)
         self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
         file=SimpleUploadedFile('licensed.ttf',font_file('liberationserif-regular').read_bytes())
         response=client.post('/api/v1/fonts/',{'file':file,'name':'授权英文字体测试','license_confirmed':'true'},format='multipart')
@@ -539,15 +539,19 @@ class WorkflowTests(TestCase):
         with self.assertNumQueries(0), resolved_font_files(files):
             layout=layout_text('荣誉证书 AWARD',{'fontFamily':response.data['id'],'fontSize':24,'minFontSize':10,'width':500,'height':100})
             self.assertTrue(layout['lines'])
-        for user in (self.admin_a, self.outsider, self.superuser):
+        for user in (self.admin_a, self.superuser):
             client.force_authenticate(user)
             self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
             duplicate=client.post('/api/v1/fonts/',{'file':SimpleUploadedFile('licensed.ttf',font_file('liberationserif-regular').read_bytes()),'license_confirmed':'true'},format='multipart')
             self.assertEqual(duplicate.status_code,200,duplicate.data)
             self.assertEqual(duplicate.data['id'],response.data['id'])
-        client.force_authenticate(self.owner)
+        client.force_authenticate(self.admin_a)
         self.assertEqual(client.post('/api/v1/fonts/',{'file':SimpleUploadedFile('bad.ttf',b'not a font'),'license_confirmed':'true'},format='multipart').status_code,400)
 
+
+        for user in (self.owner,self.outsider):
+            client.force_authenticate(user)
+            self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,403)
 
     def test_only_superuser_can_manage_font_without_changing_historical_bytes(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -630,13 +634,16 @@ class WorkflowTests(TestCase):
         self.assertEqual(response.status_code,200)
         self.assertTrue(response.content.startswith(b'\x89PNG'))
         client.force_authenticate(self.outsider)
-        self.assertEqual(client.get(f'/api/v1/seals/{seal.pk}/preview/').status_code,404)
+        self.assertEqual(client.get(f'/api/v1/seals/{seal.pk}/preview/').status_code,403)
 
     def test_template_thumbnail_is_real_png_and_certificate_detail_is_complete(self):
         client=APIClient();client.force_authenticate(self.owner)
         template=self.version.template_version.template
         response=client.get(f'/api/v1/templates/{template.pk}/thumbnail/')
         self.assertEqual(response.status_code,200)
+        from .prepared import claim_file,process_file
+        asset=process_file(claim_file());self.assertEqual(asset.status,'ready',asset.error)
+        response=client.get(f'/api/v1/prepared-files/{asset.pk}/download/')
         self.assertTrue(b''.join(response.streaming_content).startswith(b'\x89PNG'))
         certificate=self.create_published_certificate()
         detail=client.get(f'/api/v1/certificates/{certificate.pk}/')

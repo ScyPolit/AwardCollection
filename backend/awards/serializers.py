@@ -74,14 +74,16 @@ class BatchSerializer(serializers.ModelSerializer):
         read_only_fields = ["public_id", "status", "current_version", "created_at"]
 
     def get_team_count(self, obj):
-        version = obj.versions.filter(number=obj.current_version).first()
-        return version.awards.count() if version else 0
+        if hasattr(obj, "team_count_value"):return obj.team_count_value
+        version = obj.versions.only("pk").filter(number=obj.current_version).first()
+        return getattr(obj, "team_count_value", None) if hasattr(obj, "team_count_value") else (version.awards.count() if version else 0)
 
     def get_approval_summary(self, obj):
-        version = obj.versions.filter(number=obj.current_version).first()
+        if hasattr(obj, "required_count_value"):return {"approved":obj.approved_count_value,"total":obj.required_count_value}
+        version = obj.versions.only("pk").filter(number=obj.current_version).first()
         if not version:
             return {"approved": 0, "total": 0}
-        return {"approved": version.required_departments.filter(decision__decision="approved").count(), "total": version.required_departments.count()}
+        return {"approved": obj.approved_count_value, "total": obj.required_count_value} if hasattr(obj, "required_count_value") else {"approved": version.required_departments.filter(decision__decision="approved").count(), "total": version.required_departments.count()}
 
     def validate_output_formats(self, value):
         formats = list(dict.fromkeys(value))
@@ -122,7 +124,7 @@ class ApprovalSerializer(serializers.ModelSerializer):
 class TemplateVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = TemplateVersion
-        fields = ["id", "number", "canvas", "created_at"]
+        fields = ["id", "number", "canvas", "summary", "created_at"]
 
 
 class TemplateSerializer(serializers.ModelSerializer):
@@ -135,6 +137,9 @@ class TemplateSerializer(serializers.ModelSerializer):
         read_only_fields = ["source", "created_at"]
 
     def get_latest_version(self, obj):
+        if hasattr(obj, "light_versions"):
+            version = obj.light_versions[0] if obj.light_versions else None
+            return {"id": version.pk, "number": version.number, "summary": version.summary, "created_at": version.created_at} if version else None
         version = obj.versions.order_by("-number").first()
         return TemplateVersionSerializer(version).data if version else None
 
@@ -158,7 +163,7 @@ class CertificateSerializer(serializers.ModelSerializer):
     competition_name = serializers.SerializerMethodField()
 
     def get_competition_name(self,obj):
-        return obj.award.version.snapshot.get("competition",{}).get("name",obj.award.version.batch.competition.name)
+        return getattr(obj, "frozen_competition_name", None) or obj.award.version.batch.competition.name
     batch_name = serializers.CharField(source="award.version.batch.name", read_only=True)
     team_name = serializers.CharField(source="award.team_name", read_only=True)
     award_name = serializers.CharField(source="award.award_name", read_only=True)

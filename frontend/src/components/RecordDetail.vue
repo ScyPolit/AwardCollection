@@ -5,6 +5,8 @@ defineProps<{
   title: string;
   data?: Record<string, unknown> | null;
   readonlyReason?: string;
+  loading?: boolean;
+  error?: string;
 }>();
 defineEmits<{ "update:modelValue": [value: boolean] }>();
 </script>
@@ -15,7 +17,9 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
     size="min(780px, 96vw)"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <el-descriptions v-if="data" :column="1" border>
+    <el-skeleton v-if="loading" :rows="7" animated />
+    <el-alert v-else-if="error" :title="error" type="error" :closable="false" />
+    <el-descriptions v-else-if="data" :column="1" border>
       <el-descriptions-item
         v-for="(value, label) in data"
         :key="label"
@@ -31,8 +35,8 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
       type="info"
       class="extra"
     />
-    <div class="extra"><slot /></div>
-    <template v-if="$slots.actions" #footer
+    <div v-if="!loading && !error" class="extra"><slot /></div>
+    <template v-if="$slots.actions && !loading && !error" #footer
       ><div class="detail-actions"><slot name="actions" /></div
     ></template>
   </el-drawer>

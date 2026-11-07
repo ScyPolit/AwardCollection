@@ -6,6 +6,15 @@ const live = useLiveStore();
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import RecordDetail from "@/components/RecordDetail.vue";
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const dashboardTask = useModuleTask(),
+  loading = dashboardTask.loading;
+async function loadDashboard() {
+  try {
+    await dashboardTask.run(dashboard, value => (data.value = value));
+  } catch {}
+}
 import { dashboard, markNotificationRead } from "@/api/business";
 defineOptions({ name: "Welcome" });
 const router = useRouter(),
@@ -21,11 +30,8 @@ const data = ref({
   unreadNotifications: 0,
   recent: [] as any[]
 });
-watch(
-  () => live.revision,
-  async () => (data.value = await dashboard())
-);
-onMounted(async () => (data.value = await dashboard()));
+watch(() => live.revision, loadDashboard);
+onMounted(loadDashboard);
 </script>
 <template>
   <div class="dashboard business-page">
@@ -34,9 +40,15 @@ onMounted(async () => (data.value = await dashboard()));
         <h1>证书签发工作台</h1>
         <p>待办、生成任务和近期签发状态</p>
       </div>
-      <el-tag type="success">系统运行正常</el-tag>
+      <el-tag :type="live.connected ? 'success' : 'warning'">{{
+        live.connected ? "实时连接正常" : "正在连接实时服务…"
+      }}</el-tag>
     </header>
-    <div class="stats">
+    <div
+      v-loading="loading"
+      element-loading-text="正在加载工作台…"
+      class="stats"
+    >
       <div
         role="button"
         tabindex="0"
@@ -79,21 +91,27 @@ onMounted(async () => (data.value = await dashboard()));
     </div>
     <section>
       <h2>近期动态</h2>
-      <el-table
-        v-if="data.recent.length"
-        :data="data.recent"
-        @row-click="showNotification"
-        ><el-table-column
-          prop="title"
-          label="事项"
-          width="180" /><el-table-column
-          min-width="180"
-          prop="body"
-          label="内容" /><el-table-column
-          prop="created_at"
-          label="时间"
-          width="190" /></el-table
-      ><el-empty v-else description="尚无业务记录" :image-size="90" />
+      <ModuleRegion
+        :loading="loading"
+        :error="dashboardTask.error.value"
+        :empty="!data.recent.length"
+        @retry="loadDashboard"
+        ><el-table
+          v-if="data.recent.length"
+          :data="data.recent"
+          @row-click="showNotification"
+          ><el-table-column
+            prop="title"
+            label="事项"
+            width="180" /><el-table-column
+            min-width="180"
+            prop="body"
+            label="内容" /><el-table-column
+            prop="created_at"
+            label="时间"
+            width="190" /></el-table
+        ><el-empty v-else description="尚无业务记录" :image-size="90"
+      /></ModuleRegion>
     </section>
     <RecordDetail v-model="detail" title="消息详情" :data="message" />
   </div>

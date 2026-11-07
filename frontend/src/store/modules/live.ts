@@ -9,9 +9,10 @@ export const useLiveStore = defineStore("award-live", {
     connected: false,
     notifications: [] as any[],
     jobs: [] as any[],
+    files: [] as any[],
     unread: 0,
     pending: 0,
-    revision: 0,
+    revision: "",
     initialized: false
   }),
   actions: {

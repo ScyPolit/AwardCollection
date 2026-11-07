@@ -119,9 +119,11 @@ class PureHttp {
           const detail =
             typeof body?.detail === "string"
               ? body.detail
-              : body
-                ? JSON.stringify(body)
-                : "请求失败，请检查网络后重试";
+              : body && typeof body === "object"
+                ? JSON.stringify(body).slice(0, 500)
+                : response?.status >= 500
+                  ? "服务器暂时繁忙，请稍后重试；如持续出现，请联系管理员"
+                  : "请求失败，请检查网络后重试";
           ElMessage.error({ message: detail, duration: 6000, grouping: true });
         }
         return Promise.reject($error);

@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import { useLiveStore } from "@/store/modules/live";
 import { watch } from "vue";
 import { useRoute } from "vue-router";
@@ -20,22 +26,35 @@ import {
 const detail = ref(false),
   detailData = ref<Record<string, unknown>>({}),
   previewBatch = ref<number>();
-async function show(row: Approval) {
-  const data = await batchDetail(row.batch_id);
-  detailData.value = {
-    批次: data.batch.name,
-    竞赛: data.batch.competition_name,
-    状态: data.batch.status,
-    版本: data.batch.current_version,
-    模板: data.configuration.template_name,
-    输出格式: data.configuration.output_formats,
-    获奖名单: data.awards,
-    部门会签: data.approvals
-  };
-  previewBatch.value = row.batch_id;
+const detailTask = useModuleTask(),
+  detailLoading = detailTask.loading;
+async function show(row: any) {
   detail.value = true;
+  try {
+    await detailTask.run(
+      () => batchDetail(row.batch_id),
+      data => {
+        detailData.value = {
+          批次: data.batch.name,
+          竞赛: data.batch.competition_name,
+          状态: data.batch.status,
+          名单总数: data.award_count,
+          当前显示: "前50条；完整名单请进入名单与批次分页查看",
+          版本: data.batch.current_version,
+          模板: data.configuration.template_name,
+          输出格式: data.configuration.output_formats,
+          获奖名单: data.awards,
+          部门会签: data.approvals
+        };
+        previewBatch.value = row.batch_id;
+        detail.value = true;
+      }
+    );
+  } catch {}
 }
 function showRevocation(row: any) {
+  detailLoading.value = false;
+  detailTask.error.value = "";
   detailData.value = {
     证书编号: row.certificate_number,
     作废原因: row.reason,
@@ -52,11 +71,15 @@ const rows = ref<Approval[]>([]),
   departments = ref<Option[]>([]),
   tab = ref("issuance");
 async function load() {
-  [rows.value, revocations.value, departments.value] = await Promise.all([
-    listApprovals(),
-    listRevocations(),
-    listDepartments()
-  ]);
+  try {
+    await listTask.run(async () => {
+      [rows.value, revocations.value, departments.value] = await Promise.all([
+        listApprovals(),
+        listRevocations(),
+        listDepartments()
+      ]);
+    });
+  } catch {}
 }
 async function act(row: Approval, decision: string) {
   const { value } = await ElMessageBox.prompt(
@@ -136,82 +159,106 @@ onMounted(async () => {
     </header>
     <el-tabs v-model="tab"
       ><el-tab-pane label="签发审批" name="issuance"
-        ><el-table :data="rows" border
-          ><el-table-column
-            min-width="240"
-            prop="competition_name"
-            label="竞赛"
-          /><el-table-column min-width="240" label="批次"
-            ><template #default="s"
-              ><el-button
-                link
-                type="primary"
-                @click="show(s.row as Approval)"
-                >{{ s.row.batch_name }}</el-button
-              ></template
-            ></el-table-column
-          ><el-table-column
-            prop="version_number"
-            label="版本"
-            width="80"
-          /><el-table-column
-            min-width="240"
-            prop="department_name"
-            label="审批部门"
-          /><el-table-column label="决定" width="180"
-            ><template #default="s"
-              ><el-button link @click="show(s.row as Approval)">查看</el-button
-              ><template v-if="!s.row.decision"
+        ><ModuleRegion
+          :loading="listLoading"
+          :error="listError"
+          :empty="!rows.length"
+          @retry="load"
+          ><el-table :data="rows" border
+            ><el-table-column
+              min-width="240"
+              prop="competition_name"
+              label="竞赛"
+            /><el-table-column min-width="240" label="批次"
+              ><template #default="s"
+                ><el-button
+                  link
+                  type="primary"
+                  @click="show(s.row as Approval)"
+                  >{{ s.row.batch_name }}</el-button
+                ></template
+              ></el-table-column
+            ><el-table-column
+              prop="version_number"
+              label="版本"
+              width="80"
+            /><el-table-column
+              min-width="240"
+              prop="department_name"
+              label="审批部门"
+            /><el-table-column label="决定" width="180"
+              ><template #default="s"
+                ><el-button link @click="show(s.row as Approval)"
+                  >查看</el-button
+                ><template v-if="!s.row.decision"
+                  ><el-button
+                    link
+                    type="success"
+                    @click="act(s.row as Approval, 'approved')"
+                    >通过</el-button
+                  ><el-button
+                    link
+                    type="danger"
+                    @click="act(s.row as Approval, 'returned')"
+                    >整批退回</el-button
+                  ></template
+                ><el-tag v-else>{{
+                  s.row.decision === "approved" ? "已通过" : "已退回"
+                }}</el-tag></template
+              ></el-table-column
+            ></el-table
+          ></ModuleRegion
+        ></el-tab-pane
+      ><el-tab-pane label="作废审批" name="revocation"
+        ><ModuleRegion
+          :loading="listLoading"
+          :error="listError"
+          :empty="!rows.length"
+          @retry="load"
+          ><el-table :data="revocations" border
+            ><el-table-column min-width="180" label="证书编号"
+              ><template #default="s"
+                ><el-button
+                  link
+                  type="primary"
+                  @click="showRevocation(s.row)"
+                  >{{ s.row.certificate_number }}</el-button
+                ></template
+              ></el-table-column
+            ><el-table-column
+              min-width="240"
+              prop="reason"
+              label="原因"
+            /><el-table-column label="进度" width="100"
+              ><template #default="s"
+                >{{ s.row.approved_departments }} /
+                {{ s.row.total_departments }}</template
+              ></el-table-column
+            ><el-table-column
+              prop="status"
+              label="状态"
+              width="100"
+            /><el-table-column label="决定" width="160"
+              ><template #default="s"
                 ><el-button
                   link
                   type="success"
-                  @click="act(s.row as Approval, 'approved')"
-                  >通过</el-button
+                  @click="revoke(s.row, 'approved')"
+                  >同意</el-button
                 ><el-button
                   link
                   type="danger"
-                  @click="act(s.row as Approval, 'returned')"
-                  >整批退回</el-button
+                  @click="revoke(s.row, 'rejected')"
+                  >驳回</el-button
                 ></template
-              ><el-tag v-else>{{
-                s.row.decision === "approved" ? "已通过" : "已退回"
-              }}</el-tag></template
-            ></el-table-column
-          ></el-table
-        ></el-tab-pane
-      ><el-tab-pane label="作废审批" name="revocation"
-        ><el-table :data="revocations" border
-          ><el-table-column min-width="180" label="证书编号"
-            ><template #default="s"
-              ><el-button link type="primary" @click="showRevocation(s.row)">{{
-                s.row.certificate_number
-              }}</el-button></template
-            ></el-table-column
-          ><el-table-column
-            min-width="240"
-            prop="reason"
-            label="原因"
-          /><el-table-column label="进度" width="100"
-            ><template #default="s"
-              >{{ s.row.approved_departments }} /
-              {{ s.row.total_departments }}</template
-            ></el-table-column
-          ><el-table-column
-            prop="status"
-            label="状态"
-            width="100"
-          /><el-table-column label="决定" width="160"
-            ><template #default="s"
-              ><el-button link type="success" @click="revoke(s.row, 'approved')"
-                >同意</el-button
-              ><el-button link type="danger" @click="revoke(s.row, 'rejected')"
-                >驳回</el-button
-              ></template
-            ></el-table-column
-          ></el-table
+              ></el-table-column
+            ></el-table
+          ></ModuleRegion
         ></el-tab-pane
       ></el-tabs
     ><RecordDetail
+      :loading="detailLoading"
+      :error="detailTask.error.value"
       v-model="detail"
       title="审批信息详情"
       :data="detailData"

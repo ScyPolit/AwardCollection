@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import ManagementActions from "@/components/ManagementActions.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type UploadFile } from "element-plus";
@@ -41,13 +47,17 @@ const details = computed(() =>
 );
 const sample = ref("荣誉证书 校园竞赛 ABCDEFG abcdefg 0123456789");
 async function load() {
-  busy.value = true;
   try {
-    isSuper.value = (await currentUser()).isSuperuser;
-    rows.value = isSuper.value ? await manageFonts() : await listFonts();
-  } finally {
-    busy.value = false;
-  }
+    await listTask.run(async () => {
+      busy.value = true;
+      try {
+        isSuper.value = (await currentUser()).isSuperuser;
+        rows.value = isSuper.value ? await manageFonts() : await listFonts();
+      } finally {
+        busy.value = false;
+      }
+    });
+  } catch {}
 }
 function openImport() {
   Object.assign(form, { name: "", confirmed: false });
@@ -150,62 +160,68 @@ onMounted(load);
       :closable="false"
       title="支持静态 TTF / TTC，最大 40 MB。请确认具备使用、转换、嵌入和展示授权；停用不会影响历史证书。"
     />
-    <el-table v-loading="busy" :data="visible" border class="font-table">
-      <el-table-column label="字体名称" min-width="260"
-        ><template #default="s"
-          ><el-button
-            link
-            type="primary"
-            @click="show(s.row as CertificateFont)"
-            >{{ s.row.name }}</el-button
-          ></template
-        ></el-table-column
-      >
-      <el-table-column label="来源" width="110"
-        ><template #default="s"
-          ><el-tag :type="s.row.builtin ? 'info' : 'primary'">{{
-            s.row.builtin ? "系统内置" : "授权导入"
-          }}</el-tag></template
-        ></el-table-column
-      >
-      <el-table-column label="状态" width="90"
-        ><template #default="s"
-          ><el-tag :type="s.row.active ? 'success' : 'info'">{{
-            s.row.active ? "启用" : "停用"
-          }}</el-tag></template
-        ></el-table-column
-      >
-      <el-table-column
-        prop="license"
-        label="许可说明"
-        min-width="200"
-        show-overflow-tooltip
-      />
-      <el-table-column label="操作" width="310"
-        ><template #default="s"
-          ><el-button link @click="show(s.row as CertificateFont)"
-            >预览与详情</el-button
-          ><ManagementActions
-            v-if="isSuper && !s.row.builtin"
-            :url="`/api/v1/fonts/${s.row.id}/`"
-            :data="s.row"
-            :name="s.row.name"
-            :can-edit="false"
-            :fields="[]"
-            @changed="load"
-          /><template v-if="isSuper && !s.row.builtin"
-            ><el-button link @click="rename(s.row as CertificateFont)"
-              >重命名</el-button
+    <ModuleRegion
+      :loading="listLoading"
+      :error="listError"
+      :empty="!rows.length"
+      @retry="load"
+      ><el-table v-loading="busy" :data="visible" border class="font-table">
+        <el-table-column label="字体名称" min-width="260"
+          ><template #default="s"
             ><el-button
               link
-              :type="s.row.active ? 'danger' : 'success'"
-              @click="toggle(s.row as CertificateFont)"
-              >{{ s.row.active ? "停用" : "启用" }}</el-button
+              type="primary"
+              @click="show(s.row as CertificateFont)"
+              >{{ s.row.name }}</el-button
             ></template
-          ></template
-        ></el-table-column
-      >
-    </el-table>
+          ></el-table-column
+        >
+        <el-table-column label="来源" width="110"
+          ><template #default="s"
+            ><el-tag :type="s.row.builtin ? 'info' : 'primary'">{{
+              s.row.builtin ? "系统内置" : "授权导入"
+            }}</el-tag></template
+          ></el-table-column
+        >
+        <el-table-column label="状态" width="90"
+          ><template #default="s"
+            ><el-tag :type="s.row.active ? 'success' : 'info'">{{
+              s.row.active ? "启用" : "停用"
+            }}</el-tag></template
+          ></el-table-column
+        >
+        <el-table-column
+          prop="license"
+          label="许可说明"
+          min-width="200"
+          show-overflow-tooltip
+        />
+        <el-table-column label="操作" width="310"
+          ><template #default="s"
+            ><el-button link @click="show(s.row as CertificateFont)"
+              >预览与详情</el-button
+            ><ManagementActions
+              v-if="isSuper && !s.row.builtin"
+              :url="`/api/v1/fonts/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.name"
+              :can-edit="false"
+              :fields="[]"
+              @changed="load"
+            /><template v-if="isSuper && !s.row.builtin"
+              ><el-button link @click="rename(s.row as CertificateFont)"
+                >重命名</el-button
+              ><el-button
+                link
+                :type="s.row.active ? 'danger' : 'success'"
+                @click="toggle(s.row as CertificateFont)"
+                >{{ s.row.active ? "停用" : "启用" }}</el-button
+              ></template
+            ></template
+          ></el-table-column
+        >
+      </el-table></ModuleRegion
+    >
     <el-dialog
       v-model="dialog"
       title="导入授权字体"

@@ -38,6 +38,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-192.168.31.12,localhost,127.0.0.1}
       DJANGO_SECURE_COOKIES: "true"
+      USE_ACCEL_DOWNLOAD: "true"
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://192.168.31.12:18443}
       SIGNING_KEY_PASSWORD: ${SIGNING_KEY_PASSWORD}
       CERTIFICATE_FONT: ${CERTIFICATE_FONT:-/srv/media/fonts/wqy-zenhei.ttc}
@@ -81,7 +82,7 @@ services:
       MEDIA_ROOT: /srv/media
       BACKUP_ROOT: /srv/backups
       WORKER_CONCURRENCY: "1"
-      RENDER_CONCURRENCY: ${RENDER_CONCURRENCY:-4}
+      RENDER_CONCURRENCY: ${RENDER_CONCURRENCY:-1}
     depends_on:
       db: {condition: service_healthy}
       api: {condition: service_healthy}
@@ -128,6 +129,7 @@ services:
       - "${APP_TLS_PORT:-18443}:8443"
     volumes:
       - tls_data:/etc/award-tls
+      - media_data:/srv/media:ro
     networks: [internal]
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]

@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
+import BatchDownload from "@/components/BatchDownload.vue";
 import ManagementActions from "@/components/ManagementActions.vue";
 import { useLiveStore } from "@/store/modules/live";
 import { useBusinessAccess } from "@/utils/businessAccess";
@@ -48,7 +55,8 @@ const rows = ref<Batch[]>([]),
   createDialog = ref(false),
   drawer = ref(false),
   selected = ref<any>(null),
-  uploading = ref(false);
+  uploading = ref(false),
+  actionBusy = ref(false);
 const job = computed(() =>
   selected.value
     ? live.jobs.find(j => j.batch_id === selected.value.batch.id)
@@ -118,8 +126,8 @@ watch(
   () => live.revision,
   async () => {
     await load();
-    if (drawer.value && selected.value)
-      selected.value = await batchDetail(selected.value.batch.id);
+    if (drawer.value && selected.value && !detailLoading.value)
+      await changeAwardPage(awardPage.value);
   }
 );
 watch(
@@ -145,13 +153,20 @@ const competition = computed(() =>
   competitions.value.find(item => item.id === form.competition)
 );
 async function load() {
-  [rows.value, competitions.value, templates.value, seals.value] =
-    await Promise.all([
-      listBatches(),
-      listCompetitions(),
-      listTemplates(),
-      listSeals()
-    ]);
+  try {
+    await listTask.run(
+      () =>
+        Promise.all([
+          listBatches(),
+          listCompetitions(),
+          listTemplates(),
+          isAdmin.value ? listSeals() : Promise.resolve([])
+        ]),
+      values => {
+        [rows.value, competitions.value, templates.value, seals.value] = values;
+      }
+    );
+  } catch {}
 }
 watch(
   () => form.competition,
@@ -166,14 +181,39 @@ watch(
   }
 );
 async function create() {
-  await createBatch(form);
-  createDialog.value = false;
-  ElMessage.success("批次已按选定模板、公章和输出格式创建");
-  await load();
+  actionBusy.value = true;
+  try {
+    await createBatch(form);
+    createDialog.value = false;
+    ElMessage.success("批次已按选定模板、公章和输出格式创建");
+    await load();
+  } finally {
+    actionBusy.value = false;
+  }
 }
+const detailTask = useModuleTask(),
+  detailLoading = detailTask.loading,
+  awardPage = ref(1);
 async function open(row: Batch) {
-  selected.value = await batchDetail(row.id);
   drawer.value = true;
+  selected.value = null;
+  awardPage.value = 1;
+  try {
+    await detailTask.run(
+      () => batchDetail(row.id),
+      value => (selected.value = value)
+    );
+  } catch {}
+}
+async function changeAwardPage(page: number) {
+  if (!selected.value) return;
+  const id = selected.value.batch.id;
+  try {
+    await detailTask.run(
+      () => batchDetail(id, page),
+      value => (selected.value = value)
+    );
+  } catch {}
 }
 async function upload(file: UploadFile) {
   if (!selected.value || !file.raw) return;
@@ -185,21 +225,38 @@ async function upload(file: UploadFile) {
       selected.value.batch.current_version
     );
     ElMessage.success("名单导入成功");
-    selected.value = await batchDetail(selected.value.batch.id);
+    selected.value = await batchDetail(
+      selected.value.batch.id,
+      awardPage.value
+    );
     await load();
   } finally {
     uploading.value = false;
   }
 }
 async function submit() {
-  await submitBatch(selected.value.batch.id);
-  ElMessage.success("已提交全部部门并行会签");
-  selected.value = await batchDetail(selected.value.batch.id);
-  await load();
+  actionBusy.value = true;
+  try {
+    await submitBatch(selected.value.batch.id);
+    ElMessage.success("已提交全部部门并行会签");
+    selected.value = await batchDetail(
+      selected.value.batch.id,
+      awardPage.value
+    );
+    await load();
+  } finally {
+    actionBusy.value = false;
+  }
 }
-async function retryGeneration(){await http.post(`/api/v1/batches/${selected.value.batch.id}/retry_generation/`,{data:{}});ElMessage.success("已重新加入生成队列")}
+async function retryGeneration() {
+  await http.post(
+    `/api/v1/batches/${selected.value.batch.id}/retry_generation/`,
+    { data: {} }
+  );
+  ElMessage.success("已重新加入生成队列");
+}
 async function progress() {
-  selected.value = await batchDetail(selected.value.batch.id);
+  selected.value = await batchDetail(selected.value.batch.id, awardPage.value);
   await load();
   const task = await batchProgress(selected.value.batch.id);
   if (!task) return ElMessage.info("尚未创建生成任务");
@@ -240,40 +297,47 @@ onMounted(async () => {
         >
       </div>
     </header>
-    <el-table :data="rows" border @row-dblclick="row => open(row as Batch)"
-      ><el-table-column min-width="240" label="批次"
-        ><template #default="s"
-          ><el-button link type="primary" @click="open(s.row as Batch)">{{
-            s.row.name
-          }}</el-button></template
-        ></el-table-column
-      ><el-table-column
-        min-width="240"
-        prop="competition_name"
-        label="竞赛" /><el-table-column
-        prop="team_count"
-        label="团队"
-        width="80" /><el-table-column
-        prop="current_version"
-        label="版本"
-        width="80" /><el-table-column label="审批" width="100"
-        ><template #default="s"
-          >{{ s.row.approval_summary.approved }} /
-          {{ s.row.approval_summary.total }}</template
-        ></el-table-column
-      ><el-table-column
-        prop="status"
-        label="状态"
-        width="110" /><el-table-column label="操作" width="230"
-        ><template #default="s"
-          ><el-button link type="primary" @click="open(s.row as Batch)"
-            >查看</el-button
-          ><ManagementActions
-            :url="`/api/v1/batches/${s.row.id}/`"
-            :data="s.row"
-            :name="s.row.name"
-            :fields="[{ key: 'name', label: '批次名称', required: true }]"
-            @changed="load" /></template></el-table-column></el-table
+    <ModuleRegion
+      :loading="listLoading"
+      :error="listError"
+      :empty="!rows.length"
+      @retry="load"
+      ><el-table :data="rows" border @row-dblclick="row => open(row as Batch)"
+        ><el-table-column min-width="240" label="批次"
+          ><template #default="s"
+            ><el-button link type="primary" @click="open(s.row as Batch)">{{
+              s.row.name
+            }}</el-button></template
+          ></el-table-column
+        ><el-table-column
+          min-width="240"
+          prop="competition_name"
+          label="竞赛" /><el-table-column
+          prop="team_count"
+          label="团队"
+          width="80" /><el-table-column
+          prop="current_version"
+          label="版本"
+          width="80" /><el-table-column label="审批" width="100"
+          ><template #default="s"
+            >{{ s.row.approval_summary.approved }} /
+            {{ s.row.approval_summary.total }}</template
+          ></el-table-column
+        ><el-table-column
+          prop="status"
+          label="状态"
+          width="110" /><el-table-column label="操作" width="230"
+          ><template #default="s"
+            ><el-button link type="primary" @click="open(s.row as Batch)"
+              >查看</el-button
+            ><ManagementActions
+              :url="`/api/v1/batches/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.name"
+              :fields="[{ key: 'name', label: '批次名称', required: true }]"
+              @changed="
+                load
+              " /></template></el-table-column></el-table></ModuleRegion
     ><el-dialog v-model="createDialog" title="新建批次" width="600"
       ><el-form label-position="top"
         ><el-form-item label="批次名称"
@@ -300,7 +364,9 @@ onMounted(async () => {
             ><el-checkbox value="png">图片</el-checkbox></el-checkbox-group
           ></el-form-item
         ><el-form-item
-          v-for="(name, index) in competition?.department_names || []"
+          v-for="(name, index) in isAdmin
+            ? competition?.department_names || []
+            : []"
           :key="competition!.departments[index]"
           :label="`${name}公章`"
           ><el-select
@@ -308,6 +374,7 @@ onMounted(async () => {
               form.seal_versions[String(competition!.departments[index])]
             "
             class="full"
+            placeholder="使用该部门默认启用公章"
             ><template v-for="seal in seals" :key="seal.id"
               ><el-option
                 v-for="version in seal.versions"
@@ -331,6 +398,7 @@ onMounted(async () => {
             !form.output_formats.length
           "
           @click="create"
+          :loading="actionBusy"
           >创建</el-button
         ></template
       ></el-dialog
@@ -339,7 +407,14 @@ onMounted(async () => {
       title="批次详情"
       size="min(1100px, 96vw)"
       class="batch-detail"
-      ><template v-if="selected"
+      ><el-alert
+        v-if="detailTask.error.value"
+        :title="detailTask.error.value"
+        type="error"
+        :closable="false" /><el-skeleton
+        v-if="detailLoading && !selected"
+        :rows="8"
+        animated /><template v-if="selected"
         ><el-descriptions border :column="3"
           ><el-descriptions-item label="批次">{{
             selected.batch.name
@@ -392,7 +467,13 @@ onMounted(async () => {
             :closable="false"
           />
         </div>
-        <div class="actions"><el-button v-if="job?.status==='failed'" type="warning" @click="retryGeneration">重试生成</el-button>
+        <div class="actions">
+          <el-button
+            v-if="job?.status === 'failed'"
+            type="warning"
+            @click="retryGeneration"
+            >重试生成</el-button
+          >
           <el-button
             v-if="['draft', 'returned'].includes(selected.batch.status)"
             @click="editRow()"
@@ -420,52 +501,55 @@ onMounted(async () => {
               !['draft', 'returned'].includes(selected.batch.status)
             "
             @click="submit"
+            :loading="actionBusy"
             >提交会签</el-button
-          ><el-button @click="progress">任务进度</el-button
-          ><el-button
-            v-if="selected.batch.status === 'issued'"
-            tag="a"
-            :href="`/api/v1/certificates/batch/${selected.batch.id}/archive/`"
-            type="success"
-            >下载整批 ZIP</el-button
-          >
+          ><el-button @click="progress">任务进度</el-button>
         </div>
-        <p>点击名单行可查看成员、作品与备注等完整信息</p>
-        <el-table :data="selected.awards" border @row-click="showAward"
-          ><el-table-column
-            prop="source_row"
-            label="行"
-            width="60"
-          /><el-table-column label="团队成员" min-width="180"
-            ><template #default="s">{{
-              s.row.members.join("、")
-            }}</template></el-table-column
-          ><el-table-column
-            min-width="140"
-            prop="award_name"
-            label="奖项"
-          /><el-table-column
-            min-width="180"
-            prop="team_name"
-            label="团队"
-          /><el-table-column
-            prop="work_name"
-            label="作品"
-            min-width="200"
-          /><el-table-column
-            v-if="['draft', 'returned'].includes(selected.batch.status)"
-            label="操作"
-            width="150"
-            ><template #default="s"
-              ><el-button link type="primary" @click.stop="editRow(s.row)"
-                >修改</el-button
-              ><el-button link type="danger" @click.stop="deleteRow(s.row)"
-                >删除</el-button
-              ></template
-            ></el-table-column
-          ></el-table
-        ></template
-      ></el-drawer
+        <BatchDownload
+          v-if="selected.batch.status === 'issued'"
+          :batch-id="selected.batch.id" />
+        <p>共 {{ selected.award_count }} 条，点击名单行可查看完整信息</p>
+        <ModuleRegion :loading="detailLoading"
+          ><el-table :data="selected.awards" border @row-click="showAward"
+            ><el-table-column
+              prop="source_row"
+              label="行"
+              width="60"
+            /><el-table-column label="团队成员" min-width="180"
+              ><template #default="s">{{
+                s.row.members.join("、")
+              }}</template></el-table-column
+            ><el-table-column
+              min-width="140"
+              prop="award_name"
+              label="奖项"
+            /><el-table-column
+              min-width="180"
+              prop="team_name"
+              label="团队"
+            /><el-table-column
+              prop="work_name"
+              label="作品"
+              min-width="200"
+            /><el-table-column
+              v-if="['draft', 'returned'].includes(selected.batch.status)"
+              label="操作"
+              width="150"
+              ><template #default="s"
+                ><el-button link type="primary" @click.stop="editRow(s.row)"
+                  >修改</el-button
+                ><el-button link type="danger" @click.stop="deleteRow(s.row)"
+                  >删除</el-button
+                ></template
+              ></el-table-column
+            ></el-table
+          ></ModuleRegion
+        ><el-pagination
+          v-model:current-page="awardPage"
+          :total="selected.award_count"
+          :page-size="50"
+          layout="total,prev,pager,next"
+          @current-change="changeAwardPage" /></template></el-drawer
     ><el-dialog
       v-model="rowDialog"
       :title="rowSource ? '修改获奖记录' : '新增获奖记录'"
