@@ -217,7 +217,9 @@ def main():
                 old_env,
                 {
                     "APP_SOURCE_DIR": source,
+                    "WEB_SOURCE_DIR": source,
                     "APP_BUILD_VERSION": args.revision,
+                    "WEB_BUILD_VERSION": args.revision,
                     "DJANGO_DEBUG": "false",
                     "RENDER_CONCURRENCY": "1",
                     "DJANGO_CSRF_TRUSTED_ORIGINS": "https://192.168.31.12:18443",

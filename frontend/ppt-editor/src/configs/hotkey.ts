@@ -59,20 +59,9 @@ export const HOTKEY_DOC: HotkeyItem[] = [
     ],
   },
   {
-    type: '幻灯片放映',
+    type: '页面与画布',
     children: [
-      { label: '从头开始放映幻灯片', value: 'F5' },
-      { label: '从当前开始放映幻灯片', value: 'Shift + F5' },
-      { label: '切换上一页', value: '↑ / ← / PgUp' },
-      { label: '切换下一页', value: '↓ / → / PgDown' },
-      { label: '切换下一页', value: 'Enter / Space' },
-      { label: '退出放映', value: 'ESC' },
-    ],
-  },
-  {
-    type: '幻灯片编辑',
-    children: [
-      { label: '新建幻灯片', value: 'Enter' },
+      { label: '添加页面', value: 'Enter' },
       { label: '移动画布', value: 'Space + 鼠标拖拽' },
       { label: '缩放画布', value: 'Ctrl + 鼠标滚轮' },
       { label: '放大画布', value: 'Ctrl + =' },

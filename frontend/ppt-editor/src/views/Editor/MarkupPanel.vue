@@ -3,7 +3,7 @@
     class="notes-panel"
     :width="300"
     :height="130"
-    title="幻灯片类型标注"
+    title="页面用途标注"
     :left="-270"
     :top="90"
     @close="close()"
@@ -58,10 +58,10 @@ const { handleElement, handleElementId } = storeToRefs(mainStore)
 const slideTypeOptions = ref<{ label: string; value: SlideType | '' }[]>([
   { label: '未标记类型', value: '' },
   { label: '封面页', value: 'cover' },
-  { label: '目录页', value: 'contents' },
-  { label: '过渡页', value: 'transition' },
-  { label: '内容页', value: 'content' },
-  { label: '结束页', value: 'end' },
+  { label: '信息说明页', value: 'contents' },
+  { label: '附页', value: 'transition' },
+  { label: '证书正文', value: 'content' },
+  { label: '签发说明页', value: 'end' },
 ])
 
 const textTypeOptions = ref<{ label: string; value: TextType | '' }[]>([

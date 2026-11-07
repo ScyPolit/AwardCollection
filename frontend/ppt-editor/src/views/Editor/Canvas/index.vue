@@ -136,7 +136,6 @@ import useDeleteElement from '@/hooks/useDeleteElement'
 import useCopyAndPasteElement from '@/hooks/useCopyAndPasteElement'
 import useSelectElement from '@/hooks/useSelectElement'
 import useScaleCanvas from '@/hooks/useScaleCanvas'
-import useScreening from '@/hooks/useScreening'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useCreateElement from '@/hooks/useCreateElement'
 import useCanvasElementList from '@/hooks/useCanvasElementList'
@@ -204,7 +203,6 @@ const { moveShapeKeypoint } = useMoveShapeKeypoint(elementList, canvasScale)
 const { selectAllElements } = useSelectElement()
 const { deleteAllElements } = useDeleteElement()
 const { pasteElement } = useCopyAndPasteElement()
-const { enterScreeningFromStart } = useScreening()
 const { updateSlideIndex } = useSlideHandler()
 const { createTextElement, createShapeElement } = useCreateElement()
 
@@ -361,11 +359,6 @@ const contextmenus = (): ContextmenuItem[] => {
       handler: toggleBubbleMenu,
     },
     { divider: true },
-    {
-      text: '幻灯片放映',
-      subText: 'F5',
-      handler: enterScreeningFromStart,
-    },
   ]
 }
 

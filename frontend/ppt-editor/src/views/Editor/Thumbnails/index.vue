@@ -5,12 +5,11 @@
     v-click-outside="() => setThumbnailsFocus(false)"
   >
     <div class="add-slide">
-      <div class="btn" @click="createSlide()"><i-icon-park-outline:plus class="icon" />添加幻灯片</div>
+      <div class="btn" @click="createSlide()"><i-icon-park-outline:plus class="icon" />添加页面</div>
       <Popover trigger="click" placement="bottom-start" v-model:value="presetLayoutPopoverVisible" center>
         <template #content>
           <Templates
-            @select="slide => { createSlideByTemplate(slide); presetLayoutPopoverVisible = false }"
-            @selectAll="({ slides, theme }) => { insertAllTemplates({ slides, theme }); presetLayoutPopoverVisible = false }"
+            @selected="presetLayoutPopoverVisible = false"
           />
         </template>
         <div class="select-btn"><i-icon-park-outline:down /></div>
@@ -41,13 +40,13 @@
               :id="`section-title-input-${element?.sectionTag?.id || 'default'}`"
               type="text"
               :value="element?.sectionTag?.title || ''"
-              placeholder="输入节名称"
+              placeholder="输入分组名称"
               @blur="$event => saveSection($event)"
               @keydown.enter.stop="$event => saveSection($event)"
               v-if="editingSectionId === element?.sectionTag?.id || (index === 0 && editingSectionId === 'default')"
             >
             <span class="text" v-else>
-              <div class="text-content">{{ element?.sectionTag ? (element?.sectionTag?.title || '无标题节') : '默认节' }}</div>
+              <div class="text-content">{{ element?.sectionTag ? (element?.sectionTag?.title || '未命名分组') : '默认分组' }}</div>
             </span>
           </div>
           <div
@@ -57,7 +56,6 @@
               'selected': selectedSlidesIndex.includes(index),
             }"
             @mousedown="$event => handleClickSlideThumbnail($event, index)"
-            @dblclick="enterScreening()"
             v-contextmenu="contextmenusThumbnailItem"
           >
             <div class="label" :class="{ 'offset-left': index >= 99 }">{{ fillDigit(index + 1, 2) }}</div>
@@ -69,7 +67,7 @@
       </template>
     </Draggable>
 
-    <div class="page-number">幻灯片 {{slideIndex + 1}} / {{slides.length}}</div>
+    <div class="page-number">页面 {{slideIndex + 1}} / {{slides.length}}</div>
   </div>
 </template>
 
@@ -77,15 +75,13 @@
 import { computed, nextTick, ref, watch, useTemplateRef } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useMainStore, useSlidesStore, useKeyboardStore } from '@/store'
-import type { Slide, SlideTheme } from '@/types/slides'
+import type { Slide } from '@/types/slides'
 import { fillDigit } from '@/utils/common'
 import { isElementInViewport } from '@/utils/element'
 import type { ContextmenuItem } from '@/components/Contextmenu/types'
 import useSlideHandler from '@/hooks/useSlideHandler'
 import useSectionHandler from '@/hooks/useSectionHandler'
-import useScreening from '@/hooks/useScreening'
 import useLoadSlides from '@/hooks/useLoadSlides'
-import useAddSlidesOrElements from '@/hooks/useAddSlidesOrElements'
 
 import ThumbnailSlide from '@/views/components/ThumbnailSlide/index.vue'
 import Templates from './Templates.vue'
@@ -109,19 +105,16 @@ const hasSection = computed(() => {
   return slides.value.some(item => item.sectionTag)
 })
 
-const { addSlidesFromData } = useAddSlidesOrElements()
 
 const {
   copySlide,
   pasteSlide,
   createSlide,
-  createSlideByTemplate,
   copyAndPasteSlide,
   deleteSlide,
   cutSlide,
   selectAllSlide,
   sortSlides,
-  isEmptySlide,
 } = useSlideHandler()
 
 const {
@@ -136,7 +129,7 @@ const {
 const thumbnailsRef = useTemplateRef<InstanceType<typeof Draggable>>('thumbnailsRef')
 watch(() => slideIndex.value, () => {
 
-  // 清除多选状态的幻灯片
+  // 清除多选状态的证书页面
   if (selectedSlidesIndex.value.length) {
     mainStore.updateSelectedSlidesIndex([])
   }
@@ -168,7 +161,7 @@ const handleClickSlideThumbnail = (e: MouseEvent, index: number) => {
 
   if (isMultiSelected && selectedSlidesIndex.value.includes(index) && e.button !== 0) return
 
-  // 按住Ctrl键，点选幻灯片，再次点击已选中的页面则取消选中
+  // 按住Ctrl键，点选证书页面，再次点击已选中的页面则取消选中
   // 如果被取消选中的页面刚好是当前激活页面，则需要从其他被选中的页面中选择第一个作为当前激活页面
   if (ctrlKeyState.value) {
     if (slideIndex.value === index) {
@@ -189,7 +182,7 @@ const handleClickSlideThumbnail = (e: MouseEvent, index: number) => {
       }
     }
   }
-  // 按住Shift键，选择范围内的全部幻灯片
+  // 按住Shift键，选择范围内的全部证书页面
   else if (shiftKeyState.value) {
     if (slideIndex.value === index && !isMultiSelected) return
 
@@ -252,21 +245,16 @@ const saveSection = (e: FocusEvent | KeyboardEvent) => {
   mainStore.setDisableHotkeysState(false)
 }
 
-const insertAllTemplates = ({ slides, theme }: { slides: Slide[], theme: Partial<SlideTheme> }) => {
-  if (isEmptySlide.value) slidesStore.setSlides(slides, theme)
-  else addSlidesFromData(slides)
-}
-
 const contextmenusSection = (el: HTMLElement): ContextmenuItem[] => {
   const sectionId = el.dataset.sectionId!
 
   return [
     {
-      text: '删除节',
+      text: '删除分组',
       handler: () => removeSection(sectionId),
     },
     {
-      text: '删除节和幻灯片',
+      text: '删除分组及页面',
       handler: () => {
         mainStore.setActiveElementIdList([])
         removeSectionSlides(sectionId)
@@ -277,13 +265,12 @@ const contextmenusSection = (el: HTMLElement): ContextmenuItem[] => {
       handler: removeAllSection,
     },
     {
-      text: '重命名节',
+      text: '重命名分组',
       handler: () => editSection(sectionId),
     },
   ]
 }
 
-const { enterScreening, enterScreeningFromStart } = useScreening()
 
 const contextmenusThumbnails = (): ContextmenuItem[] => {
   return [
@@ -301,11 +288,6 @@ const contextmenusThumbnails = (): ContextmenuItem[] => {
       text: '新建页面',
       subText: 'Enter',
       handler: createSlide,
-    },
-    {
-      text: '幻灯片放映',
-      subText: 'F5',
-      handler: enterScreeningFromStart,
     },
   ]
 }
@@ -349,16 +331,11 @@ const contextmenusThumbnailItem = (): ContextmenuItem[] => {
       handler: () => deleteSlide(),
     },
     {
-      text: '增加节',
+      text: '添加页面分组',
       handler: createSection,
       disable: !!currentSlide.value.sectionTag,
     },
     { divider: true },
-    {
-      text: '从当前放映',
-      subText: 'Shift + F5',
-      handler: enterScreening,
-    },
   ]
 }
 </script>

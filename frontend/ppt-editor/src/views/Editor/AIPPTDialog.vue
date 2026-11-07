@@ -83,7 +83,7 @@
       </div>
       <div class="configs" v-if="!isEmptySlide">
         <div class="config-item">
-          <Checkbox v-model:value="overwrite">覆盖已有幻灯片</Checkbox>
+          <Checkbox v-model:value="overwrite">覆盖已有证书页面</Checkbox>
         </div>
       </div>
     </template>
@@ -232,7 +232,7 @@ const createOutline = async () => {
 const createPPT = async (template?: { slides: Slide[], theme: SlideTheme }) => {
   loading.value = true
   mainStore.setAIPPTDialogState('running')
-  message.loading('演示文稿生成中，请稍等 ...', { duration: 0 })
+  message.loading('证书模板生成中，请稍等 ...', { duration: 0 })
 
   if (overwrite.value) resetSlides()
 

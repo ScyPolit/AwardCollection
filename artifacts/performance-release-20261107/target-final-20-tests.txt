@@ -1,0 +1,108 @@
+Found 20 test(s).
+Creating test database for alias 'default' ('test_awardcollection_v5_final_71d45e97')...
+Operations to perform:
+  Synchronize unmigrated apps: messages, rest_framework, staticfiles
+  Apply all migrations: admin, auth, awards, contenttypes, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying awards.0001_initial... OK
+  Applying awards.0002_certificatesequence... OK
+  Applying awards.0003_systemsetting_verificationattempt_loginprotection_and_more... OK
+  Applying awards.0004_independent_owners... OK
+  Applying awards.0005_certificatefont... OK
+  Applying awards.0006_certificatefont_active... OK
+  Applying awards.0007_awardbatch_deleted_at_certificate_deleted_at_and_more... OK
+  Applying awards.0008_certificate_notes... OK
+  Applying awards.0009_batchversion_integrity_hmac_certificate_image_sha256... OK
+  Applying awards.0010_alter_batchversion_integrity_hmac_and_more... OK
+  Applying awards.0011_templateversion_summary_preparedfile... OK
+  Applying awards.0012_notification_batch... OK
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).
+test_accel_redirect_is_protected_and_does_not_read_file_into_response (awards.test_performance_permissions.PerformancePermissionTests.test_accel_redirect_is_protected_and_does_not_read_file_into_response) ... /usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /testsource/staticfiles/
+  mw_instance = middleware(adapted_handler)
+ok
+test_archive_formats_and_expired_leases_are_bounded (awards.test_performance_permissions.PerformancePermissionTests.test_archive_formats_and_expired_leases_are_bounded) ... ok
+test_archive_is_queued_deduplicated_persisted_and_authorized (awards.test_performance_permissions.PerformancePermissionTests.test_archive_is_queued_deduplicated_persisted_and_authorized) ... ok
+test_archive_query_never_selects_template_snapshot_or_related_objects (awards.test_performance_permissions.PerformancePermissionTests.test_archive_query_never_selects_template_snapshot_or_related_objects) ... ok
+test_batch_scope_and_notifications_rechecked_after_department_role_changes (awards.test_performance_permissions.PerformancePermissionTests.test_batch_scope_and_notifications_rechecked_after_department_role_changes) ... ok
+test_historical_approval_does_not_grant_current_competition_write_permission (awards.test_performance_permissions.PerformancePermissionTests.test_historical_approval_does_not_grant_current_competition_write_permission) ... ok
+test_large_page_image_has_bounded_pixels (awards.test_performance_permissions.PerformancePermissionTests.test_large_page_image_has_bounded_pixels) ... ok
+test_legacy_revocation_notice_is_scoped_after_department_change (awards.test_performance_permissions.PerformancePermissionTests.test_legacy_revocation_notice_is_scoped_after_department_change) ... ok
+test_modified_source_is_not_packaged_and_old_package_is_invalidated (awards.test_performance_permissions.PerformancePermissionTests.test_modified_source_is_not_packaged_and_old_package_is_invalidated) ... ok
+test_owner_cannot_access_seal_or_font_management (awards.test_performance_permissions.PerformancePermissionTests.test_owner_cannot_access_seal_or_font_management) ... ok
+test_permissions_follow_frozen_approval_not_current_competition_departments (awards.test_performance_permissions.PerformancePermissionTests.test_permissions_follow_frozen_approval_not_current_competition_departments) ... ok
+test_preview_is_queued_without_rendering_in_the_api_process (awards.test_performance_permissions.PerformancePermissionTests.test_preview_is_queued_without_rendering_in_the_api_process) ... ok
+test_template_list_is_metadata_only_and_batch_detail_is_paginated (awards.test_performance_permissions.PerformancePermissionTests.test_template_list_is_metadata_only_and_batch_detail_is_paginated) ... ok
+test_worker_spawn_generates_and_resumes_png_without_rewriting_signed_pdf (awards.test_performance_permissions.PerformancePermissionTests.test_worker_spawn_generates_and_resumes_png_without_rewriting_signed_pdf) ... Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Validation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+ok
+test_emergency_issue_requires_superuser_password_and_reason (awards.tests.WorkflowTests.test_emergency_issue_requires_superuser_password_and_reason) ... ok
+test_emergency_void_requires_superuser_password_and_reason (awards.tests.WorkflowTests.test_emergency_void_requires_superuser_password_and_reason) ... ok
+test_revocation_all_departments_voids_certificate (awards.tests.WorkflowTests.test_revocation_all_departments_voids_certificate) ... ok
+test_revocation_rejection_keeps_certificate_active (awards.tests.WorkflowTests.test_revocation_rejection_keeps_certificate_active) ... ok
+test_revocation_partial_approval_keeps_certificate_active (awards.tests.WorkflowTests.test_revocation_partial_approval_keeps_certificate_active) ... ok
+test_read_receipt_is_persisted_idempotently_and_reflected_in_stream (awards.test_management_security.ManagementSecurityTests.test_read_receipt_is_persisted_idempotently_and_reflected_in_stream) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 75.975s
+
+OK
+Destroying test database for alias 'default' ('test_awardcollection_v5_final_71d45e97')...

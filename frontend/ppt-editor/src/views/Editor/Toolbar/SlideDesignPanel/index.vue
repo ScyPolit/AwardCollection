@@ -105,11 +105,11 @@
         :value="viewportRatio"
         @update:value="value => updateViewportRatio(value)"
         :options="[
-          { label: '宽屏 16 : 9', value: 0.5625 },
-          { label: '宽屏 16 : 10', value: 0.625 },
-          { label: '标准 4 : 3', value: 0.75 },
-          { label: '纸张 A3 / A4', value: 0.70710678 },
-          { label: '竖向 A3 / A4', value: 1.41421356 },
+          { label: '宽幅横版 16 : 9', value: 0.5625 },
+          { label: '横向版式 16 : 10', value: 0.625 },
+          { label: '横向版式 4 : 3', value: 0.75 },
+          { label: 'A系列横版证书', value: 0.70710678 },
+          { label: 'A系列竖版证书', value: 1.41421356 },
           { label: '自定义', value: 'custom' },
         ]"
       />
@@ -122,7 +122,7 @@
     <Divider />
 
     <div class="title">
-      <span>全局主题</span>
+      <span>证书样式</span>
       <span class="more" @click="moreThemeConfigsVisible = !moreThemeConfigsVisible">
         <span class="text">更多</span>
         <i-icon-park-outline:down v-if="moreThemeConfigsVisible" />
@@ -252,7 +252,7 @@
     </template>
 
     <div class="row">
-      <Button style="flex: 1;" @click="applyThemeToAllSlides(moreThemeConfigsVisible)"><i-icon-park-outline:check /> 应用主题到全部</Button>
+      <Button style="flex: 1;" @click="applyThemeToAllSlides(moreThemeConfigsVisible)"><i-icon-park-outline:check /> 应用配色到全部页面</Button>
     </div>
 
     <div class="row">
@@ -260,35 +260,13 @@
     </div>
 
     <div class="row">
-      <Button style="flex: 1;" @click="themeStylesExtractVisible = true"><i-icon-park-outline:platte /> 从幻灯片提取主题</Button>
+      <Button style="flex: 1;" @click="themeStylesExtractVisible = true"><i-icon-park-outline:platte /> 从页面提取配色</Button>
     </div>
 
     <Divider />
 
-    <div class="title">预置主题</div>
-    <div class="theme-list">
-      <div
-        class="theme-item"
-        v-for="(item, index) in PRESET_THEMES"
-        :key="index"
-        :style="{
-          backgroundColor: item.background,
-          fontFamily: item.fontname,
-        }"
-      >
-        <div class="theme-item-content">
-          <div class="text" :style="{ color: item.fontColor }">文字 Aa</div>
-          <div class="colors">
-            <div class="color-block" v-for="(color, index) in item.colors" :key="index" :style="{ backgroundColor: color}"></div>
-          </div>
+    <CertificateLayouts compact />
 
-          <div class="btns">
-            <Button type="primary" size="small" @click="applyPresetTheme(item)">设置</Button>
-            <Button type="primary" size="small" style="margin-top: 3px;" @click="applyPresetTheme(item, true)">设置并应用</Button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <Modal
@@ -330,7 +308,7 @@ import type {
   SlideBackgroundImageSize,
   LineStyleType,
 } from '@/types/slides'
-import { PRESET_THEMES } from '@/configs/theme'
+import CertificateLayouts from '@/components/CertificateLayouts.vue'
 import { FONTS } from '@/configs/font'
 import useHistorySnapshot from '@/hooks/useHistorySnapshot'
 import useSlideTheme from '@/hooks/useSlideTheme'
@@ -377,7 +355,6 @@ const background = computed(() => {
 
 const { addHistorySnapshot } = useHistorySnapshot()
 const {
-  applyPresetTheme,
   applyThemeToAllSlides,
   applyFontToAllSlides,
 } = useSlideTheme()
@@ -543,57 +520,6 @@ const updateViewportRatio = (value: string | number) => {
   text-align: center;
 }
 
-.theme-list {
-  @include flex-grid-layout();
-}
-.theme-item {
-  @include flex-grid-layout-children(2, 48%);
-
-  padding-bottom: 27%;
-  border-radius: $borderRadius;
-  position: relative;
-  cursor: pointer;
-
-  .theme-item-content {
-    @include absolute-0();
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 8px;
-    border: 1px solid $borderColor;
-    border-radius: $borderRadius;
-  }
-
-  .text {
-    font-size: 15px;
-  }
-  .colors {
-    display: flex;
-    margin-top: 6px;
-  }
-  .color-block {
-    width: 12px;
-    height: 12px;
-    margin-right: 2px;
-  }
-
-  &:hover .btns {
-    opacity: 1;
-  }
-
-  .btns {
-    @include absolute-0();
-
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    display: flex;
-    background-color: rgba($color: #000, $alpha: .25);
-    opacity: 0;
-    transition: opacity $transitionDelay;
-  }
-}
 .option {
   height: 32px;
   padding: 0 5px;

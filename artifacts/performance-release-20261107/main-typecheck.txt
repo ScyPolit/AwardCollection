@@ -1,0 +1,4 @@
+
+> pure-admin-thin@6.2.0 typecheck F:\project\AwardCollection\frontend
+> tsc --noEmit && vue-tsc --noEmit --skipLibCheck
+

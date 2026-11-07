@@ -77,7 +77,7 @@
                 ></div>
               </div>
             </div>
-            <div class="label">幻灯片主题：</div>
+            <div class="label">证书页面主题：</div>
             <div class="preset-themes" :style="{ marginBottom: '-10px' }">
               <div class="preset-theme" @click="setThemeColors(theme.themeColors)">
                 <div

@@ -1,0 +1,102 @@
+[
+  {
+    "path": "#/business/competitions",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "竞赛管理"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/batches",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "名单与批次"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/fonts",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "字体管理"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/seals",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "公章管理"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/approvals",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "会签待办"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/certificates",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "证书档案"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/administration",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "账号与公开设置"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/logs",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "操作日志"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/emergency",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "超管应急操作"
+    ],
+    "errorMessages": 0
+  },
+  {
+    "path": "#/business/verification",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "headings": [
+      "证书编号查验"
+    ],
+    "errorMessages": 0
+  }
+]

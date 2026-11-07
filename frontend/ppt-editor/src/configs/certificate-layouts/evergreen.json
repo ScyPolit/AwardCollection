@@ -1,0 +1,197 @@
+{
+  "engine": "pptist",
+  "page": {
+    "width": 842,
+    "height": 595
+  },
+  "slideIndex": 0,
+  "presentation": {
+    "title": "清新青绿 · 创新竞赛",
+    "viewportSize": 842,
+    "viewportRatio": 0.7066508313539193,
+    "theme": {
+      "fontName": "AC_hei",
+      "fontColor": "#226658",
+      "backgroundColor": "#fffdf8",
+      "themeColors": [
+        "#226658",
+        "#6DAA91"
+      ]
+    },
+    "slides": [
+      {
+        "id": "demo",
+        "background": {
+          "type": "solid",
+          "color": "#fffdf8"
+        },
+        "elements": [
+          {
+            "id": "frame",
+            "type": "image",
+            "left": 0,
+            "top": 0,
+            "width": 842,
+            "height": 595,
+            "rotate": 0,
+            "lock": true,
+            "fixedRatio": true,
+            "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4NDIiIGhlaWdodD0iNTk1Ij48cmVjdCB3aWR0aD0iODQyIiBoZWlnaHQ9IjU5NSIgZmlsbD0iI2ZmZmRmOCIvPjxyZWN0IHg9IjIyIiB5PSIyMiIgd2lkdGg9Ijc5OCIgaGVpZ2h0PSI1NTEiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzIyNjY1OCIgc3Ryb2tlLXdpZHRoPSIzIi8+PHJlY3QgeD0iMzEiIHk9IjMxIiB3aWR0aD0iNzgwIiBoZWlnaHQ9IjUzMyIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNkRBQTkxIi8+PHBhdGggZD0iTTIyIDY1VjIySDY1TTc3NyAyMkg4MjBWNjVNMjIgNTMwVjU3M0g2NU03NzcgNTczSDgyMFY1MzAiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzZEQUE5MSIgc3Ryb2tlLXdpZHRoPSI2Ii8+PHBhdGggZD0iTTMzMCAxODBINTEyIiBzdHJva2U9IiM2REFBOTEiLz48cGF0aCBkPSJNMzQwIDQ3MEg1MDIiIHN0cm9rZT0iIzZEQUE5MSIvPjxjaXJjbGUgY3g9IjQyMSIgY3k9IjUwMCIgcj0iOSIgZmlsbD0iIzZEQUE5MSIvPjxwYXRoIGQ9Ik00MTcgNTAwTDQyMCA1MDNMNDI2IDQ5NiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+"
+          },
+          {
+            "id": "en",
+            "type": "text",
+            "left": 76,
+            "top": 67,
+            "width": 690,
+            "height": 30,
+            "rotate": 0,
+            "defaultFontName": "AC_liberationserif_regular",
+            "defaultColor": "#6DAA91",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_liberationserif_regular;font-size:12px;color:#6DAA91\">CERTIFICATE OF ACHIEVEMENT</span></p>"
+          },
+          {
+            "id": "title",
+            "type": "text",
+            "left": 76,
+            "top": 111,
+            "width": 690,
+            "height": 62,
+            "rotate": 0,
+            "defaultFontName": "AC_kai",
+            "defaultColor": "#226658",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_kai;font-size:40px;color:#226658\">荣 誉 证 书</span></p>"
+          },
+          {
+            "id": "contest",
+            "type": "text",
+            "left": 76,
+            "top": 205,
+            "width": 690,
+            "height": 45,
+            "rotate": 0,
+            "defaultFontName": "AC_hei",
+            "defaultColor": "#226658",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_hei;font-size:19px;color:#226658\">{{competition_name}}</span></p>"
+          },
+          {
+            "id": "team",
+            "type": "text",
+            "left": 76,
+            "top": 260,
+            "width": 690,
+            "height": 50,
+            "rotate": 0,
+            "defaultFontName": "AC_song",
+            "defaultColor": "#226658",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_song;font-size:28px;color:#226658\">{{team_name}}</span></p>"
+          },
+          {
+            "id": "members",
+            "type": "text",
+            "left": 76,
+            "top": 314,
+            "width": 690,
+            "height": 40,
+            "rotate": 0,
+            "defaultFontName": "AC_fangsong",
+            "defaultColor": "#226658",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_fangsong;font-size:20px;color:#226658\">{{members}}</span></p>"
+          },
+          {
+            "id": "award",
+            "type": "text",
+            "left": 76,
+            "top": 368,
+            "width": 690,
+            "height": 52,
+            "rotate": 0,
+            "defaultFontName": "AC_kai",
+            "defaultColor": "#226658",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_kai;font-size:28px;color:#226658\">荣获  {{award_name}}</span></p>"
+          },
+          {
+            "id": "encourage",
+            "type": "text",
+            "left": 76,
+            "top": 423,
+            "width": 690,
+            "height": 35,
+            "rotate": 0,
+            "defaultFontName": "AC_fangsong",
+            "defaultColor": "#5D6C7C",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_fangsong;font-size:16px;color:#5D6C7C\">特发此证，以资鼓励。</span></p>"
+          },
+          {
+            "id": "demo",
+            "type": "text",
+            "left": 76,
+            "top": 525,
+            "width": 690,
+            "height": 24,
+            "rotate": 0,
+            "defaultFontName": "AC_hei",
+            "defaultColor": "#9CA6AF",
+            "inset": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "fixedHeight": true,
+            "content": "<p style=\"text-align:center\"><span style=\"font-family:AC_hei;font-size:10px;color:#9CA6AF\">SAMPLE · 演示证书</span></p>"
+          }
+        ]
+      }
+    ]
+  }
+}
