@@ -3,6 +3,7 @@ import base64
 import io
 import os
 import time
+import math
 from datetime import datetime, timedelta, timezone as dt_timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -261,6 +262,18 @@ def append_signature(source, destination, department, index):
         PdfSigner(metadata, signer=signer, new_field_spec=spec).sign_pdf(writer, output=outf)
 
 
+def image_from_pdf(pdf, image):
+    """One page at a bounded pixel count, including unusually large imported slides."""
+    with fitz.open(pdf) as document:
+        page = document[0]
+        max_pixels = max(500_000, min(int(os.getenv("CERTIFICATE_IMAGE_MAX_PIXELS", "4000000")), 8_000_000))
+        scale = min(2, math.sqrt(max_pixels / max(1, page.rect.width * page.rect.height)))
+        pixmap = page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False)
+        pixmap.save(image)
+        del pixmap
+    return image
+
+
 def render_certificate(award, number, departments=None, template=None, seals=None, output_root=None, make_image=True):
     root = Path(output_root) if output_root else Path(settings.MEDIA_ROOT) / "protected" / "certificates" / str(datetime.now().year)
     root.mkdir(parents=True, exist_ok=True)
@@ -283,11 +296,8 @@ def render_certificate(award, number, departments=None, template=None, seals=Non
     unsigned.unlink(missing_ok=True)
     image = None
     if make_image:
-        document = fitz.open(final_pdf)
-        pixmap = document[0].get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False)
         image = base.with_suffix(".png")
-        pixmap.save(image)
-        document.close()
+        image_from_pdf(final_pdf, image)
     return final_pdf, image, sha256(final_pdf)
 
 

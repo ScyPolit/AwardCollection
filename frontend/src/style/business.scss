@@ -1,5 +1,17 @@
 /* Keep business screens aligned with Pure Admin / Element Plus theme tokens. */
 .business-page {
+  > header .search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    max-width: 100%;
+    align-items: center;
+    .el-input {
+      flex: 1;
+      min-width: 160px;
+      width: auto;
+    }
+  }
   min-width: 0;
   color: var(--el-text-color-primary);
 

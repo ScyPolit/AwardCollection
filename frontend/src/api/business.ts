@@ -63,6 +63,11 @@ export type Template = {
       layers?: Array<Record<string, unknown>>;
       [key: string]: unknown;
     };
+    summary?: {
+      engine: string;
+      page: { width: number; height: number };
+      element_count: number;
+    };
   };
 };
 export type Seal = {
@@ -138,10 +143,15 @@ export const markNotificationRead = (id: number) =>
 export const listBatches = () => http.get<Batch[], never>("/api/v1/batches/");
 export const createBatch = (data: object) =>
   http.post<Batch, object>("/api/v1/batches/", { data });
-export const batchDetail = (id: number) =>
-  http.get<any, never>(`/api/v1/batches/${id}/detail/`);
+export const batchDetail = (id: number, page = 1) =>
+  http.get<any, never>(`/api/v1/batches/${id}/detail/`, {
+    params: { page, page_size: 50 }
+  });
 export const submitBatch = (id: number) =>
-  http.post<any, object>(`/api/v1/batches/${id}/submit/`, { data: {}, timeout:120000 });
+  http.post<any, object>(`/api/v1/batches/${id}/submit/`, {
+    data: {},
+    timeout: 120000
+  });
 export const batchProgress = (id: number) =>
   http.get<any, never>(`/api/v1/batches/${id}/progress/`);
 export const importAwards = (
@@ -192,7 +202,11 @@ export const publishTemplate = (id: number) =>
   http.request<Template>("patch", `/api/v1/templates/${id}/`, {
     data: { published: true }
   });
-export const saveTemplateVersion = (id: number, canvas: object, expected_version?: number) =>
+export const saveTemplateVersion = (
+  id: number,
+  canvas: object,
+  expected_version?: number
+) =>
   http.post<any, object>(`/api/v1/templates/${id}/save_version/`, {
     data: { canvas, expected_version }
   });

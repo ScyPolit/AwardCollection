@@ -8,6 +8,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
 if not DEBUG and (SECRET_KEY == "local-development-key-change-before-deploy" or len(SECRET_KEY)<40):
     raise RuntimeError("Production requires a separate random DJANGO_SECRET_KEY of at least 40 characters")
 BUILD_VERSION = os.getenv("APP_BUILD_VERSION", "development")
+USE_ACCEL_DOWNLOAD = os.getenv("USE_ACCEL_DOWNLOAD", "false").lower() == "true"
 ALLOWED_HOSTS = [x.strip() for x in os.getenv("DJANGO_ALLOWED_HOSTS", "*").split(",") if x.strip()]
 CSRF_TRUSTED_ORIGINS = [x.strip() for x in os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "http://127.0.0.1:8848").split(",") if x.strip()]
 
@@ -60,7 +61,8 @@ if database_url:
         "CONN_MAX_AGE": 60,
     }}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3"}}
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",
+                             "OPTIONS": {"timeout": 20, "transaction_mode": "IMMEDIATE"}}}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

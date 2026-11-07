@@ -178,17 +178,8 @@ def archive(actor, instance):
 
 
 def can_manage_batch(user, batch):
-    return (
-        user.is_superuser
-        or batch.created_by_id == user.pk
-        or batch.competition.collaborators.filter(pk=user.pk).exists()
-        or DepartmentMembership.objects.filter(
-            user=user,
-            role="admin",
-            active=True,
-            department__competitions=batch.competition,
-        ).exists()
-    )
+    from .scopes import accessible_batches
+    return accessible_batches(user).filter(pk=batch.pk).exists()
 
 
 def assert_batch_idle(batch):

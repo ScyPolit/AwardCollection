@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import ManagementActions from "@/components/ManagementActions.vue";
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -59,11 +65,15 @@ const form = reactive({
   collaborators: [] as number[]
 });
 async function load() {
-  [rows.value, departments.value, users.value] = await Promise.all([
-    listCompetitions(),
-    listDepartments(),
-    listUsers()
-  ]);
+  try {
+    await listTask.run(async () => {
+      [rows.value, departments.value, users.value] = await Promise.all([
+        listCompetitions(),
+        listDepartments(),
+        listUsers()
+      ]);
+    });
+  } catch {}
 }
 function openCreate() {
   Object.assign(form, {
@@ -97,62 +107,71 @@ onMounted(load);
       </div>
       <el-button type="primary" @click="openCreate">新建竞赛</el-button>
     </header>
-    <el-table
-      :data="rows"
-      border
-      @row-dblclick="row => show(row as Competition)"
-      ><el-table-column label="竞赛名称" min-width="220"
-        ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row as Competition)">{{
-            s.row.name
-          }}</el-button></template
-        ></el-table-column
-      ><el-table-column label="拟盖章部门" min-width="220"
-        ><template #default="s">{{
-          s.row.department_names.join("、")
-        }}</template></el-table-column
-      ><el-table-column label="协作负责人" min-width="200"
-        ><template #default="s">{{
-          s.row.collaborator_names.join("、")
-        }}</template></el-table-column
-      ><el-table-column label="状态" width="90"
-        ><template #default="s"
-          ><el-tag :type="s.row.active ? 'success' : 'info'">{{
-            s.row.active ? "启用" : "废止"
-          }}</el-tag></template
-        ></el-table-column
-      ><el-table-column label="操作" width="290"
-        ><template #default="s"
-          ><el-button link @click="show(s.row as Competition)">查看</el-button
-          ><ManagementActions
-            :url="`/api/v1/competitions/${s.row.id}/`"
-            :data="s.row"
-            :name="s.row.name"
-            :fields="[
-              { key: 'name', label: '竞赛名称', required: true },
-              { key: 'award_presets', label: '常用奖项', type: 'list' },
-              {
-                key: 'collaborators',
-                label: '协作负责人',
-                type: 'list',
-                options: users.map(u => ({
-                  label: u.label || u.username || '',
-                  value: u.id
-                }))
-              }
-            ]"
-            @changed="load"
-          />
-          ><el-button
-            v-if="isSuper"
-            link
-            :type="s.row.active ? 'danger' : 'success'"
-            :loading="changing === s.row.id"
-            @click="toggle(s.row as Competition)"
-            >{{ s.row.active ? "废止" : "启用" }}</el-button
-          ></template
-        ></el-table-column
-      ></el-table
+    <ModuleRegion
+      :loading="listLoading"
+      :error="listError"
+      :empty="!rows.length"
+      @retry="load"
+      ><el-table
+        :data="rows"
+        border
+        @row-dblclick="row => show(row as Competition)"
+        ><el-table-column label="竞赛名称" min-width="220"
+          ><template #default="s"
+            ><el-button
+              link
+              type="primary"
+              @click="show(s.row as Competition)"
+              >{{ s.row.name }}</el-button
+            ></template
+          ></el-table-column
+        ><el-table-column label="拟盖章部门" min-width="220"
+          ><template #default="s">{{
+            s.row.department_names.join("、")
+          }}</template></el-table-column
+        ><el-table-column label="协作负责人" min-width="200"
+          ><template #default="s">{{
+            s.row.collaborator_names.join("、")
+          }}</template></el-table-column
+        ><el-table-column label="状态" width="90"
+          ><template #default="s"
+            ><el-tag :type="s.row.active ? 'success' : 'info'">{{
+              s.row.active ? "启用" : "废止"
+            }}</el-tag></template
+          ></el-table-column
+        ><el-table-column label="操作" width="290"
+          ><template #default="s"
+            ><el-button link @click="show(s.row as Competition)">查看</el-button
+            ><ManagementActions
+              :url="`/api/v1/competitions/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.name"
+              :fields="[
+                { key: 'name', label: '竞赛名称', required: true },
+                { key: 'award_presets', label: '常用奖项', type: 'list' },
+                {
+                  key: 'collaborators',
+                  label: '协作负责人',
+                  type: 'list',
+                  options: users.map(u => ({
+                    label: u.label || u.username || '',
+                    value: u.id
+                  }))
+                }
+              ]"
+              @changed="load"
+            />
+            ><el-button
+              v-if="isSuper"
+              link
+              :type="s.row.active ? 'danger' : 'success'"
+              :loading="changing === s.row.id"
+              @click="toggle(s.row as Competition)"
+              >{{ s.row.active ? "废止" : "启用" }}</el-button
+            ></template
+          ></el-table-column
+        ></el-table
+      ></ModuleRegion
     ><el-dialog
       v-model="dialog"
       title="新建竞赛"

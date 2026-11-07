@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import {
@@ -18,8 +24,12 @@ const batches = ref<Batch[]>([]),
     password: ""
   });
 async function load() {
-  batches.value = await listBatches();
-  certificates.value = (await listCertificates(1, 100)).results;
+  try {
+    await listTask.run(async () => {
+      batches.value = await listBatches();
+      certificates.value = (await listCertificates(1, 100)).results;
+    });
+  } catch {}
 }
 async function execute() {
   if (form.mode === "issue")
@@ -50,7 +60,11 @@ onMounted(load);
       type="warning"
       :closable="false"
       title="仅在普通审批流程无法满足紧急业务时使用"
-    /><el-form label-position="top" class="form"
+    /><el-form
+      v-loading="listLoading"
+      element-loading-text="正在加载可操作业务…"
+      label-position="top"
+      class="form"
       ><el-form-item label="操作"
         ><el-segmented
           v-model="form.mode"

@@ -14,6 +14,7 @@ from .models import (
     ApprovalDepartment,
     GenerationTask,
     Notification,
+    PreparedFile,
 )
 from .permissions import is_department_admin
 
@@ -32,10 +33,10 @@ def snapshot_for(user_id, session_key=None, session_auth_hash=None):
             return None
         if session_auth_hash and user.get_session_auth_hash() != session_auth_hash:
             return None
-        from .views import accessible_competitions
+        from .scopes import accessible_competitions, accessible_versions, accessible_batches, visible_notifications
 
         competitions = accessible_competitions(user)
-        messages = Notification.objects.filter(user=user).order_by("-created_at", "-pk")
+        messages = visible_notifications(user).order_by("-created_at", "-pk")
         notifications = list(
             messages[:40].values(
                 "id", "title", "body", "kind", "target", "read_at", "created_at"
@@ -58,10 +59,11 @@ def snapshot_for(user_id, session_key=None, session_auth_hash=None):
         )
         tasks = (
             GenerationTask.objects.filter(
-                version__batch__competition__in=competitions,
+                version__in=accessible_versions(user),
                 version__batch__deleted_at__isnull=True,
             )
             .select_related("version__batch")
+            .defer("version__snapshot")
             .order_by("-updated_at")[:30]
         )
         now = timezone.now()
@@ -110,10 +112,13 @@ def snapshot_for(user_id, session_key=None, session_auth_hash=None):
                 else 0
             ),
             "jobs": jobs,
-            "revision": AuditEvent.objects.order_by("-pk")
-            .values_list("pk", flat=True)
-            .first()
-            or 0,
+            "files": [
+                {"id": str(a.pk), "batch_id": a.version.batch_id, "status": a.status, "processed": a.processed, "total": a.total,
+                 "percent": 100 if a.status == "ready" else min(99, round(a.processed/max(1,a.total)*100)), "error": a.error,
+                 "download_url": f"/api/v1/prepared-files/{a.pk}/download/" if a.status == "ready" else None}
+                for a in PreparedFile.objects.filter(kind="batch_zip", subscribers=user, version__in=accessible_versions(user)).select_related("version").defer("version__snapshot").order_by("-updated_at")[:20]
+            ],
+            "revision": str(accessible_batches(user).order_by("-updated_at").values_list("updated_at", flat=True).first() or ""),
         }
     finally:
         if not connection.in_atomic_block:

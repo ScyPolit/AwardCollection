@@ -29,25 +29,37 @@ export default {
       path: "/business/templates",
       name: "Templates",
       component: () => import("@/views/business/templates.vue"),
-      meta: { icon: "ep/edit-pen", title: "模板编辑器" }
+      meta: {
+        icon: "ep/edit-pen",
+        title: "模板编辑器",
+        roles: ["admin", "super"]
+      }
     },
     {
       path: "/business/fonts",
       name: "FontManagement",
       component: () => import("@/views/business/fonts.vue"),
-      meta: { icon: "ri/font-size-2", title: "字体管理" }
+      meta: {
+        icon: "ri/font-size-2",
+        title: "字体管理",
+        roles: ["admin", "super"]
+      }
     },
     {
       path: "/business/seals",
       name: "Seals",
       component: () => import("@/views/business/seals.vue"),
-      meta: { icon: "ep/stamp", title: "公章管理" }
+      meta: { icon: "ep/stamp", title: "公章管理", roles: ["admin", "super"] }
     },
     {
       path: "/business/approvals",
       name: "Approvals",
       component: () => import("@/views/business/approvals.vue"),
-      meta: { icon: "ep/circle-check", title: "会签待办" }
+      meta: {
+        icon: "ep/circle-check",
+        title: "会签待办",
+        roles: ["admin", "super"]
+      }
     },
     {
       path: "/business/certificates",

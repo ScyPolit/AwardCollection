@@ -5,6 +5,12 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import ListCard from "./ListCard.vue";
 import RecordDetail from "@/components/RecordDetail.vue";
+import PreparedPreview from "@/components/PreparedPreview.vue";
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  dataLoading = listTask.loading,
+  loadError = listTask.error;
 import { useBusinessAccess } from "@/utils/businessAccess";
 import {
   copyTemplate,
@@ -18,7 +24,6 @@ const router = useRouter(),
   { user, isAdmin, isSuper } = useBusinessAccess();
 const productList = ref<Template[]>([]),
   departments = ref<Option[]>([]),
-  dataLoading = ref(true),
   searchValue = ref(""),
   department = ref<number>(),
   pagination = reactive({ current: 1, pageSize: 12 });
@@ -62,13 +67,13 @@ const info = computed(() => ({
 watch([searchValue, department], () => (pagination.current = 1));
 async function load() {
   try {
-    [productList.value, departments.value] = await Promise.all([
-      listTemplates(),
-      listDepartments()
-    ]);
-  } finally {
-    dataLoading.value = false;
-  }
+    await listTask.run(
+      () => Promise.all([listTemplates(), listDepartments()]),
+      values => {
+        [productList.value, departments.value] = values;
+      }
+    );
+  } catch {}
 }
 function show(product: Template) {
   selected.value = product;
@@ -132,7 +137,12 @@ onMounted(load);
         clearable
       />
     </div>
-    <div v-loading="dataLoading">
+    <ModuleRegion
+      :loading="dataLoading"
+      :error="loadError"
+      :empty="!productList.length"
+      @retry="load"
+    >
       <el-empty
         v-if="!dataLoading && !filtered.length"
         description="未找到模板，可由管理员新建或复制共享模板"
@@ -161,13 +171,12 @@ onMounted(load);
         background
         layout="total,sizes,prev,pager,next,jumper"
       />
-    </div>
+    </ModuleRegion>
     <RecordDetail v-model="preview" title="证书模板预览" :data="info"
-      ><el-image
-        v-if="selected"
-        :src="`/api/v1/templates/${selected.id}/thumbnail/?version=${selected.latest_version?.id}`"
-        fit="contain"
-        style="width: 100%"
+      ><PreparedPreview
+        v-if="selected?.latest_version"
+        :version="selected.latest_version.id"
+        style="height: 450px"
       /><el-space
         ><el-button
           type="primary"

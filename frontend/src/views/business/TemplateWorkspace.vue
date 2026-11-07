@@ -22,6 +22,12 @@ import {
   type Option
 } from "@/api/business";
 import { http } from "@/utils/http";
+import { useModuleTask } from "@/composables/useModuleTask";
+const canvasTask = useModuleTask(),
+  canvasLoading = canvasTask.loading;
+const metadataTask = useModuleTask();
+const initializing = ref(true);
+const activeTemplate = ref<Template>();
 const route = useRoute(),
   router = useRouter(),
   { user, isSuper, isAdmin } = useBusinessAccess();
@@ -74,9 +80,15 @@ function send(type: string, data?: any) {
   );
 }
 function init() {
-  if (!ready.value || !selected.value) return;
+  if (
+    !ready.value ||
+    !selected.value ||
+    activeTemplate.value?.id !== selectedId.value
+  )
+    return;
+  initializing.value = true;
   send("award-init", {
-    canvas: selected.value.latest_version?.canvas || {},
+    canvas: activeTemplate.value.latest_version?.canvas || {},
     title: selected.value.name,
     readonly: !canManage.value,
     dark: document.documentElement.classList.contains("dark"),
@@ -85,17 +97,38 @@ function init() {
   dirty.value = false;
 }
 async function load() {
-  [templates.value, departments.value, fonts.value] = await Promise.all([
-    listTemplates(),
-    listDepartments(),
-    listFonts()
-  ]);
-  if (!templates.value.some(t => t.id === selectedId.value))
-    selectedId.value =
-      templates.value.find(t => t.id === Number(route.query.template))?.id ||
-      templates.value[0]?.id;
-  init();
-  send("award-handshake");
+  try {
+    await metadataTask.run(
+      () => Promise.all([listTemplates(), listDepartments(), listFonts()]),
+      values => {
+        [templates.value, departments.value, fonts.value] = values;
+      }
+    );
+    if (!templates.value.some(t => t.id === selectedId.value))
+      selectedId.value =
+        templates.value.find(t => t.id === Number(route.query.template))?.id ||
+        templates.value[0]?.id;
+    await loadCanvas();
+    send("award-handshake");
+  } catch {
+    initializing.value = false;
+  }
+}
+async function loadCanvas() {
+  const id = selectedId.value;
+  if (!id) {
+    initializing.value = false;
+    return;
+  }
+  await canvasTask.run(
+    () => http.get<Template, never>(`/api/v1/templates/${id}/`),
+    value => {
+      if (id === selectedId.value) {
+        activeTemplate.value = value;
+        init();
+      }
+    }
+  );
 }
 async function switchTemplate(id: number) {
   if (dirty.value)
@@ -109,7 +142,7 @@ async function switchTemplate(id: number) {
     }
   selectedId.value = id;
   router.replace({ query: { template: id } });
-  init();
+  await loadCanvas();
 }
 async function receive(event: MessageEvent) {
   if (
@@ -123,12 +156,16 @@ async function receive(event: MessageEvent) {
     init();
   }
   if (type === "award-dirty") dirty.value = true;
+  if (type === "award-initialized") initializing.value = false;
   if (type === "award-clean") dirty.value = false;
   if (type === "award-imported") {
     dirty.value = true;
     ElMessage.success("模板导入完成，请核对排版后保存");
   }
-  if (type === "award-error") ElMessage.error(data);
+  if (type === "award-error") {
+    initializing.value = false;
+    ElMessage.error(data);
+  }
   if (type === "award-preview") preview();
   if (
     type === "award-save" &&
@@ -186,7 +223,13 @@ async function rename() {
   });
   await load();
 }
-async function togglePublished(value:boolean){if(!selectedId.value)return;await http.request('patch',`/api/v1/templates/${selectedId.value}/`,{data:{published:value}});await load()}
+async function togglePublished(value: boolean) {
+  if (!selectedId.value) return;
+  await http.request("patch", `/api/v1/templates/${selectedId.value}/`, {
+    data: { published: value }
+  });
+  await load();
+}
 async function remove() {
   await ElMessageBox.confirm(
     "删除后模板不再出现在模板库；已签发档案仍会保留。",
@@ -287,7 +330,15 @@ onBeforeUnmount(() => {
 </script>
 <template>
   <section class="template-workspace">
-    <div class="workspace-tools"><el-switch v-if="canManage&&selected" :model-value="selected.published" inline-prompt active-text="已共享" inactive-text="未共享" @change="togglePublished" />
+    <div class="workspace-tools">
+      <el-switch
+        v-if="canManage && selected"
+        :model-value="selected.published"
+        inline-prompt
+        active-text="已共享"
+        inactive-text="未共享"
+        @change="togglePublished"
+      />
       <el-select
         :model-value="selectedId"
         placeholder="选择证书模板"
@@ -339,15 +390,35 @@ onBeforeUnmount(() => {
       type="info"
       :closable="false"
     />
-    <iframe
-      v-show="selected"
-      ref="frame"
-      class="ppt-frame"
-      src="/ppt-editor/"
-      title="证书 PPT 模板编辑器"
-      @load="send('award-handshake')"
-      sandbox="allow-scripts allow-same-origin allow-downloads allow-modals allow-popups"
+    <el-alert
+      v-if="metadataTask.error.value || canvasTask.error.value"
+      :title="metadataTask.error.value || canvasTask.error.value"
+      type="error"
+      :closable="false"
+      ><el-button @click="load">重新加载</el-button></el-alert
+    >
+    <el-empty
+      v-if="!selected && !metadataTask.loading.value"
+      description="暂无模板，请先新建或导入模板"
     />
+    <div
+      v-loading="
+        metadataTask.loading.value ||
+        canvasLoading ||
+        (!!selected && (!ready || initializing))
+      "
+      element-loading-text="正在加载模板和编辑器…"
+    >
+      <iframe
+        v-show="selected"
+        ref="frame"
+        class="ppt-frame"
+        src="/ppt-editor/"
+        title="证书 PPT 模板编辑器"
+        @load="send('award-handshake')"
+        sandbox="allow-scripts allow-same-origin allow-downloads allow-modals allow-popups"
+      />
+    </div>
     <el-empty v-if="!selected" description="请新建或选择模板" />
     <el-dialog
       v-model="dialog"

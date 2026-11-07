@@ -45,6 +45,9 @@ from .renderer import render_unsigned, _field_value
 from .permissions import OWNER_GROUP, grant_owner, is_owner, is_department_admin, user_roles
 from .fonts import font_catalog, font_file, import_font, layout_text, validate_canvas
 from .management_api import account_permissions, archive, can_manage_batch, assert_batch_idle
+from .scopes import accessible_batches, accessible_versions, visible_certificates, managed_departments, visible_notifications
+from .downloads import disk_response
+from django.db.models.fields.json import KeyTextTransform, KeyTransform
 
 
 def client_ip(request):
@@ -52,10 +55,8 @@ def client_ip(request):
 
 
 def accessible_competitions(user):
-    if user.is_superuser:
-        return Competition.objects.all()
-    department_ids = DepartmentMembership.objects.filter(user=user, role="admin", active=True).values_list("department_id", flat=True)
-    return Competition.objects.filter(models.Q(created_by=user) | models.Q(collaborators=user) | models.Q(departments__in=department_ids)).distinct()
+    from .scopes import accessible_competitions as scope
+    return scope(user)
 
 
 @api_view(["GET"])
@@ -126,7 +127,7 @@ def me(request):
 @api_view(["GET"])
 def dashboard(request):
     competitions = accessible_competitions(request.user)
-    batches = AwardBatch.objects.filter(competition__in=competitions).distinct()
+    batches = accessible_batches(request.user)
     if request.user.is_superuser:
         approvals = ApprovalDepartment.objects.filter(
             version__batch__status=AwardBatch.Status.REVIEW,
@@ -142,7 +143,7 @@ def dashboard(request):
             decision__isnull=True,
         )
     month_start = timezone.localdate().replace(day=1)
-    recent = Notification.objects.filter(user=request.user).order_by("-created_at")[:8]
+    recent = visible_notifications(request.user).order_by("-created_at")[:8]
     return Response({
         "pendingApprovals": approvals.count(),
         "runningTasks": GenerationTask.objects.filter(
@@ -150,10 +151,10 @@ def dashboard(request):
             status__in=[GenerationTask.Status.QUEUED, GenerationTask.Status.RUNNING],
         ).count(),
         "issuedThisMonth": Certificate.objects.filter(
-            award__version__batch__in=batches,
+            award__version__in=accessible_versions(request.user), deleted_at__isnull=True,
             published_at__date__gte=month_start,
         ).count(),
-        "unreadNotifications": Notification.objects.filter(user=request.user, read_at__isnull=True).count(),
+        "unreadNotifications": visible_notifications(request.user).filter(read_at__isnull=True).count(),
         "recent": NotificationSerializer(recent, many=True).data,
     })
 
@@ -194,7 +195,7 @@ def account_management(request):
         users = User.objects.filter(management_profile__deleted_at__isnull=True)
         if not request.user.is_superuser:
             departments = DepartmentMembership.objects.filter(user=request.user, role="admin", active=True).values_list("department_id", flat=True)
-            users = users.filter(models.Q(groups__name=OWNER_GROUP) | models.Q(departmentmembership__department_id__in=departments, departmentmembership__role="admin")).distinct()
+            users = users.filter(models.Q(pk=request.user.pk) | models.Q(management_profile__created_by=request.user) | models.Q(management_profile__created_by__departmentmembership__department_id__in=departments, management_profile__created_by__departmentmembership__role="admin", management_profile__created_by__departmentmembership__active=True) | models.Q(departmentmembership__department_id__in=departments, departmentmembership__role="admin", departmentmembership__active=True)).distinct()
         return Response([account_data(user, request.user) for user in users.order_by("username")])
     username = str(request.data.get("username", "")).strip()
     password = str(request.data.get("password", ""))
@@ -299,9 +300,11 @@ class UserOptionViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         if self.request.user.is_superuser:
             return get_user_model().objects.filter(is_active=True).order_by("username")
-        if is_owner(self.request.user) or is_department_admin(self.request.user):
-            return get_user_model().objects.filter(groups__name=OWNER_GROUP, is_active=True).distinct().order_by("username")
-        return get_user_model().objects.none()
+        related = accessible_competitions(self.request.user)
+        return get_user_model().objects.filter(is_active=True, groups__name=OWNER_GROUP).filter(
+            models.Q(pk=self.request.user.pk) | models.Q(management_profile__created_by=self.request.user)
+            | models.Q(competitions__in=related) | models.Q(created_competitions__in=related)
+        ).distinct().order_by("username")
 
 
 class CompetitionViewSet(ModelViewSet):
@@ -318,6 +321,10 @@ class CompetitionViewSet(ModelViewSet):
             raise PermissionDenied("需要管理员或负责人权限")
         if not serializer.validated_data.get("departments"):
             raise ValidationError("至少选择一个拟盖章部门")
+        if not user.is_superuser and is_department_admin(user):
+            selected = {d.pk for d in serializer.validated_data["departments"]}
+            if not selected.intersection(managed_departments(user)):
+                raise PermissionDenied("新建竞赛必须包含本部门")
         competition = serializer.save(created_by=user, active=True)
         competition.collaborators.add(user)
         AuditEvent.objects.create(actor=user, action="competition.created", object_type="Competition", object_id=str(competition.pk), detail={"name": competition.name})
@@ -348,7 +355,14 @@ class BatchViewSet(ModelViewSet):
     serializer_class = BatchSerializer
 
     def get_queryset(self):
-        return AwardBatch.objects.filter(deleted_at__isnull=True, competition__in=accessible_competitions(self.request.user)).select_related("competition").distinct().order_by("-created_at")
+        qs = accessible_batches(self.request.user).select_related("competition").order_by("-created_at")
+        versions = BatchVersion.objects.filter(batch_id=models.OuterRef("pk"), number=models.OuterRef("current_version"))
+        return qs.annotate(
+            current_version_id=models.Subquery(versions.values("pk")[:1]),
+            team_count_value=models.Count("versions__awards", filter=models.Q(versions__number=models.F("current_version")), distinct=True),
+            required_count_value=models.Count("versions__required_departments", filter=models.Q(versions__number=models.F("current_version")), distinct=True),
+            approved_count_value=models.Count("versions__required_departments", filter=models.Q(versions__number=models.F("current_version"), versions__required_departments__decision__decision="approved"), distinct=True),
+        )
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -357,6 +371,8 @@ class BatchViewSet(ModelViewSet):
             raise ValidationError("无权访问该竞赛")
         if not competition.active or competition.deleted_at:
             raise ValidationError("竞赛已废止或删除，不能新建批次")
+        if not self.request.user.is_superuser and is_department_admin(self.request.user) and not competition.departments.filter(pk__in=managed_departments(self.request.user)).exists():
+            raise PermissionDenied("只能为本部门参与的竞赛新建批次")
         template = serializer.validated_data.pop("template_version", None)
         output_formats = serializer.validated_data.pop("output_formats", ["pdf", "png"])
         requested_seals = serializer.validated_data.pop("seal_versions", {})
@@ -431,21 +447,23 @@ class BatchViewSet(ModelViewSet):
     @action(detail=True, methods=["get"], url_path="detail")
     def overview(self, request, pk=None):
         batch = self.get_object()
-        version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
+        version = BatchVersion.objects.only("pk", "number", "template_version_id", "output_formats").get(batch=batch, number=batch.current_version)
+        try:
+            page = max(1, int(request.query_params.get("page", 1)))
+            size = min(100, max(1, int(request.query_params.get("page_size", 50))))
+        except ValueError:
+            raise ValidationError("分页参数无效")
+        awards = version.awards.order_by("source_row")
+        requirements = version.required_departments.select_related("department", "version__batch__competition").defer("version__snapshot")
+        metadata = TemplateVersion.objects.values("template__name").get(pk=version.template_version_id)
         return Response({
             "batch": BatchSerializer(batch).data,
-            "awards": list(version.awards.order_by("source_row").values("source_row", "members", "award_name", "team_name", "work_name", "category", "teachers", "note")),
-            "approvals": ApprovalSerializer(version.required_departments.select_related("department", "version__batch__competition"), many=True).data,
-            "configuration": {
-                "template_version": version.template_version_id,
-                "template_name": version.template_version.template.name,
-                "output_formats": version.output_formats,
-                "seals": {
-                    str(item.department_id): item.seal_version_id
-                    for item in version.required_departments.all()
-                },
-            },
-        })
+            "can_manage": can_manage_batch(request.user, batch),
+            "awards": list(awards.values("source_row", "members", "award_name", "team_name", "work_name", "category", "teachers", "note")[(page-1)*size:page*size]),
+            "award_count": awards.count(), "page": page, "page_size": size,
+            "approvals": ApprovalSerializer(requirements, many=True).data,
+            "configuration": {"template_version": version.template_version_id, "template_name": metadata["template__name"], "output_formats": version.output_formats,
+                              "seals": {str(item.department_id): item.seal_version_id for item in requirements if request.user.is_superuser or item.department_id in managed_departments(request.user)}}})
 
     @action(detail=True, methods=["post"], url_path="import")
     @transaction.atomic
@@ -509,30 +527,13 @@ class BatchViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def preview(self, request, pk=None):
+        from .prepared import request_file, download_view, waiting_response
         batch = self.get_object()
-        version = BatchVersion.objects.get(batch=batch, number=batch.current_version)
-        award = version.awards.order_by("source_row").first()
-        if award is None:
-            return Response({"detail": "请先导入名单"}, status=400)
-        seals = [{
-            "department_id": item.department_id,
-            "seal_version_id": item.seal_version_id,
-            "image": item.seal_version.image.path,
-        } for item in version.required_departments.select_related("seal_version")]
-        award.competition_name=version.snapshot.get("competition",{}).get("name",batch.competition.name)
-        award.issue_date=version.snapshot.get("issue_date","")
-        output = io.BytesIO()
-        render_unsigned(
-            award,
-            "PREVIEW-ONLY",
-            output,
-            template=version.snapshot.get("template") or version.template_version.canvas,
-            seals=seals,
-        )
-        return HttpResponse(output.getvalue(), content_type="application/pdf", headers={
-            "Content-Disposition": f'inline; filename="batch-{batch.id}-preview.pdf"',
-            "Cache-Control": "no-store",
-        })
+        asset = request_file(request.user, "batch_preview", batch_id=batch.pk)
+        if asset.status == "ready":
+            from django.http import HttpResponseRedirect
+            return HttpResponseRedirect(f"/api/v1/prepared-files/{asset.pk}/download/")
+        return waiting_response(asset)
 
     @action(detail=True, methods=["post"], url_path="emergency-issue")
     def emergency_issue_action(self, request, pk=None):
@@ -555,12 +556,13 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
     serializer_class = ApprovalSerializer
 
     def get_queryset(self):
-        user = self.request.user
-        qs = ApprovalDepartment.objects.filter(version__batch__deleted_at__isnull=True).select_related("department", "version__batch__competition")
-        if user.is_superuser:
-            return qs.filter(version__batch__status=AwardBatch.Status.REVIEW).order_by("-created_at")
-        departments = DepartmentMembership.objects.filter(user=user, role=DepartmentMembership.Role.ADMIN, active=True).values_list("department_id", flat=True)
-        return qs.filter(department_id__in=departments, version__batch__status=AwardBatch.Status.REVIEW).order_by("-created_at")
+        qs = ApprovalDepartment.objects.filter(
+            version__batch__deleted_at__isnull=True, version__batch__status=AwardBatch.Status.REVIEW,
+            version__number=models.F("version__batch__current_version"),
+        ).select_related("department", "version__batch__competition").defer("version__snapshot")
+        if not self.request.user.is_superuser:
+            qs = qs.filter(department_id__in=managed_departments(self.request.user))
+        return qs.order_by("-created_at")
 
     @action(detail=True, methods=["post"])
     def decide(self, request, pk=None):
@@ -578,15 +580,13 @@ class TemplateViewSet(ModelViewSet):
     serializer_class = TemplateSerializer
 
     def get_queryset(self):
-        queryset = Template.objects.filter(deleted_at__isnull=True)
+        qs = Template.objects.filter(deleted_at__isnull=True)
         if not self.request.user.is_superuser:
-            departments = DepartmentMembership.objects.filter(
-                user=self.request.user,
-                role=DepartmentMembership.Role.ADMIN,
-                active=True,
-            ).values_list("department_id", flat=True)
-            queryset = queryset.filter(models.Q(published=True) | models.Q(department_id__in=departments))
-        return queryset.select_related("department").prefetch_related("versions").distinct().order_by("-updated_at")
+            qs = qs.filter(models.Q(published=True) | models.Q(department_id__in=managed_departments(self.request.user)))
+        qs = qs.select_related("department").order_by("-updated_at")
+        if self.action == "list":
+            qs = qs.prefetch_related(models.Prefetch("versions", queryset=TemplateVersion.objects.only("id", "template_id", "number", "created_at", "summary").order_by("-number"), to_attr="light_versions"))
+        return qs
 
     def can_manage(self, template):
         return self.request.user.is_superuser or DepartmentMembership.objects.filter(
@@ -663,31 +663,17 @@ class TemplateViewSet(ModelViewSet):
 
     @action(detail=True, methods=["get"])
     def thumbnail(self, request, pk=None):
-        import pymupdf as fitz
-        from django.conf import settings
+        from .prepared import request_file, waiting_response
+        from django.http import HttpResponseRedirect
         template = self.get_object()
-        versions = template.versions.all()
-        version = versions.filter(pk=request.query_params['version']).first() if request.query_params.get('version') else versions.order_by('-number').first()
+        versions = template.versions.only("pk", "number")
+        version = versions.filter(pk=request.query_params["version"]).first() if request.query_params.get("version") else versions.order_by("-number").first()
         if not version:
-            raise ValidationError('模板没有可预览的版本')
-        root = Path(settings.MEDIA_ROOT) / 'temporary' / 'template-thumbnails'
-        root.mkdir(parents=True, exist_ok=True)
-        target = root / f'{version.pk}-{settings.BUILD_VERSION[:12]}.png'
-        if not target.exists():
-            sample = type('Sample', (), {'team_name': '示例团队', 'members': ['张三', '李四'], 'award_name': '一等奖', 'work_name': '示例作品', 'category': '创新类', 'teachers': ['王老师']})()
-            output = io.BytesIO()
-            try:
-                render_unsigned(sample, 'PREVIEW-ONLY', output, template=version.canvas)
-                with fitz.open(stream=output.getvalue(), filetype='pdf') as document:
-                    page = document[0]
-                    pixmap = page.get_pixmap(matrix=fitz.Matrix(640 / page.rect.width, 640 / page.rect.width))
-                    with tempfile.NamedTemporaryFile(dir=root, suffix='.png', delete=False) as temporary:
-                        temporary.write(pixmap.tobytes('png'))
-                        temporary_name = temporary.name
-                    os.replace(temporary_name, target)
-            except ValueError as exc:
-                raise ValidationError(str(exc))
-        return FileResponse(target.open('rb'), content_type='image/png', headers={'Cache-Control': 'private, max-age=300'})
+            raise ValidationError("模板没有可预览版本")
+        asset = request_file(request.user, "template_thumbnail", template_version_id=version.pk)
+        if asset.status == "ready":
+            return HttpResponseRedirect(f"/api/v1/prepared-files/{asset.pk}/download/")
+        return waiting_response(asset)
 
     @action(detail=True, methods=["post"])
     def copy(self, request, pk=None):
@@ -706,14 +692,12 @@ class SealViewSet(ModelViewSet):
     serializer_class = SealSerializer
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
-            return Seal.objects.filter(deleted_at__isnull=True).select_related("department").prefetch_related("versions")
-        memberships = DepartmentMembership.objects.filter(user=self.request.user, active=True)
-        administered = memberships.filter(role=DepartmentMembership.Role.ADMIN).values_list("department_id", flat=True)
-        allowed = models.Q(department_id__in=administered)
-        if self.action in {"list", "retrieve", "preview"} and is_owner(self.request.user):
-            allowed |= models.Q(active=True)
-        return Seal.objects.filter(allowed, deleted_at__isnull=True).select_related("department").prefetch_related("versions")
+        if not is_department_admin(self.request.user):
+            raise PermissionDenied("负责人无公章管理权限")
+        qs = Seal.objects.filter(deleted_at__isnull=True)
+        if not self.request.user.is_superuser:
+            qs = qs.filter(department_id__in=managed_departments(self.request.user))
+        return qs.select_related("department").prefetch_related("versions")
 
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
@@ -797,10 +781,9 @@ class CertificateViewSet(ModelViewSet):
         return Response(data)
 
     def get_queryset(self):
-        return Certificate.objects.filter(deleted_at__isnull=True,
-            award__version__batch__competition__in=accessible_competitions(self.request.user),
-            published_at__isnull=False,
-        ).select_related("award__version__batch__competition").distinct().order_by("-created_at")
+        return visible_certificates(self.request.user).select_related("award__version__batch__competition").defer("award__version__snapshot").annotate(
+            frozen_competition_name=KeyTextTransform("name", KeyTransform("competition", "award__version__snapshot"))
+        ).order_by("-created_at")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
@@ -857,22 +840,12 @@ class CertificateViewSet(ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="batch/(?P<batch_id>[^/.]+)/archive")
     def archive(self, request, batch_id=None):
-        certificates = self.get_queryset().filter(award__version__batch_id=batch_id, published_at__isnull=False)
-        if not certificates.exists():
-            return Response({"detail": "没有可归档文件"}, status=404)
-        output = tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024)
-        with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-            for certificate in certificates:
-                if certificate.pdf:
-                    from .integrity import file_digest
-                    if certificate.pdf_sha256 and file_digest(certificate.pdf.path)!=certificate.pdf_sha256:raise ValidationError("证书文件完整性校验失败")
-                    archive.write(certificate.pdf.path, f"{certificate.number}.pdf")
-                if certificate.image:
-                    from .integrity import file_digest
-                    if certificate.image_sha256 and file_digest(certificate.image.path)!=certificate.image_sha256:raise ValidationError("证书图片完整性校验失败")
-                    archive.write(certificate.image.path, f"{certificate.number}.png")
-        output.seek(0)
-        return FileResponse(output, as_attachment=True, filename=f"batch-{batch_id}-certificates.zip", content_type="application/zip")
+        from .prepared import request_file, waiting_response
+        from django.http import HttpResponseRedirect
+        asset = request_file(request.user, "batch_zip", batch_id=batch_id)
+        if asset.status == "ready":
+            return HttpResponseRedirect(f"/api/v1/prepared-files/{asset.pk}/download/")
+        return waiting_response(asset)
 
     @action(detail=True, methods=["post"])
     def revoke(self, request, pk=None):
@@ -898,7 +871,7 @@ class RevocationViewSet(ReadOnlyModelViewSet):
     serializer_class = RevocationSerializer
 
     def get_queryset(self):
-        return RevocationRequest.objects.filter(certificate__award__version__batch__competition__in=accessible_competitions(self.request.user)).select_related("certificate__award__version").distinct().order_by("-created_at")
+        return RevocationRequest.objects.filter(certificate__in=visible_certificates(self.request.user)).select_related("certificate__award__version").defer("certificate__award__version__snapshot").distinct().order_by("-created_at")
 
     @action(detail=True, methods=["post"])
     def decide(self, request, pk=None):
@@ -920,7 +893,7 @@ class NotificationViewSet(ModelViewSet):
         raise PermissionDenied("通知由系统业务流程生成")
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+        return visible_notifications(self.request.user).order_by("-created_at")
 
     def partial_update(self,request,*args,**kwargs):
         notification=self.get_object()
@@ -1001,32 +974,30 @@ def public_verify(request):
 @api_view(["POST"])
 def admin_verify(request):
     certificate = Certificate.objects.select_related("award__version__batch__competition").filter(number=request.data.get("number", ""), published_at__isnull=False).first()
-    if not certificate or not accessible_competitions(request.user).filter(pk=certificate.award.version.batch.competition_id).exists():
+    if not certificate or not visible_certificates(request.user).filter(pk=certificate.pk).exists():
         return Response({"found": False})
     return Response({"found": True, "number": certificate.number, "status": certificate.status, "team": certificate.award.team_name, "members": certificate.award.members, "competition": certificate.award.version.snapshot.get("competition",{}).get("name",certificate.award.version.batch.competition.name), "award": certificate.award.award_name})
 
 
-@api_view(["GET"])
+@api_view(["GET", "HEAD"])
 def certificate_download(request, certificate_id, kind):
-    certificate = Certificate.objects.select_related("award__version__batch__competition").filter(
-        pk=certificate_id, published_at__isnull=False,
-    ).first()
-    if not certificate or not accessible_competitions(request.user).filter(pk=certificate.award.version.batch.competition_id).exists():
+    if kind not in {"pdf", "image"}:
+        raise ValidationError("下载类型无效")
+    certificate = visible_certificates(request.user).only("pk", "number", "pdf", "image", "pdf_sha256", "image_sha256").filter(pk=certificate_id).first()
+    if not certificate:
         return Response({"detail": "无下载权限"}, status=403)
     field = certificate.pdf if kind == "pdf" else certificate.image
     if not field:
         return Response({"detail": "文件尚未生成"}, status=404)
-    from .integrity import file_digest
-    expected=certificate.pdf_sha256 if kind=="pdf" else certificate.image_sha256
-    if expected and file_digest(field.path)!=expected:
-        AuditEvent.objects.create(actor=request.user,action="certificate.integrity_failed",object_type="Certificate",object_id=str(certificate.pk),detail={"format":kind})
-        return Response({"detail":"文件完整性校验失败，下载已阻止，请联系超管"},status=409)
-    extension = "pdf" if kind == "pdf" else "png"
-    return FileResponse(field.open("rb"), as_attachment=request.query_params.get("inline") != "1", filename=f"{certificate.number}.{extension}", content_type="application/pdf" if kind == "pdf" else "image/png")
+    return disk_response(field.path, digest=certificate.pdf_sha256 if kind=="pdf" else certificate.image_sha256,
+                         filename=f"{certificate.number}.{'pdf' if kind=='pdf' else 'png'}",
+                         content_type="application/pdf" if kind=="pdf" else "image/png", inline=request.query_params.get("inline")=="1")
 
 
 @api_view(["GET", "POST"])
 def fonts_view(request):
+    if not is_department_admin(request.user):
+        raise PermissionDenied("负责人无字体管理权限")
     if request.method == 'GET':
         include_inactive = request.query_params.get('include_inactive') == '1'
         if include_inactive and not request.user.is_superuser:
@@ -1085,6 +1056,8 @@ def font_management(request, font_id):
 
 @api_view(["GET"])
 def font_download(request, font_id):
+    if not is_department_admin(request.user):
+        raise PermissionDenied("需要模板管理权限")
     try:
         path = font_file(font_id)
     except ValueError as exc:

@@ -8,10 +8,16 @@ const form = reactive({ number: "", answer: "" });
 const question = ref("");
 const result = ref<any>(null);
 const loading = ref(false);
+const challengeLoading = ref(false);
 
 async function challenge() {
-  question.value = (await getChallenge()).question;
-  form.answer = "";
+  challengeLoading.value = true;
+  try {
+    question.value = (await getChallenge()).question;
+    form.answer = "";
+  } finally {
+    challengeLoading.value = false;
+  }
 }
 async function query() {
   loading.value = true;
@@ -42,7 +48,9 @@ onMounted(challenge);
         <el-form-item label="证书编号"
           ><el-input v-model="form.number" placeholder="例如 2026-AC-00000001"
         /></el-form-item>
-        <el-form-item :label="question"
+        <el-form-item
+          v-loading="challengeLoading"
+          :label="question || '正在加载验证码…'"
           ><el-input v-model="form.answer"
         /></el-form-item>
         <el-button type="primary" :loading="loading" @click="query"
@@ -52,6 +60,7 @@ onMounted(challenge);
           >管理员免验证码核验</el-button
         >
       </el-form>
+      <el-skeleton v-if="loading" :rows="3" animated style="margin-top: 20px" />
       <el-result
         v-if="result"
         :icon="

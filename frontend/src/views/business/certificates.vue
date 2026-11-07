@@ -1,4 +1,11 @@
 <script setup lang="ts">
+import SmartImage from "@/components/SmartImage.vue";
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import ManagementActions from "@/components/ManagementActions.vue";
 import { useBusinessAccess } from "@/utils/businessAccess";
 import { useRouter } from "vue-router";
@@ -18,29 +25,38 @@ import {
 const drawer = ref(false),
   selected = ref<any>(null),
   details = ref<Record<string, unknown>>({});
-async function show(row: Certificate) {
-  selected.value = await certificateDetail(row.id);
-  const c = selected.value;
-  details.value = {
-    证书编号: c.number,
-    状态: c.status,
-    竞赛: c.competition_name,
-    批次: c.batch_name,
-    团队: c.team_name,
-    成员: c.members,
-    奖项: c.award_name,
-    作品: c.work_name,
-    项目类别: c.category,
-    指导教师: c.teachers,
-    备注: c.note,
-    管理备注: c.notes,
-    盖章部门: c.departments,
-    模板: c.template,
-    模板版本: c.template_version,
-    签发时间: c.published_at,
-    PDF摘要: c.pdf_sha256
-  };
+const detailTask = useModuleTask(),
+  detailLoading = detailTask.loading;
+async function show(row: any) {
   drawer.value = true;
+  try {
+    await detailTask.run(
+      () => certificateDetail(row.id),
+      c => {
+        selected.value = c;
+        details.value = {
+          证书编号: c.number,
+          状态: c.status,
+          竞赛: c.competition_name,
+          批次: c.batch_name,
+          团队: c.team_name,
+          成员: c.members,
+          奖项: c.award_name,
+          作品: c.work_name,
+          项目类别: c.category,
+          指导教师: c.teachers,
+          备注: c.note,
+          管理备注: c.notes,
+          盖章部门: c.departments,
+          模板: c.template,
+          模板版本: c.template_version,
+          签发时间: c.published_at,
+          PDF摘要: c.pdf_sha256
+        };
+        drawer.value = true;
+      }
+    );
+  } catch {}
 }
 const rows = ref<Certificate[]>([]),
   total = ref(0),
@@ -48,9 +64,15 @@ const rows = ref<Certificate[]>([]),
   pageSize = ref(20),
   search = ref("");
 async function load() {
-  const data = await listCertificates(page.value, pageSize.value, search.value);
-  rows.value = data.results;
-  total.value = data.count;
+  try {
+    await listTask.run(
+      () => listCertificates(page.value, pageSize.value, search.value),
+      data => {
+        rows.value = data.results;
+        total.value = data.count;
+      }
+    );
+  } catch {}
 }
 async function revoke(row: Certificate) {
   const { value } = await ElMessageBox.prompt("填写作废原因", "申请作废", {
@@ -95,73 +117,82 @@ onMounted(load);
         /><el-button @click="searchNow">查询</el-button>
       </div>
     </header>
-    <el-table
-      :data="rows"
-      border
-      @row-dblclick="row => show(row as Certificate)"
-      ><el-table-column label="证书编号" min-width="180"
-        ><template #default="s"
-          ><el-button link type="primary" @click="show(s.row as Certificate)">{{
-            s.row.number
-          }}</el-button></template
-        ></el-table-column
-      ><el-table-column
-        min-width="240"
-        prop="competition_name"
-        label="竞赛"
-      /><el-table-column
-        min-width="180"
-        prop="team_name"
-        label="团队"
-      /><el-table-column
-        min-width="140"
-        prop="award_name"
-        label="奖项"
-      /><el-table-column
-        prop="status"
-        label="状态"
-        width="90"
-      /><el-table-column label="操作" width="420"
-        ><template #default="s"
-          ><el-button link @click="show(s.row as Certificate)">查看</el-button
-          ><ManagementActions
-            :url="`/api/v1/certificates/${s.row.id}/`"
-            :data="s.row"
-            :name="s.row.number"
-            :can-edit="isAdmin"
-            :can-delete="isAdmin"
-            :fields="[
-              {
-                key: 'notes',
-                label: '档案管理备注（不改变证书内容）',
-                type: 'textarea'
-              }
-            ]"
-            @changed="load"
-          /><el-button
-            v-if="isAdmin"
-            link
-            @click="correct(s.row as Certificate)"
-            >更正重发</el-button
-          ><el-button
-            link
-            tag="a"
-            :href="`/api/v1/certificates/${s.row.id}/download/pdf/`"
-            >PDF</el-button
-          ><el-button
-            link
-            tag="a"
-            :href="`/api/v1/certificates/${s.row.id}/download/image/`"
-            >图片</el-button
-          ><el-button
-            link
-            type="danger"
-            :disabled="s.row.status !== 'active'"
-            @click="revoke(s.row as Certificate)"
-            >申请作废</el-button
-          ></template
-        ></el-table-column
-      ></el-table
+    <ModuleRegion
+      :loading="listLoading"
+      :error="listError"
+      :empty="!rows.length"
+      @retry="load"
+      ><el-table
+        :data="rows"
+        border
+        @row-dblclick="row => show(row as Certificate)"
+        ><el-table-column label="证书编号" min-width="180"
+          ><template #default="s"
+            ><el-button
+              link
+              type="primary"
+              @click="show(s.row as Certificate)"
+              >{{ s.row.number }}</el-button
+            ></template
+          ></el-table-column
+        ><el-table-column
+          min-width="240"
+          prop="competition_name"
+          label="竞赛"
+        /><el-table-column
+          min-width="180"
+          prop="team_name"
+          label="团队"
+        /><el-table-column
+          min-width="140"
+          prop="award_name"
+          label="奖项"
+        /><el-table-column
+          prop="status"
+          label="状态"
+          width="90"
+        /><el-table-column label="操作" width="420"
+          ><template #default="s"
+            ><el-button link @click="show(s.row as Certificate)">查看</el-button
+            ><ManagementActions
+              :url="`/api/v1/certificates/${s.row.id}/`"
+              :data="s.row"
+              :name="s.row.number"
+              :can-edit="isAdmin"
+              :can-delete="isAdmin"
+              :fields="[
+                {
+                  key: 'notes',
+                  label: '档案管理备注（不改变证书内容）',
+                  type: 'textarea'
+                }
+              ]"
+              @changed="load"
+            /><el-button
+              v-if="isAdmin"
+              link
+              @click="correct(s.row as Certificate)"
+              >更正重发</el-button
+            ><el-button
+              link
+              tag="a"
+              :href="`/api/v1/certificates/${s.row.id}/download/pdf/`"
+              >PDF</el-button
+            ><el-button
+              link
+              tag="a"
+              :href="`/api/v1/certificates/${s.row.id}/download/image/`"
+              >图片</el-button
+            ><el-button
+              link
+              type="danger"
+              :disabled="s.row.status !== 'active'"
+              @click="revoke(s.row as Certificate)"
+              >申请作废</el-button
+            ></template
+          ></el-table-column
+        ></el-table
+      ></ModuleRegion
     ><el-pagination
       v-model:current-page="page"
       v-model:page-size="pageSize"
@@ -172,12 +203,14 @@ onMounted(load);
       @current-change="load"
       @size-change="searchNow"
     /><RecordDetail
+      :loading="detailLoading"
+      :error="detailTask.error.value"
       v-model="drawer"
       title="证书档案详情"
       :data="details"
       readonly-reason="签名证书原件与签发快照只读；内容更正请新建更正批次，完成会签后重发。"
       ><template v-if="selected"
-        ><el-image
+        ><SmartImage
           v-if="selected.image_url"
           :src="selected.image_url"
           fit="contain"

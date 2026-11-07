@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import ModuleRegion from "@/components/ModuleRegion.vue";
+import { useModuleTask } from "@/composables/useModuleTask";
+const listTask = useModuleTask(),
+  listLoading = listTask.loading,
+  listError = listTask.error;
+
 import ManagementActions from "@/components/ManagementActions.vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, type FormInstance } from "element-plus";
@@ -57,11 +63,15 @@ const roleName = (role: string) =>
   ({ super: "超级管理员", admin: "部门管理员", owner: "竞赛负责人" })[role] ||
   role;
 async function load() {
-  [accounts.value, departments.value] = await Promise.all([
-    listAccounts(),
-    listDepartments()
-  ]);
-  Object.assign(settings, await getPublicSettings());
+  try {
+    await listTask.run(async () => {
+      [accounts.value, departments.value] = await Promise.all([
+        listAccounts(),
+        listDepartments()
+      ]);
+      Object.assign(settings, await getPublicSettings());
+    });
+  } catch {}
 }
 function openCreate() {
   Object.assign(form, {
@@ -181,77 +191,91 @@ onMounted(load);
     </header>
     <section>
       <h3>账号与角色</h3>
-      <el-table :data="accounts" border @row-dblclick="showAccount">
-        <el-table-column min-width="180" label="账号"
-          ><template #default="s"
-            ><el-button link type="primary" @click="showAccount(s.row)">{{
-              s.row.username
-            }}</el-button></template
-          ></el-table-column
-        >
-        <el-table-column
-          min-width="120"
-          prop="name"
-          label="姓名"
-        /><el-table-column min-width="240" label="角色"
-          ><template #default="s"
-            ><el-tag v-for="role in s.row.roles" :key="role" class="tag">{{
-              roleName(role)
-            }}</el-tag></template
-          ></el-table-column
-        >
-        <el-table-column min-width="280" label="管理部门"
-          ><template #default="s"
-            ><span v-if="!s.row.memberships.length">{{
-              s.row.superuser ? "全部部门" : "—"
-            }}</span>
-            <div v-for="m in s.row.memberships" :key="m.id" class="membership">
-              <span>{{ m.department__name }}</span
-              ><el-switch
-                v-if="isSuper"
-                :model-value="m.active"
-                @change="toggle({ ...m, user: s.row.id })"
-              /><el-tag v-else>{{ m.active ? "启用" : "停用" }}</el-tag>
-            </div></template
-          ></el-table-column
-        >
-        <el-table-column label="操作" width="210"
-          ><template #default="s"
-            ><el-button link @click="showAccount(s.row)">查看</el-button
-            ><ManagementActions
-              :url="`/api/v1/management/accounts/${s.row.id}/`"
-              :data="s.row"
-              :name="s.row.username"
-              :can-edit="s.row.can_edit"
-              :can-delete="s.row.can_delete"
-              :fields="[
-                { key: 'username', label: '账号', required: true },
-                { key: 'name', label: '姓名' },
-                { key: 'email', label: '邮箱' },
-                { key: 'password', label: '重置密码', type: 'password' },
-                { key: 'active', label: '启用', type: 'boolean' }
-              ]"
-              @changed="load" /></template
-        ></el-table-column>
-      </el-table>
+      <ModuleRegion
+        :loading="listLoading"
+        :error="listError"
+        :empty="!accounts.length"
+        @retry="load"
+        ><el-table :data="accounts" border @row-dblclick="showAccount">
+          <el-table-column min-width="180" label="账号"
+            ><template #default="s"
+              ><el-button link type="primary" @click="showAccount(s.row)">{{
+                s.row.username
+              }}</el-button></template
+            ></el-table-column
+          >
+          <el-table-column
+            min-width="120"
+            prop="name"
+            label="姓名"
+          /><el-table-column min-width="240" label="角色"
+            ><template #default="s"
+              ><el-tag v-for="role in s.row.roles" :key="role" class="tag">{{
+                roleName(role)
+              }}</el-tag></template
+            ></el-table-column
+          >
+          <el-table-column min-width="280" label="管理部门"
+            ><template #default="s"
+              ><span v-if="!s.row.memberships.length">{{
+                s.row.superuser ? "全部部门" : "—"
+              }}</span>
+              <div
+                v-for="m in s.row.memberships"
+                :key="m.id"
+                class="membership"
+              >
+                <span>{{ m.department__name }}</span
+                ><el-switch
+                  v-if="isSuper"
+                  :model-value="m.active"
+                  @change="toggle({ ...m, user: s.row.id })"
+                /><el-tag v-else>{{ m.active ? "启用" : "停用" }}</el-tag>
+              </div></template
+            ></el-table-column
+          >
+          <el-table-column label="操作" width="210"
+            ><template #default="s"
+              ><el-button link @click="showAccount(s.row)">查看</el-button
+              ><ManagementActions
+                :url="`/api/v1/management/accounts/${s.row.id}/`"
+                :data="s.row"
+                :name="s.row.username"
+                :can-edit="s.row.can_edit"
+                :can-delete="s.row.can_delete"
+                :fields="[
+                  { key: 'username', label: '账号', required: true },
+                  { key: 'name', label: '姓名' },
+                  { key: 'email', label: '邮箱' },
+                  { key: 'password', label: '重置密码', type: 'password' },
+                  { key: 'active', label: '启用', type: 'boolean' }
+                ]"
+                @changed="load" /></template
+          ></el-table-column> </el-table
+      ></ModuleRegion>
     </section>
     <section v-if="isSuper">
       <h3>部门管理</h3>
-      <el-table :data="departments" border
-        ><el-table-column prop="name" label="部门名称" /><el-table-column
-          prop="code"
-          label="部门代码" /><el-table-column label="操作" width="180"
-          ><template #default="s"
-            ><ManagementActions
-              :url="`/api/v1/departments/${s.row.id}/`"
-              :data="s.row"
-              :name="s.row.name"
-              :fields="[
-                { key: 'name', label: '部门名称', required: true },
-                { key: 'code', label: '部门代码', required: true }
-              ]"
-              @changed="load" /></template></el-table-column
-      ></el-table>
+      <ModuleRegion
+        :loading="listLoading"
+        :error="listError"
+        :empty="!accounts.length"
+        @retry="load"
+        ><el-table :data="departments" border
+          ><el-table-column prop="name" label="部门名称" /><el-table-column
+            prop="code"
+            label="部门代码" /><el-table-column label="操作" width="180"
+            ><template #default="s"
+              ><ManagementActions
+                :url="`/api/v1/departments/${s.row.id}/`"
+                :data="s.row"
+                :name="s.row.name"
+                :fields="[
+                  { key: 'name', label: '部门名称', required: true },
+                  { key: 'code', label: '部门代码', required: true }
+                ]"
+                @changed="load" /></template></el-table-column></el-table
+      ></ModuleRegion>
     </section>
     <section v-if="isSuper">
       <h3>公开查验字段</h3>

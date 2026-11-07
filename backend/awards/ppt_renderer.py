@@ -192,6 +192,15 @@ def renderer():
     return RendererProxy()
 
 
+def release_renderer():
+    def close():
+        instance = getattr(_local, "renderer", None)
+        if instance:
+            instance.close()
+            _local.renderer = None
+    _executor.submit(close).result(timeout=15)
+
+
 def award_values(award, number):
     return {
         "number": number,

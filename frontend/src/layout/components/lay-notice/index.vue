@@ -44,7 +44,8 @@ onBeforeUnmount(() => {
         >全部已读</el-button
       >
     </div>
-    <el-scrollbar max-height="430px"
+    <el-skeleton v-if="!live.initialized" :rows="3" animated />
+    <el-scrollbar v-else max-height="430px"
       ><el-empty
         v-if="!live.notifications.length"
         description="暂无通知"
