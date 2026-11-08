@@ -17,11 +17,11 @@ from django.db.models import Q
 from . import models as m
 
 VERSION = 1
-BASE_MODELS = (m.Department, m.Template, m.TemplateVersion, m.Seal, m.SealVersion, m.CertificateFont, m.SystemSetting)
+BASE_MODELS = (m.Department, m.Template, m.TemplateVersion, m.Seal, m.SealVersion, m.CertificateFont, m.SystemSetting, m.CertificateSequence)
 BUSINESS_MODELS = (m.RevocationDecision, m.RevocationRequest, m.Certificate, m.GenerationTask,
                    m.ApprovalDecision, m.ApprovalDepartment, m.TeamAward, m.PreparedFile,
                    m.BatchVersion, m.AwardBatch, m.Competition, m.Notification,
-                   m.VerificationAttempt, m.VerificationRateLimit, m.CertificateSequence,
+                   m.VerificationAttempt, m.VerificationRateLimit,
                    m.AuditEvent, m.AccountProfile, m.DepartmentMembership, m.LoginProtection)
 ALLOWED_MODELS = {model._meta.label_lower for model in BASE_MODELS} | {get_user_model()._meta.label_lower}
 ALLOWED_MEDIA = ("protected/font-library/", "protected/seals/", "fonts/")
@@ -59,7 +59,7 @@ def seed_records(root_id):
     fonts = list(m.CertificateFont.objects.filter(deleted_at__isnull=True).order_by("pk"))
     dep_ids = {obj.department_id for obj in templates + seals}
     departments = m.Department.objects.filter(Q(deleted_at__isnull=True) | Q(pk__in=dep_ids)).order_by("pk")
-    records = json.loads(serializers.serialize("json", [root, *departments, *templates, *versions, *seals, *seal_versions, *fonts, *m.SystemSetting.objects.order_by("pk")]))
+    records = json.loads(serializers.serialize("json", [root, *departments, *templates, *versions, *seals, *seal_versions, *fonts, *m.SystemSetting.objects.order_by("pk"), *m.CertificateSequence.objects.order_by("pk")]))
     for record in records:
         fields = record["fields"]
         if record["model"] == root._meta.label_lower:

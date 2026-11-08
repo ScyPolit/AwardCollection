@@ -84,6 +84,15 @@ class ProductionSeedTests(TransactionTestCase):
             reset_business(path, checksum, apply=True, backup=self.backup())
         self.assertTrue(m.Competition.objects.exists())
 
+    def test_initialization_never_reuses_previous_certificate_numbers(self):
+        from .services import allocate_number
+        first = allocate_number()
+        path, checksum = self.bundle()
+        reset_business(path, checksum, backup=self.backup(), apply=True)
+        second = allocate_number()
+        self.assertNotEqual(first, second)
+        self.assertGreater(second, first)
+
     def test_import_only_into_empty_database_and_roundtrips_root_layouts_and_media(self):
         path, checksum = self.bundle()
         with self.assertRaises(CommandError):
@@ -92,7 +101,7 @@ class ProductionSeedTests(TransactionTestCase):
         root_password = self.superuser.password
         for model in BUSINESS_MODELS:
             model.objects.all().delete()
-        for model in (m.TemplateVersion, m.Template, m.SealVersion, m.Seal, m.CertificateFont, m.Department, m.SystemSetting):
+        for model in (m.TemplateVersion, m.Template, m.SealVersion, m.Seal, m.CertificateFont, m.Department, m.SystemSetting, m.CertificateSequence):
             model.objects.all().delete()
         get_user_model().objects.all().delete()
         result = import_seed(path, checksum)
