@@ -6,12 +6,20 @@
 
 下载速度已定位：到客户端 `192.168.31.158` 的服务器路由使用 `eno1`，协商为100 Mbps / full / up，客户端以太网为1 Gbps。服务器接口未配置限速队列，Nginx 无每秒限速配置；此次显式设置 `limit_rate 0` 和 `X-Accel-Limit-Rate: 0`，保持服务器文件传输、断点续传和小缓冲。100 Mbps 的理论上限为12.5 MB/s，应用设置不能突破物理协商速率。[Nginx 限速说明](https://nginx.org/en/docs/http/ngx_http_core_module.html#limit_rate)；`sendfile_max_chunk` 为单次发送量，不是每秒速率。[发送块说明](https://nginx.org/en/docs/http/ngx_http_core_module.html#sendfile_max_chunk)
 
-本地完整114项测试通过，后续新增与性能 / 权限专项41项通过。前端类型检查、完整构建及最终主工程构建通过；目标 PostgreSQL 与发布结果完成后补充。
+本地完整114项测试通过，后续新增与性能 / 权限专项41项通过。目标服务器隔离 PostgreSQL 最终116项全量回归通过，耗时43.421秒；测试数据库已销毁，未挂载生产媒体。测试容器临时采用快速口令哈希以缩短数据准备时间，生产口令配置不变。前端类型检查、完整构建及最终主工程构建通过。
 
 本地真实浏览器完成负责人创建、导入62条、双部门分别选择v2公章并审批，生成62/62。超管另一个本人提交批次通过批量审批并生成2/2，签名 PDF 两枚签名均 intact / valid；自签信任警告符合预期。换章前后实际预览摘要不同，双章在样张中可见。
 
 档案树首次展开50份，继续加载到62份且保留已选项；批量归档2份后显示60份，原始 PDF / PNG 仍保留。隔离 Chrome 经真实登录与界面下载，保存8,569,555字节 ZIP，60个PDF和60个PNG共120项全部通过CRC。agent-browser 的 Windows 保存操作被取消，此项用独立 Chrome / Playwright 复核成功。
 
+正式环境用独立 Chrome 经真实界面完成原生 HTTPS 下载并保存2,001,382,026字节 ZIP：下载184.72秒，平均10.83 MB/s。随后测试额外复制到校验路径，含复制耗时221.31秒，不计入网络测速。300个PDF、300个PNG均通过CRC；SHA256为 `39e1a27993c6c0382889df5f34f79473e7dd8064ee94a9072ba273af981de68b`，与服务器保存的原文件摘要一致。客户端使用服务器链接，没有构造整包Blob；自签TLS仅在隔离测试浏览器中放行。验证后的本地真实ZIP已删除，服务器正式文件保留。[正式浏览器下载结果](production-native-download.json)
+
 审批详情请求人为延迟4000毫秒时，局部骨架屏可见，全局遮罩为0；关闭后可进入竞赛管理。9个页面各检查浅色与深色，共18组；视口1600，页面宽度均1600，没有页面错误或全局遮罩。手机端审批摘要采用单列。
 
-证据：[本地流程](local-workflow.json)、[签名](local-signatures.json)、[实际浏览器下载](local-native-download.json)、[布局](local-layout-checks.json)、[最终专项测试](local-final-41-tests.txt)。正式环境不创建或删除测试账号与业务数据。
+发布源码为 `405309b81871c06a65d2ecb17de59c03085c50d5`，api / worker / web / converter 版本一致、容器运行正常。迁移0013已应用，历史两个批次修订的完整性摘要均验证通过，300份已发布证书和8个模板版本保留；原数据库容器创建时间未改变。原浏览器登录会话在升级后仍有效，档案页首次展开50条及继续加载入口，页面没有横向溢出或全局遮罩。
+
+备份 `/opt/awardcollection-v1-test/backups/20261108-052222-EhBDkv` 的数据库、媒体、加密配置、加密TLS四项摘要全部通过，回滚检查点为 `/opt/awardcollection-v1-test/rollback/20261108-052215`。受保护文件目录直接访问返回404；发布后核验时API内存事件的OOM计数、近期SIGKILL/OOM及Web的502记录均为0。
+
+整包下载结束后再次只读核验，Nginx确认一次完整200下载请求；API的OOM计数、近期SIGKILL/OOM与Web的502仍为0，五个容器保持运行。[下载后服务器状态](server-postdownload.json)
+
+证据：[本地流程](local-workflow.json)、[签名](local-signatures.json)、[本地浏览器下载](local-native-download.json)、[布局](local-layout-checks.json)、[最终专项测试](local-final-41-tests.txt)、[目标PostgreSQL测试](target-postgres-116-tests.txt)、[部署检查](server-final.json)、[备份校验](backup-verification.txt)、[正式页面只读核验](production-ui.json)。正式环境不创建或删除测试账号与业务数据。

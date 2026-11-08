@@ -1,0 +1,18 @@
+{
+  "browser": "isolated installed Chrome / Playwright",
+  "native_download_saved": true,
+  "https": true,
+  "server_version": "405309b81871c06a65d2ecb17de59c03085c50d5",
+  "prepared_file": "b4bc1ce4-25a9-42d2-ad05-6fb4e3b6b885",
+  "bytes": 2001382026,
+  "sha256": "39e1a27993c6c0382889df5f34f79473e7dd8064ee94a9072ba273af981de68b",
+  "seconds": 184.72,
+  "seconds_including_test_save_copy": 221.31,
+  "average_MB_per_second": 10.83,
+  "pdf": 300,
+  "png": 300,
+  "zip_crc_passed": true,
+  "uses_server_link": true,
+  "self_signed_tls_test_context": true,
+  "sha256_matches_server": true
+}
