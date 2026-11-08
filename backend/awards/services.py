@@ -23,7 +23,7 @@ def excel_template():
     ws = wb.active
     ws.title = "获奖名单"
     ws.append(HEADERS)
-    ws.append(["张三、李四", "一等奖", "测试专用团队", "测试专用作品", "创新类", "王老师、赵老师", "测试数据"])
+    ws.append(["张三、李四", "一等奖", "示例团队", "示例作品", "创新类", "王老师、赵老师", "填写后请删除示例行"])
     guide = wb.create_sheet("填写说明")
     guide.append(["每支团队一行；团队成员和指导教师使用中文顿号、逗号或换行分隔；奖项可自由填写。"])
     out = io.BytesIO()
@@ -62,8 +62,10 @@ def parse_excel(file_obj):
 
 
 @transaction.atomic
-def submit_batch(batch_id, actor):
+def submit_batch(batch_id, actor, expected_version=None):
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
+    if expected_version is not None and expected_version != batch.current_version:
+        raise ValueError('名单已被修改，请刷新并核对最新内容后提交')
     if batch.deleted_at or batch.competition.deleted_at or not batch.competition.active:
         raise ValueError("竞赛已废止，不能提交新签发")
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED]:
@@ -74,10 +76,10 @@ def submit_batch(batch_id, actor):
     from .fonts import layout_text
     from .renderer import _field_value
     template = version.snapshot.get("template") or version.template_version.canvas
-    for award in version.awards.iterator():
+    for award in (version.awards.iterator() if template.get('engine') != 'pptist' else []):
         for layer in template.get("layers", []):
             if layer.get("type") == "text":
-                text = layer.get("text", "") if layer.get("field") == "static" else _field_value(award, layer.get("field"), "2026-AC-00000000")
+                text = layer.get("text", "") if layer.get("field") == "static" else _field_value(award, layer.get("field"), "2026AC00000000")
                 try:
                     layout_text(text, layer)
                 except ValueError as exc:
@@ -85,6 +87,7 @@ def submit_batch(batch_id, actor):
     for requirement in version.required_departments.select_related("seal_version__seal"):
         if requirement.seal_version_id and (not requirement.seal_version.seal.active or requirement.seal_version.seal.deleted_at):
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
+    preview_bytes = None
     if template.get("engine")=="pptist":
         from .ppt_renderer import renderer,award_values
         seals=[{"department_id":r.department_id,"image":r.seal_version.image.path} for r in version.required_departments.select_related("seal_version") if r.seal_version_id]
@@ -92,8 +95,11 @@ def submit_batch(batch_id, actor):
         for item in awards:
             item.competition_name=version.snapshot.get("competition",{}).get("name",batch.competition.name)
             item.issue_date=version.snapshot.get("issue_date",timezone.localdate().isoformat())
-        errors=renderer().preflight(template,seals,[{"source_row":a.source_row,"values":award_values(a,"2026-AC-00000000")} for a in awards])
+        errors=renderer().preflight(template,seals,[{"source_row":a.source_row,"values":award_values(a,"2026AC00000000")} for a in awards])
         if errors:raise ValueError("；".join(f"第{e['row']}行：{e['error']}" for e in errors))
+        buffer = io.BytesIO()
+        renderer().render(template, seals, award_values(awards[0], '2026AC00000000'), buffer)
+        preview_bytes = buffer.getvalue()
     version.submitted_by = actor
     version.submitted_at = timezone.now()
     version.save(update_fields=["submitted_by", "submitted_at", "updated_at"])
@@ -111,6 +117,12 @@ def submit_batch(batch_id, actor):
         for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).values_list('pk',flat=True))
     ])
     AuditEvent.objects.create(actor=actor,action="batch.submitted",object_type="AwardBatch",object_id=str(batch.pk),detail={"version":version.number})
+    from .prepared import key_for, publish_submission_previews, request_file
+    if preview_bytes:
+        expected_keys = {kind: key_for(kind, version.pk) for kind in ('batch_preview', 'batch_thumbnail')}
+        transaction.on_commit(lambda: publish_submission_previews(version.pk, expected_keys, preview_bytes), robust=True)
+    else:
+        transaction.on_commit(lambda: request_file(actor, 'batch_thumbnail', batch_id=batch.pk), robust=True)
     return version
 
 
@@ -147,6 +159,46 @@ def revise_batch(batch_id, actor, rows, expected_version):
         object_id=str(batch.id), detail={"from": expected_version, "to": number},
     )
     return version
+
+
+@transaction.atomic
+def withdraw_approval(requirement_id, actor, reason):
+    from .permissions import is_department_admin
+    if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 2000:
+        raise ValueError('请填写1～2000个字符的撤回原因')
+    item = ApprovalDepartment.objects.select_related('version').get(pk=requirement_id)
+    batch = AwardBatch.objects.select_for_update().get(pk=item.version.batch_id)
+    if batch.deleted_at or not is_department_admin(actor, item.department_id):
+        raise PermissionError('只能撤回本部门的审批批准')
+    decision = ApprovalDecision.objects.select_for_update().filter(requirement_id=item.pk).first()
+    if not decision or decision.decision != 'approved':
+        raise ValueError('当前记录不是可撤回的批准状态，请刷新后重试')
+    now = timezone.now()
+    decision.decision, decision.withdrawn_at, decision.withdrawn_by = 'withdrawn', now, actor
+    decision.withdrawal_reason = reason.strip()
+    decision.save(update_fields=['decision','withdrawn_at','withdrawn_by','withdrawal_reason','updated_at'])
+    task = GenerationTask.objects.select_for_update().filter(version_id=item.version_id).first()
+    if task and task.status in ['queued','running']:
+        task.status, task.lease_token, task.lease_expires_at = 'cancelled', uuid.uuid4(), None
+        task.error = '部门已撤回批准，当前版本停止签发'
+        task.save(update_fields=['status','lease_token','lease_expires_at','error','updated_at'])
+    certificates = Certificate.objects.filter(award__version_id=item.version_id, status='active', published_at__isnull=False)
+    pending_revocations = RevocationRequest.objects.filter(certificate__in=certificates, status='review')
+    resolved = pending_revocations.update(status='approved')
+    voided = certificates.update(status='void', updated_at=now)
+    new_version = None
+    if batch.current_version == item.version.number:
+        rows = list(item.version.awards.order_by('source_row').values('source_row','members','award_name','team_name','work_name','category','teachers','note'))
+        batch.status = AwardBatch.Status.RETURNED
+        batch.save(update_fields=['status','updated_at'])
+        new_version = revise_batch(batch.pk, actor, rows, batch.current_version)
+        AwardBatch.objects.filter(pk=batch.pk).update(status=AwardBatch.Status.RETURNED, updated_at=now)
+    AuditEvent.objects.create(actor=actor, action='approval.withdrawn', object_type='AwardBatch', object_id=str(batch.pk), detail={'requirement':item.pk,'version':item.version.number,'department':item.department_id,'original_actor':decision.actor_id,'original_approved_at':decision.created_at.isoformat(),'reason':reason.strip(),'voided_certificates':voided,'resolved_revocations':resolved,'new_version':new_version.number if new_version else None})
+    recipients = set(batch.competition.collaborators.values_list('pk',flat=True)) | {batch.created_by_id}
+    recipients.update(DepartmentMembership.objects.filter(department_id__in=item.version.required_departments.values('department_id'),role='admin',active=True).values_list('user_id',flat=True))
+    recipients.update(get_user_model().objects.filter(is_superuser=True,is_active=True).values_list('pk',flat=True))
+    Notification.objects.bulk_create([Notification(user_id=uid,title='会签批准已撤回',body=f'批次“{batch.name}”的批准已撤回，已作废{voided}张证书。原因：{reason.strip()}',kind='returned',batch=batch,target=f'/business/batches?batch={batch.pk}') for uid in recipients])
+    return {'withdrawn':True,'voided_certificates':voided,'new_version':new_version.number if new_version else None}
 
 
 UNSET = object()
@@ -387,4 +439,4 @@ def allocate_number():
         value = seq.next_value
         seq.next_value += 1
         seq.save(update_fields=["next_value"])
-    return f"{year}-AC-{value:08d}"
+    return f"{year}AC{value:08d}"

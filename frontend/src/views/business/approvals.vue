@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useBusinessAccess } from "@/utils/businessAccess";
+import { statusLabel } from "@/utils/display";
 import { ElMessage, ElMessageBox } from "element-plus";
 import ModuleRegion from "@/components/ModuleRegion.vue";
 import BulkActions from "@/components/BulkActions.vue";
@@ -14,11 +16,15 @@ import {
   bulkDecideRevocations,
   decideRevocation,
   listApprovals,
+  withdrawApproval,
   listRevocations,
   listSeals,
   type Approval,
   type Seal
 } from "@/api/business";
+const { isAdmin } = useBusinessAccess();
+const approvedRows = ref<Approval[]>([]),
+  withdrawBusy = ref<number>();
 const route = useRoute(),
   live = useLiveStore(),
   listTask = useModuleTask();
@@ -41,12 +47,51 @@ function show(row: { batch_id: number; id?: number }) {
 async function load() {
   try {
     await listTask.run(
-      () => Promise.all([listApprovals(), listRevocations(), listSeals()]),
+      () =>
+        Promise.all([
+          listApprovals(),
+          listRevocations(),
+          isAdmin.value ? listSeals() : Promise.resolve([]),
+          listApprovals("approved")
+        ]),
       values => {
-        [rows.value, revocations.value, seals.value] = values;
+        [rows.value, revocations.value, seals.value, approvedRows.value] =
+          values;
       }
     );
   } catch {}
+}
+async function withdraw(row: Approval) {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      "撤回后，该次签发的证书将立即作废，批次退回重新审批。历史文件和操作记录保留。请填写撤回原因。",
+      "撤回批准",
+      {
+        inputType: "textarea",
+        inputValidator: v =>
+          (!!v?.trim() && v.trim().length <= 2000) ||
+          "请填写1～2000个字符的原因",
+        confirmButtonText: "下一步"
+      }
+    );
+    await ElMessageBox.confirm(
+      "此操作会立即作废该次签发的全部证书，是否确认撤回？",
+      "确认撤回批准",
+      {
+        type: "warning",
+        confirmButtonText: "确认撤回并作废",
+        cancelButtonText: "取消"
+      }
+    );
+    withdrawBusy.value = row.id;
+    const result = await withdrawApproval(row.id, value.trim());
+    await load();
+    ElMessage.success(`批准已撤回，已作废${result.voided_certificates}张证书`);
+  } catch (error) {
+    if (error !== "cancel" && error !== "close") console.error(error);
+  } finally {
+    withdrawBusy.value = undefined;
+  }
 }
 const bulkDialog = ref(false),
   bulkBusy = ref(false),
@@ -220,11 +265,12 @@ onMounted(async () => {
       <el-tab-pane label="签发审批" name="issuance">
         <BulkActions
           :selected="selection"
-          readonly-reason="审批记录保留，不提供删除；可批量填写审批决定。"
+          readonly-reason="审批记录保留，可导出；管理员可批量处理待办。"
           @clear="table?.clearSelection()"
           ><el-button
+            v-if="isAdmin"
             type="primary"
-            :disabled="!selection.length"
+            :disabled="!selection.some(r => r.can_review && !r.decision)"
             @click="openBulk"
             >批量审批</el-button
           ></BulkActions
@@ -246,7 +292,7 @@ onMounted(async () => {
             <el-table-column
               type="selection"
               width="48"
-              :selectable="row => !row.decision"
+              :selectable="row => row.can_review && !row.decision"
             />
             <el-table-column
               min-width="200"
@@ -280,9 +326,73 @@ onMounted(async () => {
                   link
                   type="primary"
                   @click="show(s.row as Approval)"
-                  >{{ s.row.decision ? "查看记录" : "查看并审批" }}</el-button
+                  >{{
+                    s.row.decision || !s.row.can_review
+                      ? "查看记录"
+                      : "查看并审批"
+                  }}</el-button
                 ><el-tag v-if="s.row.decision" size="small"
                   >已处理</el-tag
+                ></template
+              ></el-table-column
+            >
+          </el-table>
+        </ModuleRegion>
+      </el-tab-pane>
+      <el-tab-pane label="已通过审批" name="approved">
+        <ModuleRegion
+          :loading="listTask.loading.value"
+          :error="listTask.error.value"
+          :empty="!approvedRows.length"
+          @retry="load"
+        >
+          <el-table :data="approvedRows" border @row-dblclick="show">
+            <el-table-column
+              prop="competition_name"
+              label="竞赛"
+              min-width="200"
+            /><el-table-column label="批次" min-width="220"
+              ><template #default="s"
+                ><el-button
+                  link
+                  type="primary"
+                  @click="show(s.row as Approval)"
+                  >{{ s.row.batch_name }}</el-button
+                ></template
+              ></el-table-column
+            >
+            <el-table-column
+              prop="department_name"
+              label="批准部门"
+              min-width="160"
+            /><el-table-column label="审批人" min-width="120"
+              ><template #default="s">{{
+                s.row.decision_detail?.actor || "—"
+              }}</template></el-table-column
+            ><el-table-column label="审批意见" min-width="180"
+              ><template #default="s">{{
+                s.row.decision_detail?.comment || "—"
+              }}</template></el-table-column
+            >
+            <el-table-column label="状态" width="100"
+              ><template #default="s"
+                ><el-tag type="success">{{
+                  statusLabel(s.row.decision)
+                }}</el-tag></template
+              ></el-table-column
+            >
+            <el-table-column label="操作" width="190"
+              ><template #default="s"
+                ><el-button link @click="show(s.row as Approval)"
+                  >查看</el-button
+                ><el-button
+                  v-if="s.row.can_withdraw"
+                  link
+                  type="danger"
+                  :loading="withdrawBusy === s.row.id"
+                  :disabled="withdrawBusy !== undefined"
+                  @click="withdraw(s.row as Approval)"
+                  >撤回批准</el-button
                 ></template
               ></el-table-column
             >
@@ -339,7 +449,11 @@ onMounted(async () => {
                 >{{ s.row.approved_departments }} /
                 {{ s.row.total_departments }}</template
               ></el-table-column
-            ><el-table-column prop="status" label="状态" width="100" />
+            ><el-table-column label="状态" width="100"
+              ><template #default="s">{{
+                statusLabel(s.row.status)
+              }}</template></el-table-column
+            >
             <el-table-column label="操作" width="130"
               ><template #default="s"
                 ><el-button link type="primary" @click="showRevocation(s.row)"

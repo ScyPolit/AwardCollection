@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { bulkAction } from "@/api/business";
+import { displayValue } from '@/utils/display';
 const props = withDefaults(
   defineProps<{
     selected: Record<string, any>[];
@@ -115,7 +116,7 @@ function exportCsv() {
   };
   const csv = [
     columns.map(c => cell(c.label)).join(","),
-    ...props.selected.map(row => columns.map(c => cell(row[c.key])).join(","))
+    ...props.selected.map(row => columns.map(c => cell(typeof row[c.key]==='string'?displayValue(row[c.key],c.key):row[c.key])).join(","))
   ].join("\r\n");
   const url = URL.createObjectURL(
     new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" })

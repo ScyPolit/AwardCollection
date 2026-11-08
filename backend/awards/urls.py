@@ -33,6 +33,7 @@ urlpatterns = [
     path("auth/me/", views.me),
     path("dashboard/", views.dashboard),
     path("fonts/", views.fonts_view),
+    path("fonts/order/", views.font_order),
     path("fonts/<str:font_id>/file/", views.font_download),
     path("fonts/<str:font_id>/", views.font_management),
     path("logs/", views.audit_logs),

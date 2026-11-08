@@ -37,10 +37,11 @@ class PerformancePermissionTests(TestCase):
         certificate.save()
         return certificate
 
-    def test_owner_cannot_access_seal_or_font_management(self):
-        for path in ["seals/", "fonts/", "fonts/hei/file/"]:
+    def test_owner_can_use_editor_fonts_but_not_manage_seals_or_font_library(self):
+        for path in ('seals/', 'fonts/?include_inactive=1'):
             self.assertEqual(self.client.get('/api/v1/'+path).status_code, 403)
-        self.assertEqual(self.client.post('/api/v1/fonts/', {}, format='multipart').status_code, 403)
+        self.assertEqual(self.client.get('/api/v1/fonts/').status_code, 200)
+        self.assertEqual(self.client.post('/api/v1/fonts/', {}, format='multipart').status_code, 400)
         self.client.force_authenticate(self.admin_a)
         seals = self.client.get('/api/v1/seals/').data
         self.assertEqual({s['department'] for s in seals}, {self.departments[0].pk})

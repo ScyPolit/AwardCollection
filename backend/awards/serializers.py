@@ -107,13 +107,25 @@ class ApprovalSerializer(serializers.ModelSerializer):
     decision = serializers.SerializerMethodField()
     decision_detail = serializers.SerializerMethodField()
     can_review = serializers.SerializerMethodField()
+    can_withdraw = serializers.SerializerMethodField()
     seal_version = serializers.SerializerMethodField()
     seal_label = serializers.SerializerMethodField()
     seal_selected = serializers.SerializerMethodField()
 
     class Meta:
         model = ApprovalDepartment
-        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "decision_detail", "created_at", "can_review", "seal_version", "seal_label", "seal_selected"]
+        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "decision_detail", "created_at", "can_review", "can_withdraw", "seal_version", "seal_label", "seal_selected"]
+
+    def get_can_withdraw(self, obj):
+        request = self.context.get('request')
+        if not request or self.get_decision(obj) != 'approved':
+            return False
+        if request.user.is_superuser:
+            return True
+        from .scopes import managed_departments
+        if '_approval_departments' not in self.context:
+            self.context['_approval_departments'] = set(managed_departments(request.user))
+        return obj.department_id in self.context['_approval_departments']
 
     def get_can_review(self, obj):
         request = self.context.get("request")
@@ -146,7 +158,7 @@ class ApprovalSerializer(serializers.ModelSerializer):
         decision = getattr(obj, "decision", None)
         if not decision:
             return None
-        return {"actor": decision.actor.username, "comment": decision.comment, "issue_rows": decision.issue_rows, "created_at": decision.created_at}
+        return {"actor": decision.actor.username, "comment": decision.comment, "issue_rows": decision.issue_rows, "created_at": decision.created_at, 'withdrawn_at':decision.withdrawn_at, 'withdrawal_reason':decision.withdrawal_reason, 'withdrawn_by':decision.withdrawn_by_id}
 
 
 class TemplateVersionSerializer(serializers.ModelSerializer):
@@ -158,11 +170,25 @@ class TemplateVersionSerializer(serializers.ModelSerializer):
 class TemplateSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source="department.name", read_only=True)
     latest_version = serializers.SerializerMethodField()
+    can_edit = serializers.SerializerMethodField()
+    can_manage = serializers.SerializerMethodField()
 
     class Meta:
         model = Template
-        fields = ["id", "name", "department", "department_name", "source", "published", "latest_version", "created_at"]
+        fields = ["id", "name", "department", "department_name", "source", "published", "latest_version", "created_at", "can_edit", "can_manage"]
         read_only_fields = ["source", "created_at"]
+
+    def get_can_manage(self, obj):
+        request = self.context.get('request')
+        if not request:
+            return False
+        from .permissions import is_department_admin, is_owner
+        return request.user.is_superuser or is_department_admin(request.user, obj.department) or (is_owner(request.user) and obj.created_by_id == request.user.pk)
+
+    def get_can_edit(self, obj):
+        from .permissions import is_owner
+        request = self.context.get('request')
+        return self.get_can_manage(obj) or bool(request and is_owner(request.user) and obj.published)
 
     def get_latest_version(self, obj):
         if hasattr(obj, "light_versions"):

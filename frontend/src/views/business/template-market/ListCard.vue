@@ -46,11 +46,9 @@ defineEmits<{
           >{{ product.department_name }}</el-tag
         >
         <div class="list-card-item_detail--operation">
-          <el-tag :type="product.published ? 'success' : 'info'" size="small"
-            >{{ product.published ? "共享模板" : "部门模板" }} · v{{
-              product.latest_version?.number
-            }}</el-tag
-          >
+          <el-tag :type="product.published ? 'success' : 'info'" size="small">{{
+            product.published ? "共享模板" : "专用模板"
+          }}</el-tag>
         </div></el-row
       >
       <p class="list-card-item_detail--name text-text_color_primary">
@@ -78,7 +76,7 @@ defineEmits<{
         ><el-button v-if="canCopy" size="small" @click="$emit('copy', product)"
           >复制后编辑</el-button
         ><el-button
-          v-if="canCopy"
+          v-if="product.can_edit"
           size="small"
           link
           @click="$emit('edit', product)"

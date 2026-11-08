@@ -52,7 +52,10 @@ const filterDepartments = computed(() => [
 ]);
 const managed = computed(() =>
   departments.value.filter(
-    d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
+    d =>
+      isSuper.value ||
+      user.value.roles.includes("owner") ||
+      user.value.managedDepartmentIds.includes(d.id)
   )
 );
 const bulkSelection = computed(() =>
@@ -79,7 +82,6 @@ const selected = ref<Template>(),
 const info = computed(() => ({
   模板名称: selected.value?.name,
   维护部门: selected.value?.department_name,
-  版本: selected.value?.latest_version?.number,
   共享: selected.value?.published
 }));
 watch([searchValue, department], () => (pagination.current = 1));
@@ -122,7 +124,7 @@ async function copy() {
     const target = await copyTemplate(selected.value.id, { ...form });
     await publishTemplate(target.id);
     copyDialog.value = false;
-    ElMessage.success("模板已复制到本部门");
+    ElMessage.success("模板已复制，可继续编辑");
     edit(target);
   } catch {
   } finally {
@@ -174,7 +176,7 @@ onMounted(load);
     >
       <el-empty
         v-if="!dataLoading && !filtered.length"
-        description="未找到模板，可由管理员新建或复制共享模板"
+        description="未找到模板，可新建或复制共享模板"
       /><el-row :gutter="16" class="template-grid"
         ><el-col
           v-for="product in visible"
@@ -186,7 +188,7 @@ onMounted(load);
           :xl="6"
           ><ListCard
             :product="product"
-            :can-copy="isAdmin"
+            :can-copy="isAdmin || user.roles.includes('owner')"
             :checked="selectedIds.includes(product.id)"
             @check="check"
             @preview="show"

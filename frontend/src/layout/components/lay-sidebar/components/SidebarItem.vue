@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveStore } from "@/store/modules/live";
-const live=useLiveStore();
+const live = useLiveStore();
 import { getConfig } from "@/config";
 import { posix } from "path-browserify";
 import { menuType } from "@/layout/types";
@@ -176,7 +176,12 @@ function resolvePath(routePath) {
           >
             {{ onlyOneChild.meta.title }}
           </ReText>
-          <el-badge v-if="live.badge(resolvePath(onlyOneChild.path))" :value="live.badge(resolvePath(onlyOneChild.path))" :max="99" class="menu-live-badge" />
+          <el-badge
+            v-if="live.badge(resolvePath(onlyOneChild.path))"
+            :value="live.badge(resolvePath(onlyOneChild.path))"
+            :max="99"
+            class="menu-live-badge"
+          />
           <SidebarExtraIcon :extraIcon="onlyOneChild.meta.extraIcon" />
         </div>
       </template>
@@ -230,4 +235,19 @@ function resolvePath(routePath) {
   </el-sub-menu>
 </template>
 
-<style scoped>.menu-live-badge{margin:0 12px 0 6px;align-self:center}</style>
+<style scoped>
+.menu-live-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  margin: 0 12px 0 6px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.menu-live-badge :deep(.el-badge__content) {
+  position: static;
+  transform: none;
+  margin: 0;
+  line-height: 18px;
+}
+</style>

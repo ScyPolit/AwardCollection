@@ -1,0 +1,10 @@
+{
+  "rows": 300,
+  "before_ms": 145.89999999850988,
+  "after_ms": 46.100000001490116,
+  "equal": true,
+  "errors": 0,
+  "missing_glyph_equal": true,
+  "overflow_equal": true,
+  "scope": "submission preflight only; generation path and concurrency unchanged"
+}

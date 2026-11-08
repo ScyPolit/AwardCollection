@@ -1,0 +1,136 @@
+{
+  "samples": [
+    {
+      "mode": "baseline",
+      "cold_browser": true,
+      "seconds": 44.380956629058346,
+      "stages_seconds": {
+        "browser_prepare": 37.725687831873074,
+        "unsigned_pdf": 42.19645697204396,
+        "pkcs12_load": 0.24796495493501425,
+        "signature_total": 0.7839253491256386,
+        "pdf_rasterize": 0.6776605329941958,
+        "png_encode_and_write": 0.6861621788702905,
+        "image_total": 1.3693914620671421,
+        "pdf_sha256": 0.03028754098340869
+      },
+      "pdf_bytes": 2011414,
+      "png_bytes": 3842805,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    },
+    {
+      "mode": "baseline",
+      "cold_browser": false,
+      "seconds": 2.872290975879878,
+      "stages_seconds": {
+        "browser_prepare": 0.07734627090394497,
+        "unsigned_pdf": 0.8198018979746848,
+        "pkcs12_load": 0.2349343521054834,
+        "signature_total": 0.7413113210350275,
+        "pdf_rasterize": 0.6738004379440099,
+        "png_encode_and_write": 0.6166420299559832,
+        "image_total": 1.2956977570429444,
+        "pdf_sha256": 0.014436675002798438
+      },
+      "pdf_bytes": 2011459,
+      "png_bytes": 3842818,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    },
+    {
+      "mode": "baseline",
+      "cold_browser": false,
+      "seconds": 2.9870023720432073,
+      "stages_seconds": {
+        "browser_prepare": 0.07633974589407444,
+        "unsigned_pdf": 0.9443911320995539,
+        "pkcs12_load": 0.23267288110218942,
+        "signature_total": 0.7858762789983302,
+        "pdf_rasterize": 0.607647200115025,
+        "png_encode_and_write": 0.626603428972885,
+        "image_total": 1.2397592230699956,
+        "pdf_sha256": 0.015930202091112733
+      },
+      "pdf_bytes": 2011514,
+      "png_bytes": 3842915,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    },
+    {
+      "mode": "cached_signer",
+      "cold_browser": false,
+      "seconds": 3.0060565180610865,
+      "stages_seconds": {
+        "browser_prepare": 0.08054240886121988,
+        "unsigned_pdf": 0.9759098319336772,
+        "pkcs12_load": 0.24997223308309913,
+        "signature_total": 0.7519549778662622,
+        "pdf_rasterize": 0.5863563159946352,
+        "png_encode_and_write": 0.6601768650580198,
+        "image_total": 1.2517919780220836,
+        "pdf_sha256": 0.025545791955664754
+      },
+      "pdf_bytes": 2011423,
+      "png_bytes": 3842855,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    },
+    {
+      "mode": "cached_signer",
+      "cold_browser": false,
+      "seconds": 2.8334090639837086,
+      "stages_seconds": {
+        "browser_prepare": 0.07917795213870704,
+        "unsigned_pdf": 1.0765692950226367,
+        "pkcs12_load": 8.478062227368355e-06,
+        "signature_total": 0.5715879551135004,
+        "pdf_rasterize": 0.566872542956844,
+        "png_encode_and_write": 0.5985922070685774,
+        "image_total": 1.1698378259316087,
+        "pdf_sha256": 0.014411559095606208
+      },
+      "pdf_bytes": 2011469,
+      "png_bytes": 3842881,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    },
+    {
+      "mode": "cached_signer",
+      "cold_browser": false,
+      "seconds": 2.7312470639590174,
+      "stages_seconds": {
+        "browser_prepare": 0.07775213709101081,
+        "unsigned_pdf": 1.0674691391177475,
+        "pkcs12_load": 3.927852958440781e-06,
+        "signature_total": 0.4938285518437624,
+        "pdf_rasterize": 0.5572957170661539,
+        "png_encode_and_write": 0.5887719551101327,
+        "image_total": 1.150619582971558,
+        "pdf_sha256": 0.018354851054027677
+      },
+      "pdf_bytes": 2011488,
+      "png_bytes": 3842939,
+      "png_expected_pixels": [
+        1684,
+        1190
+      ]
+    }
+  ],
+  "peak_rss_kib": 349772,
+  "synthetic_names": true,
+  "temporary_signing_keys": true,
+  "production_media_read_only": true,
+  "cpu_limit": 1,
+  "memory_limit_mib": 2048
+}

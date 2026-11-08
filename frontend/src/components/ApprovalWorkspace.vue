@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from "vue";
 import { useWindowSize } from "@vueuse/core";
+import { useBusinessAccess } from "@/utils/businessAccess";
 import { ElMessage, ElMessageBox } from "element-plus";
 import {
   batchDetail,
@@ -25,6 +26,7 @@ const emit = defineEmits<{ "update:modelValue": [boolean]; changed: [] }>();
 const task = useModuleTask(),
   optionsTask = useModuleTask(),
   rosterTask = useModuleTask();
+const { isAdmin } = useBusinessAccess();
 const live = useLiveStore(),
   syncTask = useModuleTask();
 const { width: windowWidth } = useWindowSize();
@@ -115,6 +117,7 @@ async function load() {
   } catch {}
 }
 async function loadOptions() {
+  if (!isAdmin.value) return;
   try {
     await optionsTask.run(listSeals, value => {
       seals.value = value;

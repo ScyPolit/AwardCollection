@@ -1,0 +1,18 @@
+{
+  "warm_baseline_samples": 2,
+  "mean_total_seconds": 2.9296466739615425,
+  "unsigned_pdf_seconds": 0.8820965150371194,
+  "signature_seconds": 0.7635938000166789,
+  "key_load_seconds": 0.23380361660383642,
+  "image_seconds": 1.26772849005647,
+  "rasterize_seconds": 0.6407238190295175,
+  "png_encode_seconds": 0.6216227294644341,
+  "template_prepare_seconds": 0.0768430083990097,
+  "cold_seconds": 44.380956629058346,
+  "image_percent": 43.27240214063819,
+  "unsigned_pdf_percent": 30.109313961889,
+  "signature_percent": 26.06436492166231,
+  "signer_cached_hot_samples": 2,
+  "signer_cached_hot_mean_seconds": 2.782328063971363,
+  "sample_limitations": "One CPU, 2GiB, synthetic text and 320px seal, temporary keys, concurrent production workload; not a full-batch performance guarantee."
+}

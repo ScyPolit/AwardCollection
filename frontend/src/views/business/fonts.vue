@@ -18,6 +18,7 @@ import {
   listFonts,
   currentUser,
   updateFont,
+  reorderFonts,
   type CertificateFont
 } from "@/api/business";
 
@@ -29,6 +30,31 @@ const dialog = ref(false),
   saving = ref(false),
   file = ref<File>();
 const form = reactive({ name: "", confirmed: false });
+const orderDirty = ref(false),
+  orderSaving = ref(false);
+function move(font: CertificateFont, step: number) {
+  const from = rows.value.findIndex(item => item.id === font.id),
+    to = step === 0 ? 0 : from + step;
+  if (from < 0 || to < 0 || to >= rows.value.length || orderSaving.value)
+    return;
+  const next = [...rows.value];
+  next.splice(to, 0, ...next.splice(from, 1));
+  rows.value = next;
+  orderDirty.value = true;
+}
+async function saveOrder(reset = false) {
+  if (orderSaving.value) return;
+  orderSaving.value = true;
+  try {
+    rows.value = await reorderFonts(
+      reset ? [] : rows.value.map(item => item.id)
+    );
+    orderDirty.value = false;
+    ElMessage.success("字体顺序已保存，编辑器将按此顺序显示");
+  } finally {
+    orderSaving.value = false;
+  }
+}
 const selected = ref<CertificateFont>(),
   preview = ref(false),
   previewError = ref("");
@@ -56,6 +82,7 @@ async function load() {
       try {
         isSuper.value = (await currentUser()).isSuperuser;
         rows.value = isSuper.value ? await manageFonts() : await listFonts();
+        orderDirty.value = false;
       } finally {
         busy.value = false;
       }
@@ -155,7 +182,18 @@ onMounted(load);
           v-model="search"
           placeholder="搜索字体名称"
           clearable
-        /><el-button type="primary" @click="openImport">导入字体</el-button>
+        /><el-button
+          v-if="isSuper"
+          :disabled="!orderDirty"
+          :loading="orderSaving"
+          @click="saveOrder()"
+          >保存顺序</el-button
+        ><el-button
+          v-if="isSuper"
+          :disabled="orderSaving"
+          @click="saveOrder(true)"
+          >恢复默认顺序</el-button
+        ><el-button type="primary" @click="openImport">导入字体</el-button>
       </div>
     </header>
     <el-alert
@@ -186,9 +224,28 @@ onMounted(load);
         border
         class="font-table"
       >
-        <el-table-column type="selection" width="48" /><el-table-column
-          label="字体名称"
-          min-width="260"
+        <el-table-column type="selection" width="48" />
+        <el-table-column v-if="isSuper" label="顺序" width="220"
+          ><template #default="s"
+            ><el-button
+              link
+              :disabled="rows[0]?.id === s.row.id || orderSaving"
+              @click="move(s.row as CertificateFont, 0)"
+              >置顶</el-button
+            ><el-button
+              link
+              :disabled="rows[0]?.id === s.row.id || orderSaving"
+              @click="move(s.row as CertificateFont, -1)"
+              >上移</el-button
+            ><el-button
+              link
+              :disabled="rows.at(-1)?.id === s.row.id || orderSaving"
+              @click="move(s.row as CertificateFont, 1)"
+              >下移</el-button
+            ></template
+          ></el-table-column
+        >
+        <el-table-column label="字体名称" min-width="260"
           ><template #default="s"
             ><el-button
               link

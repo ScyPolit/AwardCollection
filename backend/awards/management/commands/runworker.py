@@ -127,6 +127,7 @@ def process_task(task):
         for future in cleanup:
             future.result(timeout=20)
     with transaction.atomic():
+        AwardBatch.objects.select_for_update().get(pk=task.version.batch_id)
         current = GenerationTask.objects.select_for_update().get(pk=task.pk)
         if current.lease_token != token or current.status != 'running':
             raise RuntimeError('任务租约已失效')
@@ -179,10 +180,14 @@ class Command(BaseCommand):
             try:
                 process_task(task)
             except Exception as exc:
+                changed = GenerationTask.objects.filter(pk=task.pk,lease_token=task.lease_token,status='running').update(status='failed',error=str(exc)[:1000])
+                if not changed:
+                    if options['once']:
+                        return
+                    continue
                 Notification.objects.create(user_id=task.version.batch.created_by_id,title='证书生成失败',body='请查看任务错误并重试，已完成的原件保持不变。',kind='failed',target=f'/business/batches?batch={task.version.batch_id}')
                 AuditEvent.objects.create(action='generation.failed',object_type='AwardBatch',object_id=str(task.version.batch_id),detail={'error':str(exc)[:1000]})
-                AwardBatch.objects.filter(pk=task.version.batch_id,current_version=task.version.number).update(status='failed')
-                GenerationTask.objects.filter(pk=task.pk,lease_token=task.lease_token).update(status='failed',error=str(exc)[:1000])
+                AwardBatch.objects.filter(pk=task.version.batch_id,current_version=task.version.number,status='queued').update(status='failed')
             if options['once']:
                 return
 

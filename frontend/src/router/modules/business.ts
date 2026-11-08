@@ -32,7 +32,7 @@ export default {
       meta: {
         icon: "ep/edit-pen",
         title: "模板编辑器",
-        roles: ["admin", "super"]
+        roles: ["admin", "super", "owner"]
       }
     },
     {
@@ -58,7 +58,7 @@ export default {
       meta: {
         icon: "ep/circle-check",
         title: "会签待办",
-        roles: ["admin", "super"]
+        roles: ["admin", "super", "owner"]
       }
     },
     {
@@ -73,7 +73,7 @@ export default {
       component: () => import("@/views/business/administration.vue"),
       meta: {
         icon: "ep/user",
-        title: "账号与公开设置",
+        title: "账号与部门管理",
         roles: ["admin", "super"]
       }
     },
