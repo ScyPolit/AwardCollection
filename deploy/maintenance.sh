@@ -32,8 +32,10 @@ if [ "$action" = backup ] || [ "$action" = all ]; then
   test -s .env
   test -s secrets/db_password.txt
   docker compose -p awardcollection-v1-test exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' >"$target/database.dump"
-  media_code='import sys,tarfile; from pathlib import Path; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz",compresslevel=1); [t.add(str(p),arcname=p.name) for p in Path("/srv/media").iterdir() if p.name!="temporary"]; t.close()'
-  docker compose -p awardcollection-v1-test exec -T api python -c "$media_code" >"$target/media.tar.gz"
+  level="${BACKUP_COMPRESSLEVEL:-1}"
+  case "$level" in [0-9]) ;; *) echo "BACKUP_COMPRESSLEVEL must be 0..9" >&2; exit 2 ;; esac
+  media_code='import os,sys,tarfile; from pathlib import Path; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz",compresslevel=int(os.environ["BACKUP_COMPRESSLEVEL"])); [t.add(str(p),arcname=p.name) for p in Path("/srv/media").iterdir() if p.name!="temporary"]; t.close()'
+  docker compose -p awardcollection-v1-test exec -T -e BACKUP_COMPRESSLEVEL="$level" api python -c "$media_code" >"$target/media.tar.gz"
   config_code='import sys,tarfile; t=tarfile.open(fileobj=sys.stdout.buffer,mode="w|gz"); t.add(".env"); t.add("secrets/db_password.txt"); t.close()'
   python3 -c "$config_code" | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass "file:$key" -out "$target/deployment-config.tar.gz.enc"
   python3 -c 'import sys,tarfile; from pathlib import Path; p=Path(sys.argv[1]); assert (p/"database.dump").read_bytes()[:5]==b"PGDMP"; t=tarfile.open(p/"media.tar.gz"); assert t.getmembers()' "$target"

@@ -19,6 +19,14 @@ def can_edit_templates(user):
     return is_department_admin(user) or is_owner(user)
 
 
+def can_manage_template(user, template):
+    if user.is_superuser:
+        return True
+    if template.created_by_id == user.pk:
+        return can_edit_templates(user)
+    return template.scope == "department" and is_department_admin(user, template.department_id)
+
+
 def grant_owner(user):
     user.groups.add(Group.objects.get_or_create(name=OWNER_GROUP)[0])
 

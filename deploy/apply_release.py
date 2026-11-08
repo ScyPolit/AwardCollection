@@ -84,6 +84,8 @@ def main():
     parser.add_argument("revision")
     parser.add_argument("--archive")
     parser.add_argument("--archive-sha256")
+    parser.add_argument("--verified-backup-path", help="Reuse a completed full backup after verifying every checksum")
+    parser.add_argument("--web-build-network", choices=["host"], help="Use host networking only for the web image build when registry networking requires it")
     parser.add_argument("--rotate-sessions", action="store_true", help="Explicitly revoke login sessions when an authentication change requires it")
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.revision):
@@ -202,7 +204,25 @@ def main():
         shutil.copyfile(source / "deploy" / name, PROJECT / "deploy" / name)
     progress("backup", checkpoint=str(checkpoint))
     try:
-        run(["sh", str(PROJECT / "deploy/maintenance.sh"), "backup"], timeout=3600)
+        if args.verified_backup_path:
+            backup_path = Path(args.verified_backup_path).resolve()
+            if not backup_path.is_relative_to(BASE / "backups") or not (backup_path / "COMPLETE").is_file():
+                raise RuntimeError("Expected a completed backup inside this deployment's backup directory")
+            names = set()
+            for line in (backup_path / "SHA256SUMS").read_text().splitlines():
+                checksum, name = line.split(maxsplit=1)
+                name = name.strip().lstrip("*")
+                if Path(name).name != name:
+                    raise RuntimeError("Invalid backup manifest path")
+                with (backup_path / name).open("rb") as stream:
+                    if hashlib.file_digest(stream, "sha256").hexdigest() != checksum:
+                        raise RuntimeError("Backup checksum mismatch")
+                names.add(name)
+            if not {"database.dump", "media.tar.gz", "deployment-config.tar.gz.enc"}.issubset(names):
+                raise RuntimeError("Backup is missing mandatory files")
+            (runtime / "last-backup-path").write_text(str(backup_path) + "\n")
+        else:
+            run(["sh", str(PROJECT / "deploy/maintenance.sh"), "backup"], timeout=3600)
     except Exception:
         progress(
             "failed", error="Backup failed before application containers were changed"
@@ -234,7 +254,11 @@ def main():
             if config["volumes"][volume]["name"] != PROJECT_NAME + "_" + volume:
                 raise RuntimeError("Existing volume identity changed")
         progress("build")
-        compose("build", *SERVICES, timeout=3600)
+        if args.web_build_network:
+            compose("build", "api", "worker", "converter", timeout=3600)
+            run(["docker", "build", "--network", args.web_build_network, "--build-arg", "APP_BUILD_VERSION=" + args.revision, "-t", PROJECT_NAME + "-web", str(source / "frontend")], timeout=3600)
+        else:
+            compose("build", *SERVICES, timeout=3600)
         progress("restart")
         started_services = True
         compose("stop", "--timeout", "30", "worker", timeout=60)

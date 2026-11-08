@@ -49,7 +49,7 @@ class BatchSerializer(serializers.ModelSerializer):
     team_count = serializers.SerializerMethodField()
     approval_summary = serializers.SerializerMethodField()
     template_version = serializers.PrimaryKeyRelatedField(
-        queryset=TemplateVersion.objects.filter(template__published=True, template__deleted_at__isnull=True),
+        queryset=TemplateVersion.objects.none(),
         write_only=True,
         required=False,
     )
@@ -72,6 +72,12 @@ class BatchSerializer(serializers.ModelSerializer):
             "template_version", "output_formats", "seal_versions",
         ]
         read_only_fields = ["public_id", "status", "current_version", "created_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if request := self.context.get("request"):
+            from .prepared import template_versions_for
+            self.fields["template_version"].queryset = template_versions_for(request.user)
 
     def get_team_count(self, obj):
         if hasattr(obj, "team_count_value"):return obj.team_count_value
@@ -172,23 +178,26 @@ class TemplateSerializer(serializers.ModelSerializer):
     latest_version = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     can_manage = serializers.SerializerMethodField()
+    is_mine = serializers.SerializerMethodField()
 
     class Meta:
         model = Template
-        fields = ["id", "name", "department", "department_name", "source", "published", "latest_version", "created_at", "can_edit", "can_manage"]
-        read_only_fields = ["source", "created_at"]
+        fields = ["id", "name", "department", "department_name", "source", "published", "scope", "is_mine", "latest_version", "created_at", "can_edit", "can_manage"]
+        read_only_fields = ["source", "scope", "created_at"]
+
+    def get_is_mine(self, obj):
+        request = self.context.get("request")
+        return bool(request and obj.created_by_id == request.user.pk)
 
     def get_can_manage(self, obj):
         request = self.context.get('request')
         if not request:
             return False
-        from .permissions import is_department_admin, is_owner
-        return request.user.is_superuser or is_department_admin(request.user, obj.department) or (is_owner(request.user) and obj.created_by_id == request.user.pk)
+        from .permissions import can_manage_template
+        return can_manage_template(request.user, obj)
 
     def get_can_edit(self, obj):
-        from .permissions import is_owner
-        request = self.context.get('request')
-        return self.get_can_manage(obj) or bool(request and is_owner(request.user) and obj.published)
+        return self.get_can_manage(obj)
 
     def get_latest_version(self, obj):
         if hasattr(obj, "light_versions"):

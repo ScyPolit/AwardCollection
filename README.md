@@ -44,7 +44,7 @@
 | --- | --- |
 | **超级管理员** | 全局维护、账号与部门管理、字体和模板管理、竞赛启停、审计；继承部门管理员能力 |
 | **部门管理员** | 在授权范围内维护账号和素材、管理本部门公章、审批需要本部门盖章的批次 |
-| **竞赛负责人** | 创建竞赛、编辑共享或自建模板、导入字体、上传名单并提交会签、查看已通过审批和流程进度、下载证书；账号无需绑定部门 |
+| **竞赛负责人** | 创建竞赛、选用共享模板或复制到个人模板库后编辑、自行决定个人模板是否共享、导入字体、上传名单并提交会签、下载证书；账号无需绑定部门 |
 
 ```mermaid
 flowchart LR
@@ -73,6 +73,8 @@ flowchart LR
 </table>
 
 想从截图中的样式开始？[下载三款可编辑演示模板](examples/README.md)，在“模板编辑器 → 导入模板”中导入后调整。
+
+正式发行版及通用模板 ZIP 见 [Releases](https://github.com/ScyPolit/AwardCollection/releases)。学校当前使用的模板、校章和授权字体应通过私有初始化包迁移，操作见 [从测试环境转入生产](docs/production-initialization.md)。
 
 ## 快速部署
 
@@ -156,6 +158,7 @@ AwardCollection/
 | 功能与业务规则 | [需求说明](docs/requirements.md) · [技术方案](docs/technical-plan.md) |
 | 编辑器与导入格式 | [PPT 编辑器选型和集成说明](docs/ppt-editor-assessment.md) |
 | 验收与风险边界 | [实现状态](docs/implementation-status.md) · [安全复核](docs/security-review-v4.md) |
+| 生产初始化与目录规范 | [生产迁移](docs/production-initialization.md) · [项目结构](docs/project-structure.md) |
 | 开发与贡献 | [贡献指南](CONTRIBUTING.md) · [安全报告](SECURITY.md) |
 | 品牌与第三方许可 | [Logo 素材](docs/brand/README.md) · [第三方组件说明](THIRD_PARTY_NOTICES.md) |
 

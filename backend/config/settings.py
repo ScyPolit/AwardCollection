@@ -61,7 +61,9 @@ if database_url:
         "CONN_MAX_AGE": 60,
     }}
 else:
-    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": BASE_DIR / "db.sqlite3",
+    development_data = BASE_DIR.parent / "testTemp" / "development"
+    development_data.mkdir(parents=True, exist_ok=True)
+    DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": os.getenv("SQLITE_DATABASE_PATH", development_data / "db.sqlite3"),
                              "OPTIONS": {"timeout": 20, "transaction_mode": "IMMEDIATE"}}}
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -75,7 +77,7 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR / "media"))
+MEDIA_ROOT = Path(os.getenv("MEDIA_ROOT", BASE_DIR.parent / "testTemp" / "development" / "media"))
 DATA_UPLOAD_MAX_MEMORY_SIZE = 32 * 1024 * 1024
 BACKUP_ROOT = Path(os.getenv("BACKUP_ROOT", BASE_DIR / "backups"))
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

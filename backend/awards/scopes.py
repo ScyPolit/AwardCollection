@@ -2,13 +2,23 @@
 
 from django.db.models import Q, F, Value, CharField
 from django.db.models.functions import Cast, Concat
-from .models import Competition, AwardBatch, BatchVersion, Certificate, DepartmentMembership, Notification, RevocationRequest
+from .models import Competition, AwardBatch, BatchVersion, Certificate, DepartmentMembership, Notification, RevocationRequest, Template
 
 
 def managed_departments(user):
     return DepartmentMembership.objects.filter(
         user=user, role="admin", active=True, department__deleted_at__isnull=True
     ).values_list("department_id", flat=True)
+
+
+def accessible_templates(user):
+    qs = Template.objects.filter(deleted_at__isnull=True)
+    if user.is_superuser:
+        return qs
+    return qs.filter(
+        Q(published=True) | Q(created_by=user)
+        | Q(scope=Template.Scope.DEPARTMENT, department_id__in=managed_departments(user))
+    )
 
 
 def owned_competitions(user):

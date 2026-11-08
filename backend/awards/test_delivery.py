@@ -90,12 +90,12 @@ class DeliveryTests(TestCase):
         DepartmentMembership.objects.filter(user=self.admin_b).delete()
         self.assertFalse(self.client_as(self.admin_b).post('/api/v1/verification/admin/',{'number':cert.number},format='json').data['found'])
 
-    def test_owner_can_edit_shared_template_but_cannot_manage_others_template_or_seals(self):
+    def test_owner_cannot_edit_shared_template_or_manage_others_template_or_seals(self):
         owner=self.client_as(self.owner);template=self.version.template_version.template
         detail=owner.get(f'/api/v1/templates/{template.pk}/')
-        self.assertTrue(detail.data['can_edit']);self.assertFalse(detail.data['can_manage'])
+        self.assertFalse(detail.data['can_edit']);self.assertFalse(detail.data['can_manage'])
         saved=owner.post(f'/api/v1/templates/{template.pk}/save_version/',{'expected_version':1,'canvas':{'title':'正式证书'}},format='json')
-        self.assertEqual(saved.status_code,201)
+        self.assertEqual(saved.status_code,403)
         self.assertEqual(owner.patch(f'/api/v1/templates/{template.pk}/',{'published':False},format='json').status_code,403)
         self.assertEqual(owner.get('/api/v1/fonts/').status_code,200)
         self.assertEqual(owner.get('/api/v1/fonts/?include_inactive=1').status_code,403)

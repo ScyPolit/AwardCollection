@@ -19,8 +19,8 @@ PACKAGES = {
 
 
 def download(url):
-    cache = ROOT.parent / '.tmp-font-downloads'
-    cache.mkdir(exist_ok=True)
+    cache = ROOT.parent.parent / 'testTemp' / 'font-downloads'
+    cache.mkdir(parents=True, exist_ok=True)
     target = cache / hashlib.sha256(url.encode()).hexdigest()
     if not target.exists():
         print('Downloading pinned font source: ' + url, flush=True)

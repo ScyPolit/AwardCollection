@@ -36,3 +36,8 @@ artifacts/**/.venv/
 
 /backend/.offline-wheels/*
 !/backend/.offline-wheels/.gitkeep
+
+# Temporary QA, release staging and private installation materials.
+/testTemp/*
+!/testTemp/README.md
+/resources/private/

@@ -188,7 +188,10 @@ function open(copying = false) {
   copy.value = copying;
   Object.assign(form, {
     name: copying ? `${selected.value?.name} 副本` : "新证书模板",
-    department: managed.value[0]?.id
+    department:
+      (copying &&
+        managed.value.find(d => d.id === selected.value?.department)?.id) ||
+      managed.value[0]?.id
   });
   dialog.value = true;
 }
@@ -200,10 +203,11 @@ async function create() {
       ? await copyTemplate(selectedId.value!, form)
       : await createTemplate({
           ...form,
-          published: true,
+          published: false,
           canvas: { title: "获 奖 证 书", page: { width: 842, height: 595 } }
         });
     selectedId.value = t.id;
+    await router.replace({ query: { template: t.id } });
     dialog.value = false;
     await load();
   } finally {
@@ -354,7 +358,7 @@ onBeforeUnmount(() => {
       >
       <el-button v-if="canCreate" @click="open()">新建</el-button
       ><el-button v-if="canCreate && selected" @click="open(true)"
-        >复制</el-button
+        >复制到我的模板库</el-button
       >
       <el-button v-if="canManage" @click="rename">修改信息</el-button
       ><el-button v-if="canManage" type="danger" plain @click="remove"
@@ -379,13 +383,10 @@ onBeforeUnmount(() => {
         >保存当前页为签发模板</el-button
       >
       <el-tag v-if="dirty" type="warning">未保存</el-tag
-      ><el-tag v-else-if="selected">已保存</el-tag>
+      ><el-tag v-else-if="selected">{{
+        canEdit ? "已保存" : "只读 · 复制后编辑"
+      }}</el-tag>
     </div>
-    <el-alert
-      title="PPTX、PPT、ODP 可编辑导入；PDF、图片作为页面背景。请检查字体与排版，使用“证书字段”绑定获奖数据，并选择要签发的一页后保存。"
-      type="info"
-      :closable="false"
-    />
     <el-alert
       v-if="metadataTask.error.value || canvasTask.error.value"
       :title="metadataTask.error.value || canvasTask.error.value"
@@ -398,6 +399,7 @@ onBeforeUnmount(() => {
       description="暂无模板，请先新建或导入模板"
     />
     <div
+      class="editor-region"
       v-loading="
         metadataTask.loading.value ||
         canvasLoading ||
@@ -464,6 +466,8 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  height: calc(100dvh - 128px);
+  min-height: 580px;
 }
 .workspace-tools {
   display: flex;
@@ -479,11 +483,16 @@ onBeforeUnmount(() => {
 }
 .ppt-frame {
   width: 100%;
-  height: calc(100vh - 265px);
-  min-height: 650px;
+  height: 100%;
+  min-height: 460px;
+  display: block;
   border: 1px solid var(--el-border-color);
   border-radius: 6px;
   background: var(--el-bg-color);
+}
+.editor-region {
+  flex: 1;
+  min-height: 460px;
 }
 @media (max-width: 900px) {
   .ppt-frame {

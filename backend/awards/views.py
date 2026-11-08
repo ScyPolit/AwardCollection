@@ -390,9 +390,10 @@ class BatchViewSet(ModelViewSet):
         if set(requested_seals) - {str(pk) for pk in allowed_ids}:
             raise PermissionDenied("只能选择本人管理部门的公章")
         if template is None:
-            template = TemplateVersion.objects.filter(template__published=True, template__deleted_at__isnull=True).order_by("-created_at").first()
+            from .prepared import template_versions_for
+            template = template_versions_for(self.request.user).order_by("-created_at").first()
         if template is None:
-            raise ValidationError("请先创建并发布证书模板")
+            raise ValidationError("请先创建自己的模板或选择共享模板")
         selected = []
         for department in competition.departments.all():
             requested_id = requested_seals.get(str(department.id))
@@ -655,24 +656,22 @@ class TemplateViewSet(ModelViewSet):
     serializer_class = TemplateSerializer
 
     def get_queryset(self):
-        qs = Template.objects.filter(deleted_at__isnull=True)
-        if not self.request.user.is_superuser:
-            qs = qs.filter(models.Q(published=True) | models.Q(created_by=self.request.user) | models.Q(department_id__in=managed_departments(self.request.user)))
+        from .scopes import accessible_templates
+        qs = accessible_templates(self.request.user)
         qs = qs.select_related("department").order_by("-updated_at")
         if self.action == "list":
             qs = qs.prefetch_related(models.Prefetch("versions", queryset=TemplateVersion.objects.only("id", "template_id", "number", "created_at", "summary").order_by("-number"), to_attr="light_versions"))
         return qs
 
     def can_manage(self, template):
-        return self.request.user.is_superuser or (is_owner(self.request.user) and template.created_by_id == self.request.user.pk) or DepartmentMembership.objects.filter(
-            user=self.request.user,
-            department=template.department,
-            role=DepartmentMembership.Role.ADMIN,
-            active=True,
-        ).exists()
+        from .permissions import can_manage_template
+        return can_manage_template(self.request.user, template)
 
     def can_edit(self, template):
-        return self.can_manage(template) or (is_owner(self.request.user) and template.published)
+        return self.can_manage(template)
+
+    def target_scope(self, department):
+        return Template.Scope.DEPARTMENT if is_department_admin(self.request.user, department) else Template.Scope.PERSONAL
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -683,12 +682,12 @@ class TemplateViewSet(ModelViewSet):
             canvas = validate_canvas(self.request.data.get("canvas", {}))
         except ValueError as exc:
             raise ValidationError(str(exc))
-        template = serializer.save(created_by=self.request.user)
+        template = serializer.save(created_by=self.request.user, scope=self.target_scope(department))
         TemplateVersion.objects.create(template=template, number=1, canvas=canvas)
 
     def perform_update(self, serializer):
         if not self.can_manage(self.get_object()):
-            raise PermissionDenied("只能维护本部门的模板")
+            raise PermissionDenied("只能维护自己的模板或有管理权限的部门模板；共享模板请先复制")
         serializer.save(department=self.get_object().department, created_by=self.get_object().created_by)
 
     def perform_destroy(self, instance):
@@ -756,12 +755,19 @@ class TemplateViewSet(ModelViewSet):
         return waiting_response(asset)
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def copy(self, request, pk=None):
+        from .permissions import can_edit_templates
+        if not can_edit_templates(request.user):
+            raise PermissionDenied("需要模板编辑权限")
         source = self.get_object()
         department = get_object_or_404(Department,pk=request.data.get("department"),deleted_at__isnull=True)
         if not is_owner(request.user) and not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             return Response({"detail": "无目标部门权限"}, status=403)
-        target = Template.objects.create(name=request.data.get("name") or f"{source.name} - 副本", department=department, created_by=request.user, source=source, published=False)
+        name = str(request.data.get("name") or f"{source.name} 副本").strip()
+        if not name or len(name) > 160:
+            raise ValidationError("模板名称应为 1 至 160 个字符")
+        target = Template.objects.create(name=name, department=department, created_by=request.user, source=source, published=False, scope=self.target_scope(department))
         latest = source.versions.order_by("-number").first()
         TemplateVersion.objects.create(template=target, number=1, canvas=latest.canvas if latest else {})
         return Response(self.get_serializer(target).data, status=201)

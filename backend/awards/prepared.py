@@ -19,7 +19,7 @@ from rest_framework.decorators import api_view
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from .models import PreparedFile, BatchVersion, TemplateVersion, Certificate, Notification, AuditEvent
-from .scopes import accessible_batches, accessible_versions, managed_departments
+from .scopes import accessible_batches, accessible_versions, accessible_templates
 from .integrity import file_digest
 from .downloads import disk_response
 
@@ -27,8 +27,7 @@ KINDS = {"batch_zip", "batch_preview", "batch_thumbnail", "template_thumbnail"}
 
 
 def template_versions_for(user):
-    qs = TemplateVersion.objects.filter(template__deleted_at__isnull=True)
-    return qs if user.is_superuser else qs.filter(models.Q(template__published=True) | models.Q(template__created_by=user) | models.Q(template__department_id__in=managed_departments(user)))
+    return TemplateVersion.objects.filter(template__in=accessible_templates(user))
 
 
 def publish_submission_previews(version_id, expected_keys, pdf_bytes):

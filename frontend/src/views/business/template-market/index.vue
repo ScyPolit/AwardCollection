@@ -17,7 +17,6 @@ import {
   copyTemplate,
   listDepartments,
   listTemplates,
-  publishTemplate,
   type Template,
   type Option
 } from "@/api/business";
@@ -27,12 +26,15 @@ const productList = ref<Template[]>([]),
   selectedIds = ref<number[]>([]),
   departments = ref<Option[]>([]),
   searchValue = ref(""),
+  library = ref("all"),
   department = ref<number>(),
   pagination = reactive({ current: 1, pageSize: 12 });
 const filtered = computed(() =>
   productList.value.filter(
     p =>
       p.name.toLowerCase().includes(searchValue.value.toLowerCase()) &&
+      (library.value === "all" ||
+        (library.value === "mine" ? p.is_mine : p.published)) &&
       (!department.value || p.department === department.value)
   )
 );
@@ -61,13 +63,8 @@ const managed = computed(() =>
 const bulkSelection = computed(() =>
   productList.value.filter(p => selectedIds.value.includes(p.id))
 );
-const canBulkManage = computed(
-  () =>
-    isAdmin.value &&
-    bulkSelection.value.every(
-      p =>
-        isSuper.value || user.value.managedDepartmentIds.includes(p.department)
-    )
+const canBulkManage = computed(() =>
+  bulkSelection.value.every(p => p.can_manage)
 );
 function check(product: Template, value: boolean) {
   selectedIds.value = value
@@ -84,7 +81,7 @@ const info = computed(() => ({
   维护部门: selected.value?.department_name,
   共享: selected.value?.published
 }));
-watch([searchValue, department], () => (pagination.current = 1));
+watch([searchValue, department, library], () => (pagination.current = 1));
 async function load() {
   try {
     await listTask.run(
@@ -113,7 +110,9 @@ function openCopy(product: Template) {
   selected.value = product;
   Object.assign(form, {
     name: product.name + " 副本",
-    department: managed.value[0]?.id
+    department:
+      managed.value.find(d => d.id === product.department)?.id ||
+      managed.value[0]?.id
   });
   copyDialog.value = true;
 }
@@ -122,9 +121,8 @@ async function copy() {
   saving.value = true;
   try {
     const target = await copyTemplate(selected.value.id, { ...form });
-    await publishTemplate(target.id);
     copyDialog.value = false;
-    ElMessage.success("模板已复制，可继续编辑");
+    ElMessage.success("已复制到我的模板库，默认不共享，可在编辑器中调整");
     edit(target);
   } catch {
   } finally {
@@ -137,8 +135,18 @@ onMounted(load);
   <div class="market-page business-page">
     <div class="w-full flex justify-between mb-4 toolbar">
       <div>
-        <el-button v-if="isAdmin" @click="router.push('/business/templates')"
+        <el-button
+          v-if="isAdmin || user.roles.includes('owner')"
+          @click="router.push('/business/templates')"
           >新建与编辑模板</el-button
+        ><el-select
+          v-model="library"
+          aria-label="模板范围"
+          style="width: 140px"
+        >
+          <el-option label="全部可用模板" value="all" />
+          <el-option label="我的模板" value="mine" />
+          <el-option label="共享模板" value="shared" /> </el-select
         ><el-select
           :loading="dataLoading"
           v-model="department"
@@ -164,7 +172,7 @@ onMounted(load);
       resource="templates"
       :can-delete="canBulkManage"
       :can-toggle="canBulkManage"
-      readonly-reason="只能修改或删除本人管理部门的模板。"
+      readonly-reason="只能修改或删除自己的模板和有管理权限的部门模板。"
       @clear="selectedIds = []"
       @changed="load"
     />
@@ -211,19 +219,18 @@ onMounted(load);
         :version="selected.latest_version.id"
         style="height: 450px"
       /><el-space
-        ><el-button
-          type="primary"
-          :disabled="!selected?.published"
-          @click="selected && select(selected)"
+        ><el-button type="primary" @click="selected && select(selected)"
           >选用模板</el-button
-        ><el-button v-if="isAdmin" @click="selected && openCopy(selected)"
-          >复制后编辑</el-button
+        ><el-button
+          v-if="isAdmin || user.roles.includes('owner')"
+          @click="selected && openCopy(selected)"
+          >复制到我的模板库</el-button
         ></el-space
       ></RecordDetail
     >
     <el-dialog
       v-model="copyDialog"
-      title="复制模板到本部门"
+      title="复制到我的模板库"
       width="480"
       :show-close="!saving"
       :close-on-click-modal="!saving"

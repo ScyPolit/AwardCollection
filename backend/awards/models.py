@@ -63,11 +63,16 @@ class Competition(ManagedModel):
 
 
 class Template(ManagedModel):
+    class Scope(models.TextChoices):
+        DEPARTMENT = "department", "部门模板"
+        PERSONAL = "personal", "个人模板"
+
     name = models.CharField(max_length=160)
     department = models.ForeignKey(Department, on_delete=models.PROTECT)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     source = models.ForeignKey("self", null=True, blank=True, on_delete=models.SET_NULL)
     published = models.BooleanField(default=False)
+    scope = models.CharField(max_length=16, choices=Scope.choices, default=Scope.DEPARTMENT)
 
 
 class TemplateVersion(TimeStampedModel):

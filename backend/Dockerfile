@@ -11,7 +11,7 @@ COPY tools/verify_wheel_cache.py ./tools/verify_wheel_cache.py
 RUN if [ -f /tmp/offline-wheels/READY ]; then python tools/verify_wheel_cache.py --root /tmp/offline-wheels --manifest wheel-assets/manifest.json && pip install --no-cache-dir --no-index --find-links=/tmp/offline-wheels -r requirements.txt -c constraints.txt; else pip install --no-cache-dir --retries 8 --timeout 60 -r requirements.txt -c constraints.txt; fi && rm -rf /tmp/offline-wheels
 COPY font-assets ./font-assets
 COPY tools/prepare_fonts.py ./tools/prepare_fonts.py
-RUN python tools/prepare_fonts.py && rm -rf /app/.tmp-font-downloads
+RUN python tools/prepare_fonts.py && rm -rf /testTemp/font-downloads
 COPY config ./config
 COPY awards ./awards
 COPY manage.py entrypoint.sh ./
