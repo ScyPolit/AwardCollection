@@ -160,9 +160,10 @@ class ApprovalArchiveBulkTests(TestCase):
         submit_batch(self.batch.pk, self.owner)
         self.client.force_authenticate(self.admin_a)
         response = self.client.get(f'/api/v1/batches/{self.batch.pk}/detail/')
-        rows = response.data['approvals']
-        self.assertTrue(rows[0]['can_review']); self.assertIsNotNone(rows[0]['seal_version'])
-        self.assertFalse(rows[1]['can_review']); self.assertIsNone(rows[1]['seal_version'])
+        rows = {r['department']: r for r in response.data['approvals']}
+        own, other = rows[self.departments[0].pk], rows[self.departments[1].pk]
+        self.assertTrue(own['can_review']); self.assertIsNotNone(own['seal_version'])
+        self.assertFalse(other['can_review']); self.assertIsNone(other['seal_version'])
 
     def test_bulk_approvals_are_atomic_on_invalid_department_seal(self):
         self.pending(); self.client.force_authenticate(self.superuser)

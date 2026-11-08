@@ -478,7 +478,7 @@ class BatchViewSet(ModelViewSet):
         except ValueError:
             raise ValidationError("分页参数无效")
         awards = version.awards.order_by("source_row")
-        requirements = version.required_departments.select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot")
+        requirements = version.required_departments.select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot").order_by("department_id")
         metadata = TemplateVersion.objects.values("template__name").get(pk=version.template_version_id)
         return Response({
             "batch": BatchSerializer(batch).data,
