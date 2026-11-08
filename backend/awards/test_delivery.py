@@ -191,6 +191,7 @@ class DeliveryTests(TestCase):
         assets=list(PreparedFile.objects.filter(version=self.version))
         self.assertEqual({item.kind for item in assets},{'batch_preview','batch_thumbnail'})
         self.assertTrue(all(item.status=='ready' and item.file.storage.exists(item.file.name) for item in assets))
+        self.assertTrue(all(len(item.file.name) <= PreparedFile._meta.get_field('file').max_length for item in assets))
         self.assertEqual(fake.preflight.call_count,1);self.assertEqual(fake.render.call_count,1)
 
     def test_delivery_keeps_latest_canvas_and_all_historical_versions(self):

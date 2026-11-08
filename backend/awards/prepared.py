@@ -46,7 +46,7 @@ def publish_submission_previews(version_id, expected_keys, pdf_bytes):
                 asset = PreparedFile.objects.select_for_update().get(pk=asset.pk)
                 if asset.status == 'ready' and asset.file.storage.exists(asset.file.name):
                     continue
-                path = root / f'{asset.pk}-submission-{uuid.uuid4()}.{ext}'
+                path = root / f'{asset.pk}-{uuid.uuid4()}.{ext}'
                 written.append(path)
                 if ext == 'pdf':
                     path.write_bytes(pdf_bytes)
