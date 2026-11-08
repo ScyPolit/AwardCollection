@@ -212,7 +212,7 @@ class VerificationConcurrencyTests(TransactionTestCase):
         def reserve(_):
             close_old_connections()
             try:return reserve_query('127.0.0.77')
-            finally:close_old_connections()
+            finally:connection.close()
         with ThreadPoolExecutor(max_workers=5) as pool:results=list(pool.map(reserve,range(70)))
         self.assertEqual(results.count(0),60)
         self.assertEqual(len([item for item in results if item>0]),10)
