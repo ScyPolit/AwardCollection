@@ -1,0 +1,96 @@
+{
+  "release": {
+    "revision": "ebc61342a10cd1b8b1b782ca9d5c456435c835d4",
+    "stage": "done",
+    "started_at": "20261108-075052",
+    "checkpoint": "/opt/awardcollection-v1-test/rollback/20261108-075052",
+    "source": "/opt/awardcollection-v1-test/releases/ebc61342a10cd1b8b1b782ca9d5c456435c835d4-20261108-075052/AwardCollection-ebc61342a10cd1b8b1b782ca9d5c456435c835d4",
+    "backup": "/opt/awardcollection-v1-test/backups/20261108-075100-e3zIfi",
+    "deployment_method": "verified_prebuilt_images",
+    "original_build_cancelled": true,
+    "existing_content_preserved": true,
+    "health": {
+      "status": "ok",
+      "database": "ok",
+      "version": "ebc61342a10cd1b8b1b782ca9d5c456435c835d4"
+    }
+  },
+  "backups": [
+    {
+      "file": "database.dump",
+      "sha256_valid": true,
+      "bytes": 27966307
+    },
+    {
+      "file": "media.tar.gz",
+      "sha256_valid": true,
+      "bytes": 9628670949
+    },
+    {
+      "file": "deployment-config.tar.gz.enc",
+      "sha256_valid": true,
+      "bytes": 752
+    },
+    {
+      "file": "tls.tar.gz.enc",
+      "sha256_valid": true,
+      "bytes": 2880
+    }
+  ],
+  "historical_content_preserved": true,
+  "certificate_count": 901,
+  "published_count": 901,
+  "template_version_count": 12,
+  "sample_original_files_checked": 3,
+  "volumes": {
+    "api": [
+      "awardcollection-v1-test_backup_data",
+      "awardcollection-v1-test_media_data"
+    ],
+    "worker": [
+      "awardcollection-v1-test_media_data",
+      "awardcollection-v1-test_backup_data"
+    ],
+    "web": [
+      "awardcollection-v1-test_tls_data",
+      "awardcollection-v1-test_media_data"
+    ],
+    "db": [
+      "awardcollection-v1-test_db_data"
+    ]
+  },
+  "postgres_tests": {
+    "count": 133,
+    "seconds": 48.324,
+    "passed": true,
+    "concurrent_rate_limit": true,
+    "preview_cache": true,
+    "test_database_cleaned": true,
+    "production_media_mounted": false
+  },
+  "font_order": [
+    "华文行楷",
+    "宋体",
+    "宋体 · 文鼎明体",
+    "黑体 · 文泉驿正黑",
+    "楷体 · 文鼎楷体",
+    "Liberation Mono",
+    "Liberation Sans",
+    "Liberation Serif",
+    "仿宋 · 朱雀仿宋（公文风格）"
+  ],
+  "migration_0014": true,
+  "migration_0015": true,
+  "published_versions_integrity_checked": 4,
+  "ready_archive": {
+    "id": "c9f78500-5c91-4172-a62a-7add82af850d",
+    "bytes": 841209352
+  },
+  "selectable_templates": [
+    {
+      "pk": 4,
+      "name": "标准模板",
+      "published": true
+    }
+  ]
+}
