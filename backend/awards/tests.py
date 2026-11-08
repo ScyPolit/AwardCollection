@@ -61,7 +61,7 @@ class WorkflowTests(TestCase):
         self.assertFalse(errors)
         self.assertEqual(rows[0]["members"], ["张三", "李四"])
 
-    def test_approval_creates_one_task_and_enforces_avoidance(self):
+    def test_two_department_approval_creates_one_task(self):
         submit_batch(self.batch.id, self.owner)
         requirements = list(self.version.required_departments.order_by("department_id"))
         self.assertIsNone(decide(requirements[0].id, self.admin_a, "approved"))
@@ -69,11 +69,10 @@ class WorkflowTests(TestCase):
         self.assertIsNotNone(task)
         self.assertEqual(self.version.generation_task.pk, task.pk)
 
-    def test_submitter_cannot_approve(self):
+    def test_department_admin_submitter_can_approve(self):
         DepartmentMembership.objects.create(department=self.departments[0], user=self.owner, role="admin")
         submit_batch(self.batch.id, self.owner)
-        with self.assertRaises(PermissionError):
-            decide(self.version.required_departments.first().id, self.owner, "approved")
+        self.assertIsNone(decide(self.version.required_departments.first().id, self.owner, "approved"))
 
     def test_numbers_are_unique(self):
         self.assertNotEqual(allocate_number(), allocate_number())
@@ -249,8 +248,8 @@ class WorkflowTests(TestCase):
         template.refresh_from_db()
         self.assertEqual(template.name, "测试模板")
 
-    def test_batch_creation_freezes_selected_template_seals_and_formats(self):
-        client = APIClient(); client.force_authenticate(self.owner)
+    def test_admin_batch_creation_freezes_selected_template_seals_and_formats(self):
+        client = APIClient(); client.force_authenticate(self.superuser)
         seals = {
             str(item.department_id): item.seal_version_id
             for item in self.version.required_departments.all()
@@ -475,10 +474,9 @@ class WorkflowTests(TestCase):
         for requirement in requirements:
             self.assertEqual(requirement.decision.actor_id, self.superuser.pk)
 
-    def test_superuser_still_observes_ordinary_approval_avoidance(self):
+    def test_superuser_can_approve_own_submission(self):
         submit_batch(self.batch.pk, self.superuser)
-        with self.assertRaises(PermissionError):
-            decide(self.version.required_departments.first().pk, self.superuser, 'approved')
+        self.assertIsNone(decide(self.version.required_departments.first().pk, self.superuser, 'approved'))
 
     def test_superuser_inherits_revocation_approval(self):
         certificate = self.create_published_certificate()

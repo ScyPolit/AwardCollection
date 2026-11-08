@@ -1,0 +1,76 @@
+Creating test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+Found 25 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: messages, rest_framework, staticfiles
+  Apply all migrations: admin, auth, awards, contenttypes, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying awards.0001_initial... OK
+  Applying awards.0002_certificatesequence... OK
+  Applying awards.0003_systemsetting_verificationattempt_loginprotection_and_more... OK
+  Applying awards.0004_independent_owners... OK
+  Applying awards.0005_certificatefont... OK
+  Applying awards.0006_certificatefont_active... OK
+  Applying awards.0007_awardbatch_deleted_at_certificate_deleted_at_and_more... OK
+  Applying awards.0008_certificate_notes... OK
+  Applying awards.0009_batchversion_integrity_hmac_certificate_image_sha256... OK
+  Applying awards.0010_alter_batchversion_integrity_hmac_and_more... OK
+  Applying awards.0011_templateversion_summary_preparedfile... OK
+  Applying awards.0012_notification_batch... OK
+  Applying awards.0013_approval_seal_optional... OK
+test_admin_can_prefill_only_own_department (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_admin_can_prefill_only_own_department) ... F:\project\AwardCollection\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: F:\project\AwardCollection\backend\staticfiles\
+  mw_instance = middleware(adapted_handler)
+ok
+test_admin_editor_and_super_submitter_can_approve_and_see_pending (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_admin_editor_and_super_submitter_can_approve_and_see_pending) ... ok
+test_approval_details_expose_own_selection_only (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approval_details_expose_own_selection_only) ... ok
+test_approval_requires_a_chosen_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approval_requires_a_chosen_seal) ... ok
+test_approved_department_cannot_change_its_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approved_department_cannot_change_its_seal) ... ok
+test_bulk_actions_reject_invalid_ids_and_immutable_logs (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_actions_reject_invalid_ids_and_immutable_logs) ... ok
+test_bulk_approvals_are_atomic_on_invalid_department_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_approvals_are_atomic_on_invalid_department_seal) ... ok
+test_bulk_certificate_delete_is_archival_and_owner_cannot_do_it (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_certificate_delete_is_archival_and_owner_cannot_do_it) ... ok
+test_bulk_delete_accounts_cannot_delete_current_user (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_accounts_cannot_delete_current_user) ... ok
+test_bulk_delete_rolls_back_when_one_record_is_outside_scope (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_rolls_back_when_one_record_is_outside_scope) ... ok
+test_bulk_delete_running_batch_rolls_back_other_deletes (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_running_batch_rolls_back_other_deletes) ... ok
+test_bulk_return_merges_same_batch (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_return_merges_same_batch) ... ok
+test_bulk_roster_delete_creates_one_revision (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_roster_delete_creates_one_revision) ... ok
+test_certificate_tree_and_children_stay_scoped_and_paginated (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_certificate_tree_and_children_stay_scoped_and_paginated) ... ok
+test_certificate_tree_searches_batch_name (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_certificate_tree_searches_batch_name) ... ok
+test_cross_department_and_owner_seal_changes_rejected (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_cross_department_and_owner_seal_changes_rejected) ... ok
+test_new_workflow_queues_only_after_all_departments_choose_and_approve (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_new_workflow_queues_only_after_all_departments_choose_and_approve) ... ok
+test_owner_cannot_supply_seal_version (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_owner_cannot_supply_seal_version) ... ok
+test_owner_creates_pending_departments_without_seal_access (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_owner_creates_pending_departments_without_seal_access) ... ok
+test_pending_submission_has_valid_integrity (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_pending_submission_has_valid_integrity) ... ok
+test_return_without_seal_and_problem_row_annotations (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_return_without_seal_and_problem_row_annotations) ... ok
+test_seal_choice_invalidates_prepared_preview (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_seal_choice_invalidates_prepared_preview) ... ok
+test_selecting_seal_is_delegated_and_reseals_only_verified_data (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_selecting_seal_is_delegated_and_reseals_only_verified_data) ... ok
+test_stale_seal_choice_is_rejected (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_stale_seal_choice_is_rejected) ... ok
+test_tampering_cannot_be_legitimized_by_choosing_a_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_tampering_cannot_be_legitimized_by_choosing_a_seal) ... ok
+
+----------------------------------------------------------------------
+Ran 25 tests in 0.840s
+
+OK
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).

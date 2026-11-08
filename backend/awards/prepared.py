@@ -23,7 +23,7 @@ from .scopes import accessible_batches, accessible_versions, managed_departments
 from .integrity import file_digest
 from .downloads import disk_response
 
-KINDS = {"batch_zip", "batch_preview", "template_thumbnail"}
+KINDS = {"batch_zip", "batch_preview", "batch_thumbnail", "template_thumbnail"}
 
 
 def template_versions_for(user):
@@ -37,7 +37,13 @@ def archive_stamp(version_id):
 
 
 def key_for(kind, version_id=None, template_version_id=None):
-    stamp = archive_stamp(version_id) if kind == "batch_zip" else settings.BUILD_VERSION
+    if kind == "batch_zip":
+        stamp = archive_stamp(version_id)
+    elif kind in ("batch_preview", "batch_thumbnail"):
+        version = BatchVersion.objects.only("integrity_hmac", "updated_at").get(pk=version_id)
+        stamp = f"{settings.BUILD_VERSION}:{version.updated_at}:{version.integrity_hmac}"
+    else:
+        stamp = settings.BUILD_VERSION
     return hashlib.sha256(f"{kind}:{version_id}:{template_version_id}:{stamp}".encode()).hexdigest()
 
 
@@ -61,7 +67,7 @@ def request_file(user, kind, *, batch_id=None, template_version_id=None):
         template_version_id = None
         if kind == "batch_zip" and not Certificate.objects.filter(award__version_id=version_id, deleted_at__isnull=True, published_at__isnull=False).exists():
             raise ValidationError("证书尚未全部发布，请等待生成完成")
-        if kind == "batch_preview" and not version.awards.exists():
+        if kind in ("batch_preview", "batch_thumbnail") and not version.awards.exists():
             raise ValidationError("请先导入名单")
     key = key_for(kind, version_id, template_version_id)
     with transaction.atomic():
@@ -109,6 +115,8 @@ def download_view(request, asset_id):
         raise PermissionDenied("无下载权限")
     if asset.kind == "batch_zip" and asset.key != key_for(asset.kind, asset.version_id):
         return Response({"detail": "证书记录已更新，请重新准备下载包"}, status=409)
+    if asset.kind in ("batch_preview", "batch_thumbnail") and asset.key != key_for(asset.kind, asset.version_id):
+        return Response({"detail": "名单或公章已更新，请重新准备预览"}, status=409)
     if asset.status != "ready":
         return Response(status_data(asset), status=202)
     extension = "zip" if asset.kind == "batch_zip" else "pdf" if asset.kind == "batch_preview" else "png"
@@ -203,14 +211,14 @@ def render_preview_job(kind, canvas, values, seals, fonts, target):
 def build_preview(asset, target):
     from .fonts import font_file
     from .presentation import presentation_fonts
-    if asset.kind == "batch_preview":
+    if asset.kind in ("batch_preview", "batch_thumbnail"):
         version = BatchVersion.objects.select_related("batch__competition", "template_version").get(pk=asset.version_id)
         award = version.awards.order_by("source_row").values("members", "team_name", "award_name", "work_name", "category", "teachers").first()
         if not award:
             raise ValueError("名单为空")
         award.update(competition_name=version.snapshot.get("competition", {}).get("name", version.batch.competition.name), issue_date=version.snapshot.get("issue_date", ""))
         canvas = version.snapshot.get("template") or version.template_version.canvas
-        seals = [{"department_id": r.department_id, "image": r.seal_version.image.path} for r in version.required_departments.select_related("seal_version")]
+        seals = [{"department_id": r.department_id, "image": r.seal_version.image.path} for r in version.required_departments.select_related("seal_version") if r.seal_version_id]
     else:
         canvas = TemplateVersion.objects.get(pk=asset.template_version_id).canvas
         award = {"team_name": "示例团队", "members": ["张三", "李四"], "award_name": "一等奖", "work_name": "示例作品", "category": "创新类", "teachers": ["王老师"], "competition_name": "校园创新竞赛", "issue_date": "2026年"}

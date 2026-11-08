@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BulkActions from "@/components/BulkActions.vue";
+const bulkTable = ref(),
+  bulkSelection = ref<any[]>([]);
 import ModuleRegion from "@/components/ModuleRegion.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
@@ -69,13 +72,29 @@ onMounted(load);
         /><el-button @click="query">查询</el-button>
       </div>
     </header>
+    <BulkActions
+      :selected="bulkSelection"
+      :can-delete="false"
+      :can-toggle="false"
+      readonly-reason="审计日志保留，不提供删除或覆盖；可选择并导出。"
+      @clear="bulkTable?.clearSelection()"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="listLoading"
       :error="listError"
       :empty="!rows.length"
       @retry="load"
-      ><el-table :data="rows" border @row-dblclick="show"
-        ><el-table-column label="日志编号" width="110"
+      ><el-table
+        ref="bulkTable"
+        row-key="id"
+        @selection-change="bulkSelection = $event"
+        :data="rows"
+        border
+        @row-dblclick="show"
+        ><el-table-column type="selection" width="48" /><el-table-column
+          label="日志编号"
+          width="110"
           ><template #default="s"
             ><el-button link type="primary" @click="show(s.row)">{{
               s.row.id

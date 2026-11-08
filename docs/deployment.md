@@ -57,6 +57,8 @@ docker compose exec api python manage.py createsuperuser
 
 离线源码可通过 `--archive` 与 `--archive-sha256` 指定，要求归档位于该实例的 incoming 目录且摘要匹配。不能以未经核验的同名文件代替依赖。
 
+常规升级保留现有登录会话。只有身份认证变更确实需要主动撤销登录时，使用 `--rotate-sessions`，撤销操作会记入审计。
+
 ## 备份与恢复
 
 已有实例使用 `deploy/maintenance.sh backup`。数据库 custom dump、媒体归档、加密配置和加密 TLS 归档保存在实例外层 backups 目录，并写入 `SHA256SUMS` 与 `COMPLETE`。部署配置与 TLS 归档使用受限的 `runtime/backup-encryption.key` 加密，该文件应另行安全备份。

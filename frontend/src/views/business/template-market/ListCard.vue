@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import type { Template } from "@/api/business";
 import PreparedPreview from "@/components/PreparedPreview.vue";
-defineProps<{ product: Template; canCopy: boolean }>();
+defineProps<{ product: Template; canCopy: boolean; checked?: boolean }>();
 function layerCount(product: Template) {
   return product.latest_version?.summary?.element_count || 0;
 }
@@ -11,11 +11,18 @@ defineEmits<{
   select: [product: Template];
   copy: [product: Template];
   edit: [product: Template];
+  check: [product: Template, checked: boolean];
 }>();
 </script>
 <template>
   <div class="list-card-item">
     <div class="list-card-item_detail bg-bg_color">
+      <el-checkbox
+        :model-value="checked"
+        :aria-label="`选择模板${product.name}`"
+        @change="$emit('check', product, Boolean($event))"
+        >选择模板</el-checkbox
+      >
       <div
         class="thumbnail"
         role="button"

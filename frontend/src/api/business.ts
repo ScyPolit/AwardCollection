@@ -38,6 +38,16 @@ export type Approval = {
   department_name: string;
   competition_name: string;
   decision: string | null;
+  can_review: boolean;
+  seal_version: number | null;
+  seal_label: string;
+  seal_selected: boolean;
+  decision_detail?: {
+    actor: string;
+    comment: string;
+    issue_rows: number[];
+    created_at: string;
+  };
 };
 export type Certificate = {
   id: number;
@@ -45,6 +55,7 @@ export type Certificate = {
   status: string;
   competition_name: string;
   batch_name: string;
+  batch_id: number;
   team_name: string;
   award_name: string;
   published_at: string;
@@ -169,15 +180,60 @@ export const importAwards = (
 };
 export const listApprovals = () =>
   http.get<Approval[], never>("/api/v1/approvals/");
-export const decideApproval = (id: number, decision: string, comment: string) =>
+export const decideApproval = (
+  id: number,
+  decision: string,
+  comment: string,
+  options: object = {}
+) =>
   http.post<any, object>(`/api/v1/approvals/${id}/decide/`, {
-    data: { decision, comment }
+    data: { decision, comment, ...options }
   });
-export const listCertificates = (page = 1, pageSize = 20, search = "") =>
+export const chooseApprovalSeal = (
+  id: number,
+  seal_version: number,
+  expected_seal_version: number | null
+) =>
+  http.post<Approval, object>(`/api/v1/approvals/${id}/seal/`, {
+    data: { seal_version, expected_seal_version }
+  });
+export const bulkDecideApprovals = (data: object) =>
+  http.post<{ count: number }, object>("/api/v1/approvals/bulk-decide/", {
+    data,
+    timeout: 120000
+  });
+export const listCertificates = (
+  page = 1,
+  pageSize = 20,
+  search = "",
+  batch?: number
+) =>
   http.get<{ count: number; results: Certificate[] }, never>(
     "/api/v1/certificates/",
+    { params: { page, page_size: pageSize, search, batch } }
+  );
+export type CertificateBatch = {
+  id: number;
+  name: string;
+  competition_name: string;
+  certificate_count: number;
+  active_count: number;
+  last_issued: string;
+};
+export const listCertificateBatches = (page = 1, pageSize = 20, search = "") =>
+  http.get<{ count: number; results: CertificateBatch[] }, never>(
+    "/api/v1/certificates/batches/",
     { params: { page, page_size: pageSize, search } }
   );
+export const bulkAction = (
+  resource: string,
+  operation: string,
+  ids: Array<number | string>
+) =>
+  http.post<{ count: number }, object>("/api/v1/management/bulk/", {
+    data: { resource, operation, ids },
+    timeout: 120000
+  });
 export const revokeCertificate = (id: number, reason: string) =>
   http.post<any, object>(`/api/v1/certificates/${id}/revoke/`, {
     data: { reason }
@@ -187,10 +243,16 @@ export const listRevocations = () =>
 export const decideRevocation = (
   id: number,
   department: number,
-  decision: string
+  decision: string,
+  comment = ""
 ) =>
   http.post<any, object>(`/api/v1/revocations/${id}/decide/`, {
-    data: { department, decision }
+    data: { department, decision, comment }
+  });
+export const bulkDecideRevocations = (data: object) =>
+  http.post<{ count: number }, object>("/api/v1/revocations/bulk-decide/", {
+    data,
+    timeout: 120000
   });
 export const listTemplates = () =>
   http.get<Template[], never>("/api/v1/templates/");

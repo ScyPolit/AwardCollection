@@ -35,6 +35,8 @@ def process_task(task):
     token = task.lease_token
     requirements = list(task.version.required_departments.select_related('department', 'seal_version__seal').order_by('department_id'))
     for item in requirements:
+        if not item.seal_version_id:
+            raise ValueError('尚有部门未确认公章，不能生成正式证书')
         if not item.seal_version.seal.active:
             raise RuntimeError(f'{item.department.name} 的选定公章已停用')
     snapshot = task.version.snapshot

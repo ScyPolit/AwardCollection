@@ -36,6 +36,19 @@ def account_permissions(actor, target):
     return {"can_edit": allowed, "can_delete": allowed}
 
 
+def delete_account(actor, target):
+    if not account_permissions(actor, target)["can_delete"]:
+        raise PermissionDenied("不能删除当前登录账号或权限范围之外的账号")
+    if target.is_superuser and get_user_model().objects.filter(is_superuser=True, is_active=True).count() <= 1:
+        raise ValidationError("至少保留一个可用的超级管理员")
+    profile, _ = AccountProfile.objects.get_or_create(user=target)
+    profile.deleted_at = timezone.now()
+    profile.save(update_fields=["deleted_at", "updated_at"])
+    target.is_active = False
+    target.save(update_fields=["is_active"])
+    AuditEvent.objects.create(actor=actor, action="account.deleted", object_type="User", object_id=str(target.pk), detail={"username": target.username, "historical_authorship_retained": True})
+
+
 @api_view(["PATCH", "DELETE"])
 @transaction.atomic
 def account_detail(request, user_id):
@@ -47,31 +60,7 @@ def account_detail(request, user_id):
         raise NotFound("账号不存在或已删除")
     rights = account_permissions(request.user, target)
     if request.method == "DELETE":
-        if not rights["can_delete"]:
-            raise PermissionDenied("不能删除当前登录账号或权限范围之外的账号")
-        if (
-            target.is_superuser
-            and get_user_model()
-            .objects.filter(is_superuser=True, is_active=True)
-            .count()
-            <= 1
-        ):
-            raise ValidationError("至少保留一个可用的超级管理员")
-        profile, _ = AccountProfile.objects.get_or_create(user=target)
-        profile.deleted_at = timezone.now()
-        profile.save(update_fields=["deleted_at", "updated_at"])
-        target.is_active = False
-        target.save(update_fields=["is_active"])
-        AuditEvent.objects.create(
-            actor=request.user,
-            action="account.deleted",
-            object_type="User",
-            object_id=str(target.pk),
-            detail={
-                "username": target.username,
-                "historical_authorship_retained": True,
-            },
-        )
+        delete_account(request.user, target)
         return Response(status=204)
     if not rights["can_edit"]:
         raise PermissionDenied("只能修改自己或管理范围内的账号")

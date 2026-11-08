@@ -39,7 +39,7 @@ from .serializers import (
 )
 from .services import (
     decide, decide_revocation, emergency_void, excel_template, parse_excel,
-    emergency_issue, request_revocation, revise_batch, submit_batch,
+    emergency_issue, request_revocation, revise_batch, submit_batch, choose_approval_seal, UNSET,
 )
 from .renderer import render_unsigned, _field_value
 from .permissions import OWNER_GROUP, grant_owner, is_owner, is_department_admin, user_roles
@@ -131,6 +131,7 @@ def dashboard(request):
     if request.user.is_superuser:
         approvals = ApprovalDepartment.objects.filter(
             version__batch__status=AwardBatch.Status.REVIEW,
+            version__number=models.F("version__batch__current_version"), version__batch__deleted_at__isnull=True,
             decision__isnull=True,
         )
     else:
@@ -140,6 +141,7 @@ def dashboard(request):
         approvals = ApprovalDepartment.objects.filter(
             department_id__in=department_ids,
             version__batch__status=AwardBatch.Status.REVIEW,
+            version__number=models.F("version__batch__current_version"), version__batch__deleted_at__isnull=True,
             decision__isnull=True,
         )
     month_start = timezone.localdate().replace(day=1)
@@ -383,6 +385,13 @@ class BatchViewSet(ModelViewSet):
         template = serializer.validated_data.pop("template_version", None)
         output_formats = serializer.validated_data.pop("output_formats", ["pdf", "png"])
         requested_seals = serializer.validated_data.pop("seal_versions", {})
+        if requested_seals and not is_department_admin(self.request.user):
+            raise PermissionDenied("负责人不能选择公章版本，请交由各部门管理员审批时确认")
+        allowed_ids = set(competition.departments.values_list("pk", flat=True))
+        if not self.request.user.is_superuser:
+            allowed_ids.intersection_update(managed_departments(self.request.user))
+        if set(requested_seals) - {str(pk) for pk in allowed_ids}:
+            raise PermissionDenied("只能选择本人管理部门的公章")
         if template is None:
             template = TemplateVersion.objects.filter(template__published=True, template__deleted_at__isnull=True).order_by("-created_at").first()
         if template is None:
@@ -391,9 +400,9 @@ class BatchViewSet(ModelViewSet):
         for department in competition.departments.all():
             requested_id = requested_seals.get(str(department.id))
             seals = SealVersion.objects.filter(seal__department=department, seal__active=True, seal__deleted_at__isnull=True)
-            seal = seals.filter(pk=requested_id).first() if requested_id else seals.order_by("-number").first()
-            if seal is None:
-                raise ValidationError(f"{department.name} 没有选中有效的启用公章")
+            seal = seals.filter(pk=requested_id).first() if requested_id else None
+            if requested_id and seal is None:
+                raise ValidationError(f"{department.name} 所选公章无效或已停用")
             selected.append((department, seal))
         batch = serializer.save(created_by=self.request.user)
         version = BatchVersion.objects.create(
@@ -406,7 +415,7 @@ class BatchViewSet(ModelViewSet):
                 "template_version": template.id,
                 "departments": [department.id for department, _ in selected],
                 "department_details": [{"id":department.id,"name":department.name} for department,_ in selected],
-                "seals": [seal.id for _, seal in selected],
+                "seals": [seal.id if seal else None for _, seal in selected],
                 "output_formats": output_formats,
             },
         )
@@ -434,8 +443,16 @@ class BatchViewSet(ModelViewSet):
         from .serializers import AwardSerializer
         rows=list(AwardSerializer(version.awards.order_by('source_row'),many=True).data)
         operation=request.data.get('operation'); source=request.data.get('source_row')
-        if operation not in ('create','update','delete'): raise ValidationError('名单操作无效')
-        if operation=='create':
+        if operation not in ('create','update','delete','bulk_delete'): raise ValidationError('名单操作无效')
+        if operation == 'bulk_delete':
+            sources = request.data.get('source_rows')
+            if not isinstance(sources, list) or not 1 <= len(sources) <= 200 or any(not isinstance(n, int) or isinstance(n, bool) for n in sources):
+                raise ValidationError('请选择1～200行名单')
+            sources = set(sources)
+            if sources - {r['source_row'] for r in rows}:
+                raise ValidationError('名单行已变化，请刷新后重选')
+            rows = [r for r in rows if r['source_row'] not in sources]
+        elif operation=='create':
             row=dict(request.data.get('row',{}));row['source_row']=max([r['source_row'] for r in rows]+[1])+1
             parsed=AwardSerializer(data=row);parsed.is_valid(raise_exception=True);rows.append(dict(parsed.validated_data))
         else:
@@ -454,22 +471,22 @@ class BatchViewSet(ModelViewSet):
     @action(detail=True, methods=["get"], url_path="detail")
     def overview(self, request, pk=None):
         batch = self.get_object()
-        version = BatchVersion.objects.only("pk", "number", "template_version_id", "output_formats").get(batch=batch, number=batch.current_version)
+        version = BatchVersion.objects.only("pk", "number", "template_version_id", "output_formats", "updated_at").get(batch=batch, number=batch.current_version)
         try:
             page = max(1, int(request.query_params.get("page", 1)))
             size = min(100, max(1, int(request.query_params.get("page_size", 50))))
         except ValueError:
             raise ValidationError("分页参数无效")
         awards = version.awards.order_by("source_row")
-        requirements = version.required_departments.select_related("department", "version__batch__competition").defer("version__snapshot")
+        requirements = version.required_departments.select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot")
         metadata = TemplateVersion.objects.values("template__name").get(pk=version.template_version_id)
         return Response({
             "batch": BatchSerializer(batch).data,
             "can_manage": can_manage_batch(request.user, batch),
             "awards": list(awards.values("source_row", "members", "award_name", "team_name", "work_name", "category", "teachers", "note")[(page-1)*size:page*size]),
             "award_count": awards.count(), "page": page, "page_size": size,
-            "approvals": ApprovalSerializer(requirements, many=True).data,
-            "configuration": {"template_version": version.template_version_id, "template_name": metadata["template__name"], "output_formats": version.output_formats,
+            "approvals": ApprovalSerializer(requirements, many=True, context={"request": request}).data,
+            "configuration": {"template_version": version.template_version_id, "template_name": metadata["template__name"], "output_formats": version.output_formats, "preview_revision": version.updated_at.isoformat(),
                               "seals": {str(item.department_id): item.seal_version_id for item in requirements if request.user.is_superuser or item.department_id in managed_departments(request.user)}}})
 
     @action(detail=True, methods=["post"], url_path="import")
@@ -566,7 +583,7 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
         qs = ApprovalDepartment.objects.filter(
             version__batch__deleted_at__isnull=True, version__batch__status=AwardBatch.Status.REVIEW,
             version__number=models.F("version__batch__current_version"),
-        ).select_related("department", "version__batch__competition").defer("version__snapshot")
+        ).select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot")
         if not self.request.user.is_superuser:
             qs = qs.filter(department_id__in=managed_departments(self.request.user))
         return qs.order_by("-created_at")
@@ -574,12 +591,49 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
     @action(detail=True, methods=["post"])
     def decide(self, request, pk=None):
         try:
-            task = decide(self.get_object().id, request.user, request.data.get("decision"), request.data.get("comment", ""))
+            task = decide(self.get_object().id, request.user, request.data.get("decision"), request.data.get("comment", ""),
+                          seal_version_id=request.data.get("seal_version", UNSET), expected_seal_version=request.data.get("expected_seal_version", UNSET), issue_rows=request.data.get("issue_rows"))
         except PermissionError as exc:
             return Response({"detail": str(exc)}, status=403)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=409)
         return Response({"accepted": True, "taskCreated": task is not None})
+
+    @action(detail=True, methods=["post"], url_path="seal")
+    def select_seal(self, request, pk=None):
+        try:
+            requirement = choose_approval_seal(self.get_object().pk, request.user, request.data.get("seal_version"), request.data.get("expected_seal_version", UNSET))
+        except PermissionError as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=409)
+        return Response(ApprovalSerializer(requirement, context={"request": request}).data)
+
+    @action(detail=False, methods=["post"], url_path="bulk-decide")
+    @transaction.atomic
+    def bulk_decide(self, request):
+        items = request.data.get("items")
+        if not isinstance(items, list) or not 1 <= len(items) <= 50 or any(not isinstance(item, dict) or not isinstance(item.get("id"), int) or isinstance(item.get("id"), bool) for item in items):
+            raise ValidationError("请选择1～50项待审批记录")
+        ids = [item['id'] for item in items]
+        if len(set(ids)) != len(ids):
+            raise ValidationError("不能重复选择审批记录")
+        visible = dict(self.get_queryset().filter(pk__in=ids).values_list('pk', 'version__batch_id'))
+        if set(visible) != set(ids):
+            raise PermissionDenied("所选审批已结束或无权处理，请刷新后重选")
+        seen, count = set(), 0
+        try:
+            for item in sorted(items, key=lambda r: (visible[r['id']], r['id'])):
+                if request.data.get('decision') == 'returned' and visible[item['id']] in seen:
+                    continue
+                decide(item['id'], request.user, request.data.get('decision'), request.data.get('comment', ''),
+                       seal_version_id=item.get('seal_version', UNSET), expected_seal_version=item.get('expected_seal_version', UNSET))
+                seen.add(visible[item['id']]); count += 1
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc))
+        except ValueError as exc:
+            raise ValidationError(str(exc))
+        return Response({'count': count})
 
 
 class TemplateViewSet(ModelViewSet):
@@ -793,6 +847,14 @@ class CertificateViewSet(ModelViewSet):
         ).order_by("-created_at")
 
     def list(self, request, *args, **kwargs):
+        queryset = self.filtered_certificates(request)
+        page, page_size = self.page_parameters(request)
+        count = queryset.count()
+        start = (page - 1) * page_size
+        return Response({"count": count, "page": page, "page_size": page_size,
+                         "results": CertificateSerializer(queryset[start:start + page_size], many=True).data})
+
+    def filtered_certificates(self, request):
         queryset = self.get_queryset()
         keyword = request.query_params.get("search", "").strip()
         if keyword:
@@ -800,20 +862,33 @@ class CertificateViewSet(ModelViewSet):
                 models.Q(number__icontains=keyword)
                 | models.Q(award__team_name__icontains=keyword)
                 | models.Q(award__version__batch__competition__name__icontains=keyword)
+                | models.Q(award__version__batch__name__icontains=keyword)
             )
+        if request.query_params.get("batch"):
+            try:
+                batch_id = int(request.query_params["batch"])
+            except (ValueError, TypeError):
+                raise ValidationError("批次编号无效")
+            queryset = queryset.filter(award__version__batch_id=batch_id)
+        return queryset
+
+    def page_parameters(self, request):
         try:
             page = max(1, int(request.query_params.get("page", 1)))
             page_size = min(100, max(1, int(request.query_params.get("page_size", 20))))
         except ValueError:
-            return Response({"detail": "分页参数无效"}, status=400)
-        count = queryset.count()
-        start = (page - 1) * page_size
-        return Response({
-            "count": count,
-            "page": page,
-            "page_size": page_size,
-            "results": CertificateSerializer(queryset[start:start + page_size], many=True).data,
-        })
+            raise ValidationError("分页参数无效")
+        return page, page_size
+
+    @action(detail=False, methods=["get"], url_path="batches")
+    def batch_tree(self, request):
+        queryset = self.filtered_certificates(request).order_by().values(
+            "award__version__batch_id", "award__version__batch__name", "award__version__batch__competition__name"
+        ).annotate(certificate_count=models.Count("pk"), active_count=models.Count("pk", filter=models.Q(status="active")), last_issued=models.Max("published_at")).order_by("-last_issued", "-award__version__batch_id")
+        page, size = self.page_parameters(request)
+        return Response({"count": queryset.count(), "page": page, "page_size": size,
+                         "results": [{"id": r["award__version__batch_id"], "name": r["award__version__batch__name"], "competition_name": r["award__version__batch__competition__name"],
+                                      "certificate_count": r["certificate_count"], "active_count": r["active_count"], "last_issued": r["last_issued"]} for r in queryset[(page-1)*size:page*size]]})
 
     def create(self, request, *args, **kwargs):
         raise PermissionDenied('证书只能由审批通过的生成任务签发')
@@ -889,6 +964,25 @@ class RevocationViewSet(ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=409)
         return Response(RevocationSerializer(item).data)
+
+    @action(detail=False, methods=['post'], url_path='bulk-decide')
+    @transaction.atomic
+    def bulk_decide(self, request):
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not 1 <= len(ids) <= 50 or any(not isinstance(pk, int) or isinstance(pk, bool) for pk in ids):
+            raise ValidationError('请选择1～50条作废申请')
+        ids = sorted(set(ids))
+        if self.get_queryset().filter(pk__in=ids).count() != len(ids):
+            raise PermissionDenied('所选记录不存在或无权操作')
+        try:
+            department = int(request.data.get('department'))
+            for pk in ids:
+                decide_revocation(pk, department, request.user, request.data.get('decision'), request.data.get('comment', ''))
+        except (ValueError, TypeError) as exc:
+            raise ValidationError(str(exc))
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc))
+        return Response({'count': len(ids)})
 
 
 class NotificationViewSet(ModelViewSet):

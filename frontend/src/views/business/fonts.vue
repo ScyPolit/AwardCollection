@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BulkActions from "@/components/BulkActions.vue";
+const bulkTable = ref(),
+  bulkSelection = ref<any[]>([]);
 import ModuleRegion from "@/components/ModuleRegion.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
@@ -160,13 +163,32 @@ onMounted(load);
       :closable="false"
       title="支持静态 TTF / TTC，最大 40 MB。请确认具备使用、转换、嵌入和展示授权；停用不会影响历史证书。"
     />
+    <BulkActions
+      :selected="bulkSelection"
+      :can-delete="isSuper && bulkSelection.every(r => !r.builtin)"
+      :can-toggle="false"
+      resource="fonts"
+      readonly-reason="内置字体随系统维护；只有超管可删除导入字体。"
+      @clear="bulkTable?.clearSelection()"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="listLoading"
       :error="listError"
       :empty="!rows.length"
       @retry="load"
-      ><el-table v-loading="busy" :data="visible" border class="font-table">
-        <el-table-column label="字体名称" min-width="260"
+      ><el-table
+        ref="bulkTable"
+        row-key="id"
+        @selection-change="bulkSelection = $event"
+        v-loading="busy"
+        :data="visible"
+        border
+        class="font-table"
+      >
+        <el-table-column type="selection" width="48" /><el-table-column
+          label="字体名称"
+          min-width="260"
           ><template #default="s"
             ><el-button
               link

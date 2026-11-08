@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BulkActions from "@/components/BulkActions.vue";
+const bulkTable = ref(),
+  bulkSelection = ref<any[]>([]);
 import SmartImage from "@/components/SmartImage.vue";
 import ModuleRegion from "@/components/ModuleRegion.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
@@ -135,13 +138,29 @@ onMounted(load);
         >新增公章</el-button
       >
     </header>
+    <BulkActions
+      :selected="bulkSelection"
+      :can-delete="isAdmin"
+      :can-toggle="isAdmin"
+      resource="seals"
+      @clear="bulkTable?.clearSelection()"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="listLoading"
       :error="listError"
       :empty="!rows.length"
       @retry="load"
-      ><el-table :data="rows" border @row-dblclick="row => show(row as Seal)"
-        ><el-table-column min-width="220" label="公章名称"
+      ><el-table
+        ref="bulkTable"
+        row-key="id"
+        @selection-change="bulkSelection = $event"
+        :data="rows"
+        border
+        @row-dblclick="row => show(row as Seal)"
+        ><el-table-column type="selection" width="48" /><el-table-column
+          min-width="220"
+          label="公章名称"
           ><template #default="s"
             ><el-button link type="primary" @click="show(s.row as Seal)">{{
               s.row.name

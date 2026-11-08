@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ModuleRegion from "@/components/ModuleRegion.vue";
+import BulkActions from "@/components/BulkActions.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
   listLoading = listTask.loading,
@@ -11,7 +12,7 @@ import { useLiveStore } from "@/store/modules/live";
 import { useBusinessAccess } from "@/utils/businessAccess";
 import { http } from "@/utils/http";
 const live = useLiveStore(),
-  { isAdmin } = useBusinessAccess();
+  { isAdmin, isSuper, user } = useBusinessAccess();
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import RecordDetail from "@/components/RecordDetail.vue";
@@ -49,6 +50,10 @@ function showAward(row: any) {
   awardDetail.value = true;
 }
 const rows = ref<Batch[]>([]),
+  table = ref(),
+  selection = ref<any[]>([]),
+  awardTable = ref(),
+  awardSelection = ref<any[]>([]),
   competitions = ref<Competition[]>([]),
   templates = ref<Template[]>([]),
   seals = ref<Seal[]>([]),
@@ -122,6 +127,32 @@ async function deleteRow(row: any) {
   await open(selected.value.batch);
   await load();
 }
+async function deleteAwardSelection() {
+  const { ElMessageBox } = await import("element-plus");
+  try {
+    await ElMessageBox.confirm(
+      `确认删除所选 ${awardSelection.value.length} 行？名单会创建新版本。`,
+      "批量删除名单"
+    );
+  } catch {
+    return;
+  }
+  actionBusy.value = true;
+  try {
+    await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
+      data: {
+        operation: "bulk_delete",
+        source_rows: awardSelection.value.map(r => r.source_row),
+        expected_version: selected.value.batch.current_version
+      }
+    });
+    awardTable.value?.clearSelection();
+    await open(selected.value.batch);
+    await load();
+  } finally {
+    actionBusy.value = false;
+  }
+}
 watch(
   () => live.revision,
   async () => {
@@ -152,6 +183,11 @@ const form = reactive({
 const competition = computed(() =>
   competitions.value.find(item => item.id === form.competition)
 );
+const managedSealDepartments = computed(() =>
+  (competition.value?.departments || []).filter(
+    id => isSuper.value || user.value.managedDepartmentIds.includes(id)
+  )
+);
 async function load() {
   try {
     await listTask.run(
@@ -172,20 +208,23 @@ watch(
   () => form.competition,
   () => {
     form.seal_versions = {};
-    for (const id of competition.value?.departments || []) {
-      const seal = seals.value.find(
-        item => item.department === id && item.active && item.versions.length
-      );
-      if (seal) form.seal_versions[String(id)] = seal.versions.at(-1)!.id;
-    }
   }
 );
 async function create() {
   actionBusy.value = true;
   try {
-    await createBatch(form);
+    await createBatch({
+      ...form,
+      seal_versions: isAdmin.value
+        ? Object.fromEntries(
+            Object.entries(form.seal_versions).filter(
+              ([, id]) => Number.isInteger(id) && id > 0
+            )
+          )
+        : undefined
+    });
     createDialog.value = false;
-    ElMessage.success("批次已按选定模板、公章和输出格式创建");
+    ElMessage.success("批次已创建，各部门管理员将在审批时确认用章");
     await load();
   } finally {
     actionBusy.value = false;
@@ -297,13 +336,28 @@ onMounted(async () => {
         >
       </div>
     </header>
+    <BulkActions
+      :selected="selection"
+      resource="batches"
+      can-delete
+      @clear="table?.clearSelection()"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="listLoading"
       :error="listError"
       :empty="!rows.length"
       @retry="load"
-      ><el-table :data="rows" border @row-dblclick="row => open(row as Batch)"
-        ><el-table-column min-width="240" label="批次"
+      ><el-table
+        ref="table"
+        row-key="id"
+        :data="rows"
+        border
+        @selection-change="selection = $event"
+        @row-dblclick="row => open(row as Batch)"
+        ><el-table-column type="selection" width="48" /><el-table-column
+          min-width="240"
+          label="批次"
           ><template #default="s"
             ><el-button link type="primary" @click="open(s.row as Batch)">{{
               s.row.name
@@ -369,26 +423,23 @@ onMounted(async () => {
             ><el-checkbox value="pdf">PDF</el-checkbox
             ><el-checkbox value="png">图片</el-checkbox></el-checkbox-group
           ></el-form-item
-        ><el-form-item
-          v-for="(name, index) in isAdmin
-            ? competition?.department_names || []
-            : []"
-          :key="competition!.departments[index]"
-          :label="`${name}公章`"
+        ><el-alert
+          title="各盖章部门由本部门管理员在审批详情中选择并确认公章。负责人提交名单即可。"
+          :closable="false" />
+        <el-form-item
+          v-for="departmentId in isAdmin ? managedSealDepartments : []"
+          :key="departmentId"
+          :label="`${competition!.department_names[competition!.departments.indexOf(departmentId)]}公章（可在审批时选择）`"
           ><el-select
             :loading="listLoading"
-            v-model="
-              form.seal_versions[String(competition!.departments[index])]
-            "
+            v-model="form.seal_versions[String(departmentId)]"
             class="full"
-            placeholder="使用该部门默认启用公章"
+            clearable
+            placeholder="暂不选择，审批时由管理员确认"
             ><template v-for="seal in seals" :key="seal.id"
               ><el-option
                 v-for="version in seal.versions"
-                v-if="
-                  seal.department === competition!.departments[index] &&
-                  seal.active
-                "
+                v-if="seal.department === departmentId && seal.active"
                 :key="version.id"
                 :label="`${seal.name} · v${version.number}`"
                 :value="
@@ -516,9 +567,33 @@ onMounted(async () => {
           v-if="selected.batch.status === 'issued'"
           :batch-id="selected.batch.id" />
         <p>共 {{ selected.award_count }} 条，点击名单行可查看完整信息</p>
+        <BulkActions
+          :selected="awardSelection"
+          readonly-reason="已提交和签发的名单保留历史，退回或草稿可批量删除。"
+          @clear="awardTable?.clearSelection()"
+        >
+          <el-button
+            v-if="
+              selected.can_manage &&
+              ['draft', 'returned'].includes(selected.batch.status)
+            "
+            type="danger"
+            plain
+            :disabled="!awardSelection.length || awardSelection.length > 200"
+            :loading="actionBusy"
+            @click="deleteAwardSelection"
+            >批量删除名单</el-button
+          >
+        </BulkActions>
         <ModuleRegion :loading="detailLoading"
-          ><el-table :data="selected.awards" border @row-click="showAward"
-            ><el-table-column
+          ><el-table
+            ref="awardTable"
+            row-key="source_row"
+            :data="selected.awards"
+            border
+            @selection-change="awardSelection = $event"
+            @row-dblclick="showAward"
+            ><el-table-column type="selection" width="48" /><el-table-column
               prop="source_row"
               label="行"
               width="60"

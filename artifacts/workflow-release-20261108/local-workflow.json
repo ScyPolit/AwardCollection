@@ -1,0 +1,50 @@
+{
+  "environment": "local QA only",
+  "owner_create_ui": {
+    "seal_selectors": 0,
+    "select_controls": 2,
+    "imported_records": 62
+  },
+  "independent_department_approvals": [
+    {
+      "actor__username": "qa_v2_admina",
+      "requirement__department_id": 4,
+      "decision": "approved"
+    },
+    {
+      "actor__username": "qa_v2_adminb",
+      "requirement__department_id": 5,
+      "decision": "approved"
+    }
+  ],
+  "generation": [
+    {
+      "version__batch_id": 3,
+      "status": "done",
+      "processed": 62,
+      "total": 62
+    },
+    {
+      "version__batch_id": 4,
+      "status": "done",
+      "processed": 2,
+      "total": 2
+    }
+  ],
+  "root_approved_own_submission": true,
+  "archive_tree": {
+    "initial_children": 50,
+    "loaded_children": 62,
+    "selection_retained_on_more": true,
+    "archived_after_bulk": 2,
+    "visible_after_bulk": 60,
+    "archived_original_files_retained": true
+  },
+  "seal_preview_changed": true,
+  "delayed_detail": {
+    "delay_ms": 4000,
+    "skeletons": 1,
+    "fullscreen_masks": 0,
+    "could_close_and_navigate": true
+  }
+}

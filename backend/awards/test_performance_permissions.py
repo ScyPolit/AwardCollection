@@ -138,6 +138,7 @@ class PerformancePermissionTests(TestCase):
             response=self.client.get(f'/api/v1/certificates/{certificate.pk}/download/pdf/')
         self.assertEqual(response.status_code,200)
         self.assertTrue(response['X-Accel-Redirect'].startswith('/_protected-downloads/certificates/'))
+        self.assertEqual(response['X-Accel-Limit-Rate'], '0')
         self.assertEqual(response.content,b'')
 
     def test_template_list_is_metadata_only_and_batch_detail_is_paginated(self):

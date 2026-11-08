@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ModuleRegion from "@/components/ModuleRegion.vue";
+import BulkActions from "@/components/BulkActions.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
   listLoading = listTask.loading,
@@ -21,6 +22,10 @@ import {
   type Option
 } from "@/api/business";
 const { isSuper, isAdmin } = useBusinessAccess();
+const accountTable = ref(),
+  accountSelection = ref<any[]>([]),
+  departmentTable = ref(),
+  departmentSelection = ref<any[]>([]);
 const accounts = ref<any[]>([]),
   departments = ref<Option[]>([]),
   dialog = ref(false),
@@ -197,13 +202,30 @@ onMounted(load);
     </header>
     <section>
       <h3>账号与角色</h3>
+      <BulkActions
+        :selected="accountSelection"
+        resource="accounts"
+        :can-delete="isAdmin && accountSelection.every(r => r.can_delete)"
+        readonly-reason="当前登录账号及权限范围之外的账号不能删除。"
+        @clear="accountTable?.clearSelection()"
+        @changed="load"
+      />
       <ModuleRegion
         :loading="listLoading"
         :error="listError"
         :empty="!accounts.length"
         @retry="load"
-        ><el-table :data="accounts" border @row-dblclick="showAccount">
-          <el-table-column min-width="180" label="账号"
+        ><el-table
+          ref="accountTable"
+          :data="accounts"
+          row-key="id"
+          border
+          @selection-change="accountSelection = $event"
+          @row-dblclick="showAccount"
+        >
+          <el-table-column type="selection" width="48" /><el-table-column
+            min-width="180"
+            label="账号"
             ><template #default="s"
               ><el-button link type="primary" @click="showAccount(s.row)">{{
                 s.row.username
@@ -262,13 +284,27 @@ onMounted(load);
     </section>
     <section v-if="isSuper">
       <h3>部门管理</h3>
+      <BulkActions
+        :selected="departmentSelection"
+        resource="departments"
+        :can-delete="isSuper"
+        @clear="departmentTable?.clearSelection()"
+        @changed="load"
+      />
       <ModuleRegion
         :loading="listLoading"
         :error="listError"
-        :empty="!accounts.length"
+        :empty="!departments.length"
         @retry="load"
-        ><el-table :data="departments" border
-          ><el-table-column prop="name" label="部门名称" /><el-table-column
+        ><el-table
+          ref="departmentTable"
+          :data="departments"
+          row-key="id"
+          border
+          @selection-change="departmentSelection = $event"
+          ><el-table-column type="selection" width="48" /><el-table-column
+            prop="name"
+            label="部门名称" /><el-table-column
             prop="code"
             label="部门代码" /><el-table-column label="操作" width="180"
             ><template #default="s"

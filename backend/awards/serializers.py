@@ -106,10 +106,38 @@ class ApprovalSerializer(serializers.ModelSerializer):
     competition_name = serializers.CharField(source="version.batch.competition.name", read_only=True)
     decision = serializers.SerializerMethodField()
     decision_detail = serializers.SerializerMethodField()
+    can_review = serializers.SerializerMethodField()
+    seal_version = serializers.SerializerMethodField()
+    seal_label = serializers.SerializerMethodField()
+    seal_selected = serializers.SerializerMethodField()
 
     class Meta:
         model = ApprovalDepartment
-        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "decision_detail", "created_at"]
+        fields = ["id", "batch_id", "batch_name", "version_number", "department", "department_name", "competition_name", "decision", "decision_detail", "created_at", "can_review", "seal_version", "seal_label", "seal_selected"]
+
+    def get_can_review(self, obj):
+        request = self.context.get("request")
+        if not request or obj.version.batch.status != "review" or obj.version.number != obj.version.batch.current_version:
+            return False
+        if request.user.is_superuser:
+            return True
+        from .scopes import managed_departments
+        if '_approval_departments' not in self.context:
+            self.context['_approval_departments'] = set(managed_departments(request.user))
+        return obj.department_id in self.context['_approval_departments']
+
+    def get_seal_version(self, obj):
+        return obj.seal_version_id if self.get_can_review(obj) else None
+
+    def get_seal_label(self, obj):
+        if not obj.seal_version_id:
+            return "待部门管理员选择"
+        if not self.get_can_review(obj):
+            return "已确认用章"
+        return f"{obj.seal_version.seal.name} · v{obj.seal_version.number}"
+
+    def get_seal_selected(self, obj):
+        return obj.seal_version_id is not None
 
     def get_decision(self, obj):
         return getattr(getattr(obj, "decision", None), "decision", None)
@@ -118,7 +146,7 @@ class ApprovalSerializer(serializers.ModelSerializer):
         decision = getattr(obj, "decision", None)
         if not decision:
             return None
-        return {"actor": decision.actor.username, "comment": decision.comment, "created_at": decision.created_at}
+        return {"actor": decision.actor.username, "comment": decision.comment, "issue_rows": decision.issue_rows, "created_at": decision.created_at}
 
 
 class TemplateVersionSerializer(serializers.ModelSerializer):
@@ -160,6 +188,7 @@ class SealSerializer(serializers.ModelSerializer):
 
 
 class CertificateSerializer(serializers.ModelSerializer):
+    batch_id = serializers.IntegerField(source="award.version.batch_id", read_only=True)
     competition_name = serializers.SerializerMethodField()
 
     def get_competition_name(self,obj):
@@ -170,7 +199,7 @@ class CertificateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Certificate
-        fields = ["id", "number", "status", "published_at", "created_at", "competition_name", "batch_name", "team_name", "award_name", "notes"]
+        fields = ["id", "number", "status", "published_at", "created_at", "competition_name", "batch_id", "batch_name", "team_name", "award_name", "notes"]
         read_only_fields = ["number", "status", "published_at", "created_at"]
 
 
@@ -178,10 +207,16 @@ class RevocationSerializer(serializers.ModelSerializer):
     certificate_number = serializers.CharField(source="certificate.number", read_only=True)
     approved_departments = serializers.SerializerMethodField()
     total_departments = serializers.SerializerMethodField()
+    approval_departments = serializers.SerializerMethodField()
 
     class Meta:
         model = RevocationRequest
-        fields = ["id", "certificate", "certificate_number", "reason", "status", "approved_departments", "total_departments", "created_at"]
+        fields = ["id", "certificate", "certificate_number", "reason", "status", "approved_departments", "total_departments", "created_at", "approval_departments"]
+
+    def get_approval_departments(self, obj):
+        from .permissions import is_department_admin
+        request = self.context.get('request')
+        return [{"id": r.department_id, "name": r.department.name} for r in obj.certificate.award.version.required_departments.select_related('department') if request and is_department_admin(request.user, r.department)]
 
     def get_approved_departments(self, obj):
         return obj.decisions.filter(decision="approved").count()

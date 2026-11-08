@@ -168,7 +168,7 @@ class TeamAward(TimeStampedModel):
 class ApprovalDepartment(TimeStampedModel):
     version = models.ForeignKey(BatchVersion, on_delete=models.CASCADE, related_name="required_departments")
     department = models.ForeignKey(Department, on_delete=models.PROTECT)
-    seal_version = models.ForeignKey(SealVersion, on_delete=models.PROTECT)
+    seal_version = models.ForeignKey(SealVersion, on_delete=models.PROTECT, null=True, blank=True)
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=["version", "department"], name="uniq_required_department")]

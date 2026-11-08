@@ -1,0 +1,91 @@
+
+> pure-admin-thin@6.2.0 build:main F:\project\AwardCollection\frontend
+> rimraf dist && NODE_OPTIONS=--max-old-space-size=8192 vite build
+
+vite v7.1.12 building for production...
+╭─────────────────────────────────────────────╮
+│ 您好! 欢迎使用 pure-admin 开源项目          │
+│ 我们为您精心准备了下面两个贴心的保姆级文档  │
+│ https://pure-admin.cn                       │
+│ https://pure-admin-utils.netlify.app        │
+╰─────────────────────────────────────────────╯
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Browserslist: browsers data (caniuse-lite) is 13 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+transforming...
+
+ /school-emblem.svg couldn't be loaded by vite-svg-loader, fallback to default loader
+✓ 2134 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                     1.43 kB │ gzip:   0.76 kB
+dist/static/css/403-PVFjcBwF.css                    0.05 kB │ gzip:   0.07 kB
+dist/static/css/500-Duy5HzU0.css                    0.05 kB │ gzip:   0.07 kB
+dist/static/css/404-DFiT6PuP.css                    0.05 kB │ gzip:   0.07 kB
+dist/static/css/ManagementActions-D4mWx5hU.css      0.14 kB │ gzip:   0.12 kB
+dist/static/css/SmartImage-CzhPP2Dk.css             0.17 kB │ gzip:   0.15 kB
+dist/static/css/frame-qMXILA3K.css                  0.22 kB │ gzip:   0.17 kB
+dist/static/css/emergency-BJhgVQiW.css              0.25 kB │ gzip:   0.17 kB
+dist/static/css/competitions-Biui6Qo_.css           0.31 kB │ gzip:   0.21 kB
+dist/static/css/BatchDownload-HSrFfijs.css          0.33 kB │ gzip:   0.21 kB
+dist/static/css/BulkActions-8FqJJVTi.css            0.33 kB │ gzip:   0.22 kB
+dist/static/css/ModuleRegion-CxCTe7Ok.css           0.36 kB │ gzip:   0.23 kB
+dist/static/css/index-LrPJ4inX.css                  0.37 kB │ gzip:   0.19 kB
+dist/static/css/logs-CPG8QU0Y.css                   0.46 kB │ gzip:   0.25 kB
+dist/static/css/batches-B4HpoQ-x.css                0.51 kB │ gzip:   0.29 kB
+dist/static/css/TemplateWorkspace-BxbcE3TX.css      0.59 kB │ gzip:   0.30 kB
+dist/static/css/seals-D-Rq4hqC.css                  0.63 kB │ gzip:   0.35 kB
+dist/static/css/certificates-Bo_rNi0w.css           0.67 kB │ gzip:   0.34 kB
+dist/static/css/verification-B_A1NS4v.css           0.73 kB │ gzip:   0.38 kB
+dist/static/css/fonts-CWKWMCg7.css                  0.77 kB │ gzip:   0.37 kB
+dist/static/css/index-Cxv2UPm4.css                  0.78 kB │ gzip:   0.38 kB
+dist/static/css/administration-DR96QTVg.css         0.84 kB │ gzip:   0.38 kB
+dist/static/css/index-ulVn_PEz.css                  0.88 kB │ gzip:   0.40 kB
+dist/static/css/RecordDetail-CnMQb4sI.css           1.16 kB │ gzip:   0.44 kB
+dist/static/css/approvals-CGLbaBT5.css              1.89 kB │ gzip:   0.67 kB
+dist/static/css/ListCard-CYb_ViF9.css               2.69 kB │ gzip:   0.82 kB
+dist/static/css/index-BOdWyRmV.css                 88.32 kB │ gzip:   8.74 kB
+dist/static/css/index-CN59AlA2.css                448.29 kB │ gzip:  67.50 kB
+dist/static/js/templates-7j-EDr5Q.js                0.29 kB │ gzip:   0.23 kB
+dist/static/js/redirect-BlOdBYBP.js                 0.30 kB │ gzip:   0.24 kB
+dist/static/js/SmartImage-BmE-EpYC.js               0.62 kB │ gzip:   0.46 kB
+dist/static/js/useModuleTask-C8pf0fzz.js            0.67 kB │ gzip:   0.45 kB
+dist/static/js/ModuleRegion-AR70yd_e.js             0.93 kB │ gzip:   0.62 kB
+dist/static/js/notifications-BZ6XnnF4.js            1.00 kB │ gzip:   0.61 kB
+dist/static/js/businessAccess-C-vkiMgw.js           1.04 kB │ gzip:   0.50 kB
+dist/static/js/usePreparedFile-DHJHkmo6.js          1.25 kB │ gzip:   0.64 kB
+dist/static/js/frame-Dn2sDBAV.js                    1.27 kB │ gzip:   0.76 kB
+dist/static/js/index-Bokmum_Y.js                    1.29 kB │ gzip:   0.86 kB
+dist/static/js/BatchDownload-CP74ztuE.js            1.79 kB │ gzip:   1.14 kB
+dist/static/js/index-ZHva7TNC.js                    2.28 kB │ gzip:   1.28 kB
+dist/static/js/verification-FnXOLTKG.js             2.65 kB │ gzip:   1.39 kB
+dist/static/js/index-C4y_lSBt.js                    2.93 kB │ gzip:   0.85 kB
+dist/static/js/emergency-yKz9yYe3.js                2.94 kB │ gzip:   1.51 kB
+dist/static/js/perms-LmMciv7g.js                    3.10 kB │ gzip:   0.95 kB
+dist/static/js/index-CkYzwJ1U.js                    3.31 kB │ gzip:   1.67 kB
+dist/static/js/logs-DlMi98gH.js                     3.49 kB │ gzip:   1.86 kB
+dist/static/js/ManagementActions-B2CGi5dh.js        3.73 kB │ gzip:   1.75 kB
+dist/static/js/business-BgaPtsYh.js                 3.95 kB │ gzip:   1.34 kB
+dist/static/js/BulkActions-DL1sMOE1.js              4.00 kB │ gzip:   2.16 kB
+dist/static/js/RecordDetail-Ce3WvNsk.js             4.61 kB │ gzip:   2.24 kB
+dist/static/js/ListCard-VOKWIYuH.js                 4.84 kB │ gzip:   2.15 kB
+dist/static/js/competitions-CvMPbkca.js             7.07 kB │ gzip:   2.75 kB
+dist/static/js/index-B8AE8sPO.js                    7.11 kB │ gzip:   3.09 kB
+dist/static/js/seals-DWXm7peZ.js                    8.39 kB │ gzip:   3.45 kB
+dist/static/js/fonts-BOSWXY0e.js                    8.44 kB │ gzip:   3.71 kB
+dist/static/js/certificates-BO7pmBMU.js             9.86 kB │ gzip:   4.36 kB
+dist/static/js/403-mT49RhXg.js                     11.87 kB │ gzip:   5.24 kB
+dist/static/js/TemplateWorkspace-CX9tZWmw.js       12.05 kB │ gzip:   4.87 kB
+dist/static/js/404-CDk_QB9f.js                     12.96 kB │ gzip:   5.65 kB
+dist/static/js/administration-DP7UxHdx.js          14.11 kB │ gzip:   4.60 kB
+dist/static/js/500-_2SC9aer.js                     14.95 kB │ gzip:   6.03 kB
+dist/static/js/index-CbgptmoK.js                   17.04 kB │ gzip:   6.51 kB
+dist/static/js/batches-8IAx7V2U.js                 17.82 kB │ gzip:   6.33 kB
+dist/static/js/approvals-CeXQbkw5.js               25.21 kB │ gzip:   8.18 kB
+dist/static/js/index-CfX0X7Y2.js                  322.75 kB │ gzip: 135.46 kB
+dist/static/js/index-BjQb48RU.js                1,407.32 kB │ gzip: 470.36 kB
+✓ built in 13.71s
+╭───────────────────────────────────────────────────────────╮
+│ 🎉 恭喜打包完成（总用时00分13秒，打包后的大小为2.43 MB）  │
+╰───────────────────────────────────────────────────────────╯
