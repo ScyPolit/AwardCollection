@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import BulkActions from "@/components/BulkActions.vue";
+const bulkTable = ref(),
+  bulkSelection = ref<any[]>([]);
 import ModuleRegion from "@/components/ModuleRegion.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
@@ -20,7 +23,7 @@ import {
   type Option
 } from "@/api/business";
 
-const { isSuper } = useBusinessAccess();
+const { isSuper, isAdmin, user } = useBusinessAccess();
 const competitionRow = ref<Competition>();
 const detail = ref(false),
   selected = ref<Record<string, unknown>>({}),
@@ -107,16 +110,35 @@ onMounted(load);
       </div>
       <el-button type="primary" @click="openCreate">新建竞赛</el-button>
     </header>
+    <BulkActions
+      :selected="bulkSelection"
+      :can-delete="
+        isSuper ||
+        !isAdmin ||
+        bulkSelection.every(r =>
+          r.departments?.some(id => user.managedDepartmentIds.includes(id))
+        )
+      "
+      :can-toggle="isSuper"
+      resource="competitions"
+      @clear="bulkTable?.clearSelection()"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="listLoading"
       :error="listError"
       :empty="!rows.length"
       @retry="load"
       ><el-table
+        ref="bulkTable"
+        row-key="id"
+        @selection-change="bulkSelection = $event"
         :data="rows"
         border
         @row-dblclick="row => show(row as Competition)"
-        ><el-table-column label="竞赛名称" min-width="220"
+        ><el-table-column type="selection" width="48" /><el-table-column
+          label="竞赛名称"
+          min-width="220"
           ><template #default="s"
             ><el-button
               link

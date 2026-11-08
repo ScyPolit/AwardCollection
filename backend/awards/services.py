@@ -11,7 +11,7 @@ from .models import (
     ApprovalDecision, ApprovalDepartment, AwardBatch, BatchVersion,
     AuditEvent, Certificate, CertificateSequence, DepartmentMembership,
     GenerationTask, Notification, RevocationDecision, RevocationRequest,
-    TeamAward,
+    TeamAward, SealVersion,
 )
 
 
@@ -83,11 +83,11 @@ def submit_batch(batch_id, actor):
                 except ValueError as exc:
                     raise ValueError(f"第 {award.source_row} 行 {layer.get('field')}：{exc}") from exc
     for requirement in version.required_departments.select_related("seal_version__seal"):
-        if not requirement.seal_version.seal.active:
+        if requirement.seal_version_id and (not requirement.seal_version.seal.active or requirement.seal_version.seal.deleted_at):
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
     if template.get("engine")=="pptist":
         from .ppt_renderer import renderer,award_values
-        seals=[{"department_id":r.department_id,"image":r.seal_version.image.path} for r in version.required_departments.select_related("seal_version")]
+        seals=[{"department_id":r.department_id,"image":r.seal_version.image.path} for r in version.required_departments.select_related("seal_version") if r.seal_version_id]
         awards=list(version.awards.order_by("source_row"))
         for item in awards:
             item.competition_name=version.snapshot.get("competition",{}).get("name",batch.competition.name)
@@ -105,10 +105,10 @@ def submit_batch(batch_id, actor):
         department_id__in=version.required_departments.values_list("department_id", flat=True),
         role=DepartmentMembership.Role.ADMIN,
         active=True,
-    ).exclude(user=actor).values_list("user_id", flat=True)
+    ).values_list("user_id", flat=True)
     Notification.objects.bulk_create([
         Notification(user_id=user_id, title="获奖名单待审批", body=f"批次“{batch.name}”已提交部门会签", kind="review", target=f"/business/approvals?batch={batch.pk}")
-        for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).exclude(pk=actor.pk).values_list('pk',flat=True))
+        for user_id in set(admin_ids) | set(get_user_model().objects.filter(is_superuser=True,is_active=True).values_list('pk',flat=True))
     ])
     AuditEvent.objects.create(actor=actor,action="batch.submitted",object_type="AwardBatch",object_id=str(batch.pk),detail={"version":version.number})
     return version
@@ -149,13 +149,14 @@ def revise_batch(batch_id, actor, rows, expected_version):
     return version
 
 
-@transaction.atomic
-def decide(requirement_id, actor, decision, comment=""):
-    if decision not in ApprovalDecision.Decision.values:
-        raise ValueError("审批决定无效")
-    requirement = ApprovalDepartment.objects.select_for_update().select_related("version__batch").get(pk=requirement_id)
+UNSET = object()
+
+
+def approval_context(requirement_id, actor):
+    batch_id = ApprovalDepartment.objects.values_list("version__batch_id", flat=True).get(pk=requirement_id)
+    batch = AwardBatch.objects.select_for_update(of=("self",)).select_related("competition").get(pk=batch_id)
+    requirement = ApprovalDepartment.objects.select_for_update(of=("self",)).select_related("version", "department", "seal_version__seal").get(pk=requirement_id)
     version = requirement.version
-    batch = AwardBatch.objects.select_for_update().get(pk=version.batch_id)
     if batch.current_version != version.number or batch.status != AwardBatch.Status.REVIEW:
         raise ValueError("审批版本已失效")
     if batch.deleted_at or batch.competition.deleted_at or not batch.competition.active:
@@ -165,10 +166,64 @@ def decide(requirement_id, actor, decision, comment=""):
     eligible = actor.is_superuser or DepartmentMembership.objects.filter(department=requirement.department, user=actor, role=DepartmentMembership.Role.ADMIN, active=True).exists()
     if not eligible:
         raise PermissionError("无本部门审批权限")
-    editors = set(version.awards.exclude(last_edited_by=None).values_list("last_edited_by_id", flat=True))
-    if version.submitted_by_id == actor.id or actor.id in editors:
-        raise PermissionError("提交或修改人员必须回避")
-    ApprovalDecision.objects.update_or_create(requirement=requirement, defaults={"decision": decision, "actor": actor, "comment": comment})
+    return requirement, version, batch
+
+
+def set_approval_seal(requirement, version, actor, seal_version_id, expected_seal_version=UNSET):
+    if expected_seal_version is not UNSET and requirement.seal_version_id != expected_seal_version:
+        raise ValueError("本部门用章已被其他管理员修改，请刷新后确认")
+    if not isinstance(seal_version_id, int) or isinstance(seal_version_id, bool):
+        raise ValueError("请选择本部门有效的公章版本")
+    seal = SealVersion.objects.select_related("seal").filter(pk=seal_version_id, seal__department_id=requirement.department_id, seal__active=True, seal__deleted_at__isnull=True).first()
+    if not seal:
+        raise ValueError("所选公章不属于本部门、已停用或已删除")
+    if requirement.seal_version_id == seal.pk:
+        return
+    if ApprovalDecision.objects.filter(requirement=requirement).exists():
+        raise ValueError("本部门已审批，不能修改已确认的公章；请退回并修订新版本")
+    before = requirement.seal_version_id
+    requirement.seal_version = seal
+    requirement.save(update_fields=["seal_version", "updated_at"])
+    version.snapshot = {**version.snapshot, "seals": list(version.required_departments.order_by("department_id").values_list("seal_version_id", flat=True))}
+    version.save(update_fields=["snapshot", "updated_at"])
+    # The server changes only this department's selection. All previously frozen
+    # names, template and other departments' selections are verified beforehand.
+    from .integrity import freeze
+    freeze(version)
+    AwardBatch.objects.filter(pk=version.batch_id).update(updated_at=timezone.now())
+    AuditEvent.objects.create(actor=actor, action="approval.seal_selected", object_type="ApprovalDepartment", object_id=str(requirement.pk), detail={"batch": version.batch_id, "department": requirement.department_id, "previous_seal_version": before, "seal_version": seal.pk})
+
+
+@transaction.atomic
+def choose_approval_seal(requirement_id, actor, seal_version_id, expected_seal_version=UNSET):
+    requirement, version, _ = approval_context(requirement_id, actor)
+    set_approval_seal(requirement, version, actor, seal_version_id, expected_seal_version)
+    return requirement
+
+
+@transaction.atomic
+def decide(requirement_id, actor, decision, comment="", *, seal_version_id=UNSET, expected_seal_version=UNSET, issue_rows=None):
+    if decision not in ApprovalDecision.Decision.values:
+        raise ValueError("审批决定无效")
+    if not isinstance(comment, str) or len(comment) > 4000:
+        raise ValueError("审批意见最多4000个字符")
+    issue_rows = issue_rows or []
+    if not isinstance(issue_rows, list) or len(issue_rows) > 200 or any(not isinstance(n, int) or isinstance(n, bool) or n < 2 for n in issue_rows):
+        raise ValueError("问题行号无效，最多标注200行")
+    requirement, version, batch = approval_context(requirement_id, actor)
+    if ApprovalDecision.objects.filter(requirement=requirement).exists():
+        raise ValueError("本部门已审批，请刷新查看最新进度")
+    if seal_version_id is not UNSET:
+        set_approval_seal(requirement, version, actor, seal_version_id, expected_seal_version)
+    if decision == ApprovalDecision.Decision.APPROVED:
+        if not requirement.seal_version_id:
+            raise ValueError("请先选择本部门公章再通过审批")
+        if not requirement.seal_version.seal.active or requirement.seal_version.seal.deleted_at:
+            raise ValueError("本部门公章已停用或删除，请重新选择")
+    if set(issue_rows) - set(version.awards.filter(source_row__in=issue_rows).values_list("source_row", flat=True)):
+        raise ValueError("问题行号不在当前名单中")
+    ApprovalDecision.objects.create(requirement=requirement, decision=decision, actor=actor, comment=comment, issue_rows=issue_rows)
+    batch.save(update_fields=["updated_at"])
     AuditEvent.objects.create(actor=actor, action="batch.approval", object_type="ApprovalDepartment", object_id=str(requirement.pk), detail={"batch": batch.id, "version": version.number, "department": requirement.department_id, "decision": decision, "comment": comment})
     if decision == ApprovalDecision.Decision.RETURNED:
         batch.status = AwardBatch.Status.RETURNED
@@ -185,6 +240,8 @@ def decide(requirement_id, actor, decision, comment=""):
         recipients=set(batch.competition.collaborators.values_list('pk',flat=True)) | {batch.created_by_id}
         Notification.objects.bulk_create([Notification(user_id=uid,title='部门会签进度已更新',body=f'批次“{batch.name}”已有 {approved}/{required} 个部门通过',kind='approval',target=f'/business/batches?batch={batch.pk}') for uid in recipients if uid!=actor.pk])
     if required and approved == required:
+        if version.required_departments.filter(seal_version__isnull=True).exists():
+            raise ValueError("尚有部门未确认用章")
         task, _ = GenerationTask.objects.get_or_create(version=version, defaults={"total": version.awards.count()})
         batch.status = AwardBatch.Status.QUEUED
         batch.save(update_fields=["status", "updated_at"])
@@ -207,7 +264,9 @@ def emergency_issue(batch_id, actor, reason, password):
     if not version.awards.exists():
         raise ValueError("名单为空")
     for requirement in version.required_departments.select_related("seal_version__seal"):
-        if not requirement.seal_version.seal.active:
+        if not requirement.seal_version_id:
+            raise ValueError(f"{requirement.department.name} 尚未选择公章，请先在审批详情中确认用章")
+        if not requirement.seal_version.seal.active or requirement.seal_version.seal.deleted_at:
             raise ValueError(f"{requirement.department.name} 的选定公章已停用")
     from .integrity import freeze,verify
     if version.integrity_hmac:verify(version)

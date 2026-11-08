@@ -39,4 +39,7 @@ defineEmits<{ retry: [] }>();
   padding: 12px;
   color: var(--el-color-danger);
 }
+:deep(.el-loading-fade-leave-active) {
+  pointer-events: none;
+}
 </style>

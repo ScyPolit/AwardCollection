@@ -1,0 +1,196 @@
+[
+  {
+    "route": "#/business/competitions",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 4,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/batches",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 6,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/certificates",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 5,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/approvals",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 4,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/fonts",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 10,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/seals",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 5,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/administration",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 29,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/logs",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 31,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/template-library",
+    "dark": false,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 6,
+    "errors": [],
+    "cardHeights": [
+      500,
+      500,
+      500,
+      500,
+      500,
+      500
+    ]
+  },
+  {
+    "route": "#/business/competitions",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 4,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/batches",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 6,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/certificates",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 5,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/approvals",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 4,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/fonts",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 10,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/seals",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 5,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/administration",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 29,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/logs",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 31,
+    "errors": [],
+    "cardHeights": []
+  },
+  {
+    "route": "#/business/template-library",
+    "dark": true,
+    "width": 1600,
+    "documentWidth": 1600,
+    "globalMasks": 0,
+    "selectionControls": 6,
+    "errors": [],
+    "cardHeights": [
+      500,
+      500,
+      500,
+      500,
+      500,
+      500
+    ]
+  }
+]

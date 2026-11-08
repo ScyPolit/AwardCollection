@@ -1,0 +1,94 @@
+Creating test database for alias 'default'...
+
+F:\project\AwardCollection\.venv\Lib\site-packages\django\core\handlers\base.py:61: UserWarning: No directory at: F:\project\AwardCollection\backend\staticfiles\
+  mw_instance = middleware(adapted_handler)
+...............................................................Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Validation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+..............................Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Validation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko\sign\validation\generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "F:\project\AwardCollection\.venv\Lib\site-packages\pyhanko_certvalidator\__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+.....................
+----------------------------------------------------------------------
+Ran 114 tests in 170.589s
+
+OK
+Destroying test database for alias 'default'...
+
+Found 114 test(s).
+System check identified no issues (0 silenced).
+7 verified fonts available in the media volume

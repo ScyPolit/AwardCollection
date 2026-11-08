@@ -5,7 +5,7 @@ import hashlib
 import json
 from django.contrib.auth import get_user_model
 from django.contrib.sessions.models import Session
-from django.db import close_old_connections, connection
+from django.db import close_old_connections, connection, models
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from .models import (
@@ -46,6 +46,7 @@ def snapshot_for(user_id, session_key=None, session_auth_hash=None):
             version__batch__competition__in=competitions,
             version__batch__deleted_at__isnull=True,
             version__batch__status="review",
+            version__number=models.F("version__batch__current_version"),
             decision__isnull=True,
         )
         if not user.is_superuser:
@@ -54,9 +55,6 @@ def snapshot_for(user_id, session_key=None, session_auth_hash=None):
                 department__departmentmembership__role="admin",
                 department__departmentmembership__active=True,
             )
-        pending = pending.exclude(version__submitted_by=user).exclude(
-            version__awards__last_edited_by=user
-        )
         tasks = (
             GenerationTask.objects.filter(
                 version__in=accessible_versions(user),

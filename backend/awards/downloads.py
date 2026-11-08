@@ -30,6 +30,7 @@ def disk_response(path, *, digest="", filename=None, content_type="application/o
     if getattr(settings, "USE_ACCEL_DOWNLOAD", False) and path.is_relative_to(protected):
         response = HttpResponse(content_type=content_type)
         response["X-Accel-Redirect"] = "/_protected-downloads/" + quote(path.relative_to(protected).as_posix(), safe="/")
+        response["X-Accel-Limit-Rate"] = "0"
         response["Content-Disposition"] = content_disposition_header(not inline, filename or path.name)
         response["Cache-Control"] = "private, no-store"
         return response

@@ -1,0 +1,11 @@
+{
+  "browser": "isolated Chromium / Playwright",
+  "native_download_saved": true,
+  "bytes": 8569555,
+  "seconds": 1.06,
+  "pdf": 60,
+  "png": 60,
+  "crc_passed": true,
+  "uses_server_link": true,
+  "note": "The agent-browser Windows save operation was canceled; isolated Chromium saved the same application link successfully."
+}

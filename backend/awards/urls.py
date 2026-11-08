@@ -5,6 +5,7 @@ from . import views
 from .management_api import account_detail
 from .realtime import events
 from .prepared import prepare_view, status_view, download_view
+from .bulk import bulk_action
 
 
 router = DefaultRouter()
@@ -20,6 +21,7 @@ router.register("revocations", views.RevocationViewSet, basename="revocation")
 router.register("notifications", views.NotificationViewSet, basename="notification")
 
 urlpatterns = [
+    path('management/bulk/', bulk_action),
     path('prepared-files/', prepare_view),
     path('prepared-files/<uuid:asset_id>/', status_view),
     path('prepared-files/<uuid:asset_id>/download/', download_view),

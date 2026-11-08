@@ -84,6 +84,7 @@ def main():
     parser.add_argument("revision")
     parser.add_argument("--archive")
     parser.add_argument("--archive-sha256")
+    parser.add_argument("--rotate-sessions", action="store_true", help="Explicitly revoke login sessions when an authentication change requires it")
     args = parser.parse_args()
     if not re.fullmatch(r"[0-9a-f]{40}", args.revision):
         raise SystemExit("A full Git commit revision is required")
@@ -256,18 +257,12 @@ def main():
             time.sleep(2)
         if not api_ready:
             raise RuntimeError("API failed startup/migration health check")
-        compose(
-            "exec",
-            "-T",
-            "api",
-            "python",
-            "manage.py",
-            "shell",
-            "-c",
-            "from django.contrib.sessions.models import Session;from awards.models import AuditEvent;Session.objects.all().delete();AuditEvent.objects.create(action='security.sessions_rotated_for_https',object_type='System',object_id='v4')",
-            capture=True,
-            timeout=30,
-        )
+        if args.rotate_sessions:
+            compose(
+                "exec", "-T", "api", "python", "manage.py", "shell", "-c",
+                "from django.contrib.sessions.models import Session;from awards.models import AuditEvent;Session.objects.all().delete();AuditEvent.objects.create(action='security.sessions_rotated_for_release',object_type='System',object_id='"+args.revision+"')",
+                capture=True, timeout=30,
+            )
         compose("up", "-d", "--no-deps", "worker", "web", timeout=240)
         progress("health")
         healthy = False

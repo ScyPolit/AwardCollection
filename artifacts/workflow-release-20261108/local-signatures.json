@@ -1,0 +1,14 @@
+{
+  "source": "local QA batch4",
+  "signatures": [
+    {
+      "intact": true,
+      "valid": true
+    },
+    {
+      "intact": true,
+      "valid": true
+    }
+  ],
+  "trust": "self-signed trust warning expected"
+}

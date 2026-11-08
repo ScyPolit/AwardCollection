@@ -7,6 +7,7 @@ import ListCard from "./ListCard.vue";
 import RecordDetail from "@/components/RecordDetail.vue";
 import PreparedPreview from "@/components/PreparedPreview.vue";
 import ModuleRegion from "@/components/ModuleRegion.vue";
+import BulkActions from "@/components/BulkActions.vue";
 import { useModuleTask } from "@/composables/useModuleTask";
 const listTask = useModuleTask(),
   dataLoading = listTask.loading,
@@ -23,6 +24,7 @@ import {
 const router = useRouter(),
   { user, isAdmin, isSuper } = useBusinessAccess();
 const productList = ref<Template[]>([]),
+  selectedIds = ref<number[]>([]),
   departments = ref<Option[]>([]),
   searchValue = ref(""),
   department = ref<number>(),
@@ -53,6 +55,22 @@ const managed = computed(() =>
     d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
   )
 );
+const bulkSelection = computed(() =>
+  productList.value.filter(p => selectedIds.value.includes(p.id))
+);
+const canBulkManage = computed(
+  () =>
+    isAdmin.value &&
+    bulkSelection.value.every(
+      p =>
+        isSuper.value || user.value.managedDepartmentIds.includes(p.department)
+    )
+);
+function check(product: Template, value: boolean) {
+  selectedIds.value = value
+    ? [...new Set([...selectedIds.value, product.id])]
+    : selectedIds.value.filter(id => id !== product.id);
+}
 const selected = ref<Template>(),
   preview = ref(false),
   copyDialog = ref(false),
@@ -71,6 +89,7 @@ async function load() {
       () => Promise.all([listTemplates(), listDepartments()]),
       values => {
         [productList.value, departments.value] = values;
+        selectedIds.value = [];
       }
     );
   } catch {}
@@ -138,6 +157,15 @@ onMounted(load);
         clearable
       />
     </div>
+    <BulkActions
+      :selected="bulkSelection"
+      resource="templates"
+      :can-delete="canBulkManage"
+      :can-toggle="canBulkManage"
+      readonly-reason="只能修改或删除本人管理部门的模板。"
+      @clear="selectedIds = []"
+      @changed="load"
+    />
     <ModuleRegion
       :loading="dataLoading"
       :error="loadError"
@@ -159,6 +187,8 @@ onMounted(load);
           ><ListCard
             :product="product"
             :can-copy="isAdmin"
+            :checked="selectedIds.includes(product.id)"
+            @check="check"
             @preview="show"
             @select="select"
             @copy="openCopy"

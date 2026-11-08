@@ -21,9 +21,14 @@ def digest(version):
     for item in version.required_departments.select_related("seal_version").order_by(
         "department_id"
     ):
-        if not hmac.compare_digest(
-            file_digest(item.seal_version.image.path), item.seal_version.sha256
-        ):
+        if item.seal_version_id is None:
+            requirements.append({"department": item.department_id, "seal_version": None, "sha256": None})
+            continue
+        try:
+            actual = file_digest(item.seal_version.image.path)
+        except OSError as exc:
+            raise ValueError("公章文件不存在或无法读取，请联系本部门管理员重新上传并选择有效版本") from exc
+        if not hmac.compare_digest(actual, item.seal_version.sha256):
             raise ValueError("公章文件完整性校验失败，已阻止审批和签发")
         requirements.append(
             {
