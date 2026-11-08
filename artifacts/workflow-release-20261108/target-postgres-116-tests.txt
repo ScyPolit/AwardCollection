@@ -1,0 +1,247 @@
+TEST_ONLY_FAST_PASSWORD_HASHER; production configuration unchanged
+Found 116 test(s).
+Creating test database for alias 'default' ('test_awardcollection_v7_08255f54')...
+Operations to perform:
+  Synchronize unmigrated apps: messages, rest_framework, staticfiles
+  Apply all migrations: admin, auth, awards, contenttypes, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying awards.0001_initial... OK
+  Applying awards.0002_certificatesequence... OK
+  Applying awards.0003_systemsetting_verificationattempt_loginprotection_and_more... OK
+  Applying awards.0004_independent_owners... OK
+  Applying awards.0005_certificatefont... OK
+  Applying awards.0006_certificatefont_active... OK
+  Applying awards.0007_awardbatch_deleted_at_certificate_deleted_at_and_more... OK
+  Applying awards.0008_certificate_notes... OK
+  Applying awards.0009_batchversion_integrity_hmac_certificate_image_sha256... OK
+  Applying awards.0010_alter_batchversion_integrity_hmac_and_more... OK
+  Applying awards.0011_templateversion_summary_preparedfile... OK
+  Applying awards.0012_notification_batch... OK
+  Applying awards.0013_approval_seal_optional... OK
+  Applying sessions.0001_initial... OK
+System check identified no issues (0 silenced).
+test_admin_can_prefill_only_own_department (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_admin_can_prefill_only_own_department) ... /usr/local/lib/python3.12/site-packages/django/core/handlers/base.py:61: UserWarning: No directory at: /testsource/staticfiles/
+  mw_instance = middleware(adapted_handler)
+ok
+test_admin_editor_and_super_submitter_can_approve_and_see_pending (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_admin_editor_and_super_submitter_can_approve_and_see_pending) ... ok
+test_approval_details_expose_own_selection_only (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approval_details_expose_own_selection_only) ... ok
+test_approval_requires_a_chosen_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approval_requires_a_chosen_seal) ... ok
+test_approved_department_cannot_change_its_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_approved_department_cannot_change_its_seal) ... ok
+test_bulk_actions_reject_invalid_ids_and_immutable_logs (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_actions_reject_invalid_ids_and_immutable_logs) ... ok
+test_bulk_approvals_are_atomic_on_invalid_department_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_approvals_are_atomic_on_invalid_department_seal) ... ok
+test_bulk_certificate_delete_is_archival_and_owner_cannot_do_it (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_certificate_delete_is_archival_and_owner_cannot_do_it) ... ok
+test_bulk_delete_accounts_cannot_delete_current_user (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_accounts_cannot_delete_current_user) ... ok
+test_bulk_delete_rolls_back_when_one_record_is_outside_scope (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_rolls_back_when_one_record_is_outside_scope) ... ok
+test_bulk_delete_running_batch_rolls_back_other_deletes (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_delete_running_batch_rolls_back_other_deletes) ... ok
+test_bulk_return_merges_same_batch (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_return_merges_same_batch) ... ok
+test_bulk_roster_delete_creates_one_revision (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_bulk_roster_delete_creates_one_revision) ... ok
+test_certificate_tree_and_children_stay_scoped_and_paginated (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_certificate_tree_and_children_stay_scoped_and_paginated) ... ok
+test_certificate_tree_searches_batch_name (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_certificate_tree_searches_batch_name) ... ok
+test_cross_department_and_owner_seal_changes_rejected (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_cross_department_and_owner_seal_changes_rejected) ... ok
+test_missing_seal_file_returns_actionable_error_and_rolls_back (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_missing_seal_file_returns_actionable_error_and_rolls_back) ... ok
+test_new_workflow_queues_only_after_all_departments_choose_and_approve (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_new_workflow_queues_only_after_all_departments_choose_and_approve) ... ok
+test_owner_cannot_supply_seal_version (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_owner_cannot_supply_seal_version) ... ok
+test_owner_creates_pending_departments_without_seal_access (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_owner_creates_pending_departments_without_seal_access) ... ok
+test_partial_approval_and_seal_choice_update_other_departments_live_revision (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_partial_approval_and_seal_choice_update_other_departments_live_revision) ... ok
+test_pending_submission_has_valid_integrity (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_pending_submission_has_valid_integrity) ... ok
+test_return_without_seal_and_problem_row_annotations (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_return_without_seal_and_problem_row_annotations) ... ok
+test_seal_choice_invalidates_prepared_preview (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_seal_choice_invalidates_prepared_preview) ... ok
+test_selecting_seal_is_delegated_and_reseals_only_verified_data (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_selecting_seal_is_delegated_and_reseals_only_verified_data) ... ok
+test_stale_seal_choice_is_rejected (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_stale_seal_choice_is_rejected) ... ok
+test_tampering_cannot_be_legitimized_by_choosing_a_seal (awards.test_approval_archive_bulk.ApprovalArchiveBulkTests.test_tampering_cannot_be_legitimized_by_choosing_a_seal) ... ok
+test_account_delete_hides_and_disables_without_losing_authorship (awards.test_management_security.ManagementSecurityTests.test_account_delete_hides_and_disables_without_losing_authorship) ... ok
+test_account_management_scoped_to_creator (awards.test_management_security.ManagementSecurityTests.test_account_management_scoped_to_creator) ... ok
+test_archiving_never_mutates_issued_original (awards.test_management_security.ManagementSecurityTests.test_archiving_never_mutates_issued_original) ... ok
+test_asgi_download_uses_bounded_async_chunks (awards.test_management_security.ManagementSecurityTests.test_asgi_download_uses_bounded_async_chunks) ... ok
+test_audit_logs_cannot_be_modified_or_deleted (awards.test_management_security.ManagementSecurityTests.test_audit_logs_cannot_be_modified_or_deleted) ... ok
+test_authorized_cleanup_preserves_template_and_materials (awards.test_management_security.ManagementSecurityTests.test_authorized_cleanup_preserves_template_and_materials) ... ok
+test_award_tamper_blocks_approval (awards.test_management_security.ManagementSecurityTests.test_award_tamper_blocks_approval) ... ok
+test_certificate_file_tamper_blocks_download (awards.test_management_security.ManagementSecurityTests.test_certificate_file_tamper_blocks_download) ... ok
+test_corrupt_native_images_are_rejected_before_rendering (awards.test_management_security.ManagementSecurityTests.test_corrupt_native_images_are_rejected_before_rendering) ... ok
+test_frozen_template_tamper_is_detected (awards.test_management_security.ManagementSecurityTests.test_frozen_template_tamper_is_detected) ... ok
+test_generation_retry_requires_complete_unmodified_approval (awards.test_management_security.ManagementSecurityTests.test_generation_retry_requires_complete_unmodified_approval) ... ok
+test_historical_certificate_keeps_frozen_competition_name (awards.test_management_security.ManagementSecurityTests.test_historical_certificate_keeps_frozen_competition_name) ... ok
+test_login_rejects_missing_csrf_but_accepts_valid_same_origin_token (awards.test_management_security.ManagementSecurityTests.test_login_rejects_missing_csrf_but_accepts_valid_same_origin_token) ... ok
+test_malformed_public_inputs_are_validation_errors (awards.test_management_security.ManagementSecurityTests.test_malformed_public_inputs_are_validation_errors) ... ok
+test_notification_mutations_only_affect_current_user (awards.test_management_security.ManagementSecurityTests.test_notification_mutations_only_affect_current_user) ... ok
+test_office_import_rejects_external_links_macros_and_zip_bombs (awards.test_management_security.ManagementSecurityTests.test_office_import_rejects_external_links_macros_and_zip_bombs) ... ok
+test_pptist_sanitizes_html_and_preserves_indent_and_spaces (awards.test_management_security.ManagementSecurityTests.test_pptist_sanitizes_html_and_preserves_indent_and_spaces) ... ok
+test_read_receipt_is_persisted_idempotently_and_reflected_in_stream (awards.test_management_security.ManagementSecurityTests.test_read_receipt_is_persisted_idempotently_and_reflected_in_stream) ... ok
+test_realtime_snapshot_is_private_and_respects_disabled_accounts (awards.test_management_security.ManagementSecurityTests.test_realtime_snapshot_is_private_and_respects_disabled_accounts) ... ok
+test_rows_and_excel_are_frozen_during_review (awards.test_management_security.ManagementSecurityTests.test_rows_and_excel_are_frozen_during_review) ... ok
+test_rows_crud_and_optimistic_version (awards.test_management_security.ManagementSecurityTests.test_rows_crud_and_optimistic_version) ... ok
+test_seal_file_tamper_blocks_submission (awards.test_management_security.ManagementSecurityTests.test_seal_file_tamper_blocks_submission) ... ok
+test_template_version_prevents_overwriting_other_editor (awards.test_management_security.ManagementSecurityTests.test_template_version_prevents_overwriting_other_editor) ... ok
+test_unknown_import_and_office_header_rejected (awards.test_management_security.ManagementSecurityTests.test_unknown_import_and_office_header_rejected) ... ok
+test_valid_pptx_accepts_empty_embeddings_directory (awards.test_management_security.ManagementSecurityTests.test_valid_pptx_accepts_empty_embeddings_directory) ... ok
+test_accel_redirect_is_protected_and_does_not_read_file_into_response (awards.test_performance_permissions.PerformancePermissionTests.test_accel_redirect_is_protected_and_does_not_read_file_into_response) ... ok
+test_archive_formats_and_expired_leases_are_bounded (awards.test_performance_permissions.PerformancePermissionTests.test_archive_formats_and_expired_leases_are_bounded) ... ok
+test_archive_is_queued_deduplicated_persisted_and_authorized (awards.test_performance_permissions.PerformancePermissionTests.test_archive_is_queued_deduplicated_persisted_and_authorized) ... ok
+test_archive_query_never_selects_template_snapshot_or_related_objects (awards.test_performance_permissions.PerformancePermissionTests.test_archive_query_never_selects_template_snapshot_or_related_objects) ... ok
+test_batch_scope_and_notifications_rechecked_after_department_role_changes (awards.test_performance_permissions.PerformancePermissionTests.test_batch_scope_and_notifications_rechecked_after_department_role_changes) ... ok
+test_historical_approval_does_not_grant_current_competition_write_permission (awards.test_performance_permissions.PerformancePermissionTests.test_historical_approval_does_not_grant_current_competition_write_permission) ... ok
+test_large_page_image_has_bounded_pixels (awards.test_performance_permissions.PerformancePermissionTests.test_large_page_image_has_bounded_pixels) ... ok
+test_legacy_revocation_notice_is_scoped_after_department_change (awards.test_performance_permissions.PerformancePermissionTests.test_legacy_revocation_notice_is_scoped_after_department_change) ... ok
+test_modified_source_is_not_packaged_and_old_package_is_invalidated (awards.test_performance_permissions.PerformancePermissionTests.test_modified_source_is_not_packaged_and_old_package_is_invalidated) ... ok
+test_owner_cannot_access_seal_or_font_management (awards.test_performance_permissions.PerformancePermissionTests.test_owner_cannot_access_seal_or_font_management) ... ok
+test_permissions_follow_frozen_approval_not_current_competition_departments (awards.test_performance_permissions.PerformancePermissionTests.test_permissions_follow_frozen_approval_not_current_competition_departments) ... ok
+test_preview_is_queued_without_rendering_in_the_api_process (awards.test_performance_permissions.PerformancePermissionTests.test_preview_is_queued_without_rendering_in_the_api_process) ... ok
+test_template_list_is_metadata_only_and_batch_detail_is_paginated (awards.test_performance_permissions.PerformancePermissionTests.test_template_list_is_metadata_only_and_batch_detail_is_paginated) ... ok
+test_worker_spawn_generates_and_resumes_png_without_rewriting_signed_pdf (awards.test_performance_permissions.PerformancePermissionTests.test_worker_spawn_generates_and_resumes_png_without_rewriting_signed_pdf) ... Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Validation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+ok
+test_admin_batch_creation_freezes_selected_template_seals_and_formats (awards.tests.WorkflowTests.test_admin_batch_creation_freezes_selected_template_seals_and_formats) ... ok
+test_admin_can_link_existing_owner_without_resetting_password (awards.tests.WorkflowTests.test_admin_can_link_existing_owner_without_resetting_password) ... ok
+test_audit_details_are_scoped_to_actor_for_department_admin (awards.tests.WorkflowTests.test_audit_details_are_scoped_to_actor_for_department_admin) ... ok
+test_batch_detail_action_returns_awards_and_approvals (awards.tests.WorkflowTests.test_batch_detail_action_returns_awards_and_approvals) ... ok
+test_batch_preview_uses_frozen_configuration_without_issuing (awards.tests.WorkflowTests.test_batch_preview_uses_frozen_configuration_without_issuing) ... ok
+test_certificate_archive_is_paginated_and_searchable (awards.tests.WorkflowTests.test_certificate_archive_is_paginated_and_searchable) ... ok
+test_deactivated_competition_cannot_finish_pending_approval (awards.tests.WorkflowTests.test_deactivated_competition_cannot_finish_pending_approval) ... ok
+test_department_admin_can_create_owner_but_not_admin (awards.tests.WorkflowTests.test_department_admin_can_create_owner_but_not_admin) ... ok
+test_department_admin_cannot_create_or_modify_department (awards.tests.WorkflowTests.test_department_admin_cannot_create_or_modify_department) ... ok
+test_department_admin_cannot_grant_an_existing_account_admin_role (awards.tests.WorkflowTests.test_department_admin_cannot_grant_an_existing_account_admin_role) ... ok
+test_department_admin_submitter_can_approve (awards.tests.WorkflowTests.test_department_admin_submitter_can_approve) ... ok
+test_emergency_issue_requires_superuser_password_and_reason (awards.tests.WorkflowTests.test_emergency_issue_requires_superuser_password_and_reason) ... ok
+test_emergency_void_requires_superuser_password_and_reason (awards.tests.WorkflowTests.test_emergency_void_requires_superuser_password_and_reason) ... ok
+test_excel_template_roundtrip (awards.tests.WorkflowTests.test_excel_template_roundtrip) ... ok
+test_font_catalog_serves_exact_font_bytes_with_authentication (awards.tests.WorkflowTests.test_font_catalog_serves_exact_font_bytes_with_authentication) ... 7 verified fonts available in the media volume
+ok
+test_font_import_requires_login_and_license_confirmation (awards.tests.WorkflowTests.test_font_import_requires_login_and_license_confirmation) ... ok
+test_independent_owner_can_choose_departments_and_create_competition (awards.tests.WorkflowTests.test_independent_owner_can_choose_departments_and_create_competition) ... ok
+test_issued_batch_cannot_be_submitted_again (awards.tests.WorkflowTests.test_issued_batch_cannot_be_submitted_again) ... ok
+test_login_locks_after_five_failures (awards.tests.WorkflowTests.test_login_locks_after_five_failures) ... ok
+test_long_text_fits_or_raises_instead_of_truncating (awards.tests.WorkflowTests.test_long_text_fits_or_raises_instead_of_truncating) ... ok
+test_non_superuser_cannot_change_competition_active_flag (awards.tests.WorkflowTests.test_non_superuser_cannot_change_competition_active_flag) ... ok
+test_numbers_are_unique (awards.tests.WorkflowTests.test_numbers_are_unique) ... ok
+test_only_superuser_can_manage_font_without_changing_historical_bytes (awards.tests.WorkflowTests.test_only_superuser_can_manage_font_without_changing_historical_bytes) ... ok
+test_outsider_cannot_create_or_change_department_resources (awards.tests.WorkflowTests.test_outsider_cannot_create_or_change_department_resources) ... ok
+test_owner_cannot_browse_seal_metadata (awards.tests.WorkflowTests.test_owner_cannot_browse_seal_metadata) ... ok
+test_owner_creation_has_no_department_and_duplicate_is_rejected (awards.tests.WorkflowTests.test_owner_creation_has_no_department_and_duplicate_is_rejected) ... ok
+test_owner_metadata_access_does_not_allow_seal_changes (awards.tests.WorkflowTests.test_owner_metadata_access_does_not_allow_seal_changes) ... ok
+test_protected_download_rejects_outsider (awards.tests.WorkflowTests.test_protected_download_rejects_outsider) ... ok
+test_public_settings_are_superuser_managed (awards.tests.WorkflowTests.test_public_settings_are_superuser_managed) ... ok
+test_render_has_two_incremental_signatures (awards.tests.WorkflowTests.test_render_has_two_incremental_signatures) ... Validation error [cert context: Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门A 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Validation error [cert context: Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN]: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 31, in find_valid_path
+    async for candidate_path in paths:
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/registry.py", line 689, in __anext__
+    raise PathBuildingError(
+pyhanko_certvalidator.errors.PathBuildingError: Unable to build a validation path for the certificate "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" - no issuer matching "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN" was found
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 1182, in handle_certvalidator_errors
+    return CertvalidatorOperationResult(success_result=await coro)
+                                                       ^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko/sign/validation/generic_cms.py", line 605, in _check
+    path: ValidationPath = await find_valid_path(
+                           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/pyhanko_certvalidator/__init__.py", line 41, in find_valid_path
+    raise InvalidCertificateError(
+pyhanko_certvalidator.errors.InvalidCertificateError: The X.509 certificate provided is self-signed - "Common Name: 测试部门B 测试签名, Organization: AwardCollection TEST ONLY, Country: CN"
+ok
+test_return_and_revise_invalidates_old_approval (awards.tests.WorkflowTests.test_return_and_revise_invalidates_old_approval) ... ok
+test_revision_conflict_rejected (awards.tests.WorkflowTests.test_revision_conflict_rejected) ... ok
+test_revocation_all_departments_voids_certificate (awards.tests.WorkflowTests.test_revocation_all_departments_voids_certificate) ... ok
+test_revocation_partial_approval_keeps_certificate_active (awards.tests.WorkflowTests.test_revocation_partial_approval_keeps_certificate_active) ... ok
+test_revocation_rejection_keeps_certificate_active (awards.tests.WorkflowTests.test_revocation_rejection_keeps_certificate_active) ... ok
+test_seal_preview_is_authorized_and_can_choose_version (awards.tests.WorkflowTests.test_seal_preview_is_authorized_and_can_choose_version) ... ok
+test_shared_layout_falls_back_for_mixed_english_and_chinese (awards.tests.WorkflowTests.test_shared_layout_falls_back_for_mixed_english_and_chinese) ... ok
+test_styled_text_and_shapes_are_rendered_and_remain_extractable (awards.tests.WorkflowTests.test_styled_text_and_shapes_are_rendered_and_remain_extractable) ... ok
+test_superuser_can_approve_own_submission (awards.tests.WorkflowTests.test_superuser_can_approve_own_submission) ... ok
+test_superuser_can_create_department (awards.tests.WorkflowTests.test_superuser_can_create_department) ... ok
+test_superuser_can_deactivate_competition_without_revoking_history (awards.tests.WorkflowTests.test_superuser_can_deactivate_competition_without_revoking_history) ... ok
+test_superuser_inherits_department_approval_without_memberships (awards.tests.WorkflowTests.test_superuser_inherits_department_approval_without_memberships) ... ok
+test_superuser_inherits_revocation_approval (awards.tests.WorkflowTests.test_superuser_inherits_revocation_approval) ... ok
+test_template_background_and_seal_change_rendered_output (awards.tests.WorkflowTests.test_template_background_and_seal_change_rendered_output) ... ok
+test_template_layout_endpoint_and_font_selection (awards.tests.WorkflowTests.test_template_layout_endpoint_and_font_selection) ... ok
+test_template_rejects_invalid_shapes_and_non_boolean_text_styles (awards.tests.WorkflowTests.test_template_rejects_invalid_shapes_and_non_boolean_text_styles) ... ok
+test_template_thumbnail_is_real_png_and_certificate_detail_is_complete (awards.tests.WorkflowTests.test_template_thumbnail_is_real_png_and_certificate_detail_is_complete) ... ok
+test_two_department_approval_creates_one_task (awards.tests.WorkflowTests.test_two_department_approval_creates_one_task) ... ok
+test_unpublished_certificate_cannot_be_downloaded_directly (awards.tests.WorkflowTests.test_unpublished_certificate_cannot_be_downloaded_directly) ... ok
+test_verification_challenge_is_single_use (awards.tests.WorkflowTests.test_verification_challenge_is_single_use) ... ok
+
+----------------------------------------------------------------------
+Ran 116 tests in 43.421s
+
+OK
+Destroying test database for alias 'default' ('test_awardcollection_v7_08255f54')...

@@ -1,0 +1,77 @@
+{
+  "certificates": 300,
+  "published": 300,
+  "template_versions": 8,
+  "active_users": [
+    14,
+    13,
+    1
+  ],
+  "running_generation": 0,
+  "batches": [
+    {
+      "pk": 10,
+      "status": "issued"
+    },
+    {
+      "pk": 11,
+      "status": "review"
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+  },
+  "network": {
+    "route_to_client": "192.168.31.158 dev eno1 src 192.168.31.12 uid 0 \n    cache",
+    "interface": "eno1",
+    "speed_mbps": 100,
+    "duplex": "full"
+  },
+  "containers": {
+    "api": {
+      "created": "2026-11-07T08:22:15.721013434Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    },
+    "worker": {
+      "created": "2026-11-07T08:22:51.011798155Z",
+      "running": true,
+      "oom_killed": false,
+      "health": null,
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    },
+    "web": {
+      "created": "2026-11-07T08:43:55.404385134Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": "49418cf5fce37605494f822d9ea9187f6332b858"
+    },
+    "db": {
+      "created": "2026-11-05T19:20:01.632110387Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": null
+    },
+    "converter": {
+      "created": "2026-11-07T08:22:15.49864218Z",
+      "running": true,
+      "oom_killed": false,
+      "health": null,
+      "revision": "6e722dc2f07b78fc8126a0686eb82ea8db677d3e"
+    }
+  },
+  "api_memory_events": {
+    "low": "0",
+    "high": "0",
+    "max": "1734",
+    "oom": "0",
+    "oom_kill": "0",
+    "oom_group_kill": "0"
+  }
+}

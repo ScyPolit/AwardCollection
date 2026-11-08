@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "revision": "405309b81871c06a65d2ecb17de59c03085c50d5",
+  "test_database": "test_awardcollection_v7_08255f54",
+  "source_directory": "/opt/awardcollection-v1-test/qa/v7-regression-89eaca6d",
+  "production_media_mounted": false,
+  "test_only_fast_hasher": true
+}

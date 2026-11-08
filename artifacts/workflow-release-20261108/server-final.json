@@ -1,0 +1,86 @@
+{
+  "certificates": 300,
+  "published": 300,
+  "template_versions": 8,
+  "active_users": [
+    14,
+    13,
+    1
+  ],
+  "running_generation": 0,
+  "batches": [
+    {
+      "pk": 10,
+      "status": "issued"
+    },
+    {
+      "pk": 11,
+      "status": "review"
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "405309b81871c06a65d2ecb17de59c03085c50d5"
+  },
+  "network": {
+    "route_to_client": "192.168.31.158 dev eno1 src 192.168.31.12 uid 0 \n    cache",
+    "interface": "eno1",
+    "speed_mbps": 100,
+    "duplex": "full"
+  },
+  "containers": {
+    "api": {
+      "created": "2026-11-08T05:31:27.757117578Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": "405309b81871c06a65d2ecb17de59c03085c50d5"
+    },
+    "worker": {
+      "created": "2026-11-08T05:32:01.928936441Z",
+      "running": true,
+      "oom_killed": false,
+      "health": null,
+      "revision": "405309b81871c06a65d2ecb17de59c03085c50d5"
+    },
+    "web": {
+      "created": "2026-11-08T05:32:01.885457205Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": "405309b81871c06a65d2ecb17de59c03085c50d5"
+    },
+    "db": {
+      "created": "2026-11-05T19:20:01.632110387Z",
+      "running": true,
+      "oom_killed": false,
+      "health": "healthy",
+      "revision": null
+    },
+    "converter": {
+      "created": "2026-11-08T05:31:27.56381294Z",
+      "running": true,
+      "oom_killed": false,
+      "health": null,
+      "revision": "405309b81871c06a65d2ecb17de59c03085c50d5"
+    }
+  },
+  "api_memory_events": {
+    "low": "0",
+    "high": "0",
+    "max": "0",
+    "oom": "0",
+    "oom_kill": "0",
+    "oom_group_kill": "0"
+  },
+  "legacy_integrity_verified": 2,
+  "migration_0013": true,
+  "download_limit_rate_zero": true,
+  "tcp_nopush": true,
+  "protected_internal_http_status": 404,
+  "backup_verified": true,
+  "original_content_preserved_by_release": true,
+  "recent_api_sigkill_or_oom": 0,
+  "recent_web_502": 0
+}
