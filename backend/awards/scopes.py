@@ -16,7 +16,7 @@ def accessible_templates(user):
     if user.is_superuser:
         return qs
     return qs.filter(
-        Q(published=True) | Q(created_by=user)
+        Q(published=True) | Q(scope=Template.Scope.PERSONAL, created_by=user)
         | Q(scope=Template.Scope.DEPARTMENT, department_id__in=managed_departments(user))
     )
 

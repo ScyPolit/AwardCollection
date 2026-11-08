@@ -65,3 +65,19 @@ class TemplateAccessTests(TestCase):
         copy.refresh_from_db()
         self.assertEqual(copy.scope, "personal")
         self.assertEqual(copy.department_id, self.departments[0].pk)
+
+    def test_department_creator_loses_access_when_department_role_is_revoked(self):
+        from .models import DepartmentMembership
+        template = self.version.template_version.template
+        template.published = False
+        template.save()
+        membership = DepartmentMembership.objects.get(user=self.admin_a, department=self.departments[0])
+        membership.active = False
+        membership.save()
+        DepartmentMembership.objects.create(user=self.admin_a, department=self.departments[1], role="admin")
+        actor = self.client_as(self.admin_a)
+        self.assertEqual(actor.get(f"/api/v1/templates/{template.pk}/").status_code, 404)
+        template.published = True
+        template.save()
+        self.assertFalse(actor.get(f"/api/v1/templates/{template.pk}/").data["can_manage"])
+        self.assertEqual(actor.post(f"/api/v1/templates/{template.pk}/save_version/", {"canvas": {}}, format="json").status_code, 403)
