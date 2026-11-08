@@ -1,0 +1,32 @@
+{
+  "application_revision": "ebc61342a10cd1b8b1b782ca9d5c456435c835d4",
+  "existing_session_after_restart": 200,
+  "existing_session_survives_frontend_reload": true,
+  "public_verification": {
+    "captcha": false,
+    "not_found_watermark": true,
+    "mobile_width": 390,
+    "horizontal_overflow": false
+  },
+  "root_settings_fields": 12,
+  "font_priority": [
+    "华文行楷",
+    "宋体"
+  ],
+  "only_selectable_template": "标准模板",
+  "latest_template_version_preserved": 21,
+  "approved_tab": true,
+  "withdraw_buttons_visible": 4,
+  "production_certificate_mutation_tests": false,
+  "raw_status_codes_visible": false,
+  "upstream_brand_links": 0,
+  "browser_errors": 0,
+  "archive_download": {
+    "head_status": 200,
+    "bytes": 841209352,
+    "range_status": 206,
+    "content_range": "bytes 0-31/841209352",
+    "received_bytes": 32,
+    "whole_zip_loaded_into_browser_memory": false
+  }
+}
