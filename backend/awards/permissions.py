@@ -22,9 +22,9 @@ def can_edit_templates(user):
 def can_manage_template(user, template):
     if user.is_superuser:
         return True
-    if template.created_by_id == user.pk:
-        return can_edit_templates(user)
-    return template.scope == "department" and is_department_admin(user, template.department_id)
+    if template.scope == "personal":
+        return template.created_by_id == user.pk and can_edit_templates(user)
+    return is_department_admin(user, template.department_id)
 
 
 def grant_owner(user):
