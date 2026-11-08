@@ -65,6 +65,8 @@ export type Template = {
   id: number;
   can_edit?: boolean;
   can_manage?: boolean;
+  scope: "department" | "personal";
+  is_mine: boolean;
   name: string;
   department: number;
   department_name: string;
@@ -168,7 +170,7 @@ export const batchDetail = (id: number, page = 1) =>
   });
 export const submitBatch = (id: number, expectedVersion?: number) =>
   http.post<any, object>(`/api/v1/batches/${id}/submit/`, {
-    data: {expected_version:expectedVersion},
+    data: { expected_version: expectedVersion },
     timeout: 120000
   });
 export const batchProgress = (id: number) =>
