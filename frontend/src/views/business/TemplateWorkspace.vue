@@ -39,15 +39,17 @@ const templates = ref<Template[]>([]),
 const selected = computed(() =>
   templates.value.find(t => t.id === selectedId.value)
 );
-const canManage = computed(
-  () =>
-    isAdmin.value &&
-    (isSuper.value ||
-      user.value.managedDepartmentIds.includes(selected.value?.department || 0))
+const canManage = computed(() => !!selected.value?.can_manage);
+const canEdit = computed(() => !!selected.value?.can_edit);
+const canCreate = computed(
+  () => isAdmin.value || user.value.roles.includes("owner")
 );
 const managed = computed(() =>
   departments.value.filter(
-    d => isSuper.value || user.value.managedDepartmentIds.includes(d.id)
+    d =>
+      isSuper.value ||
+      user.value.roles.includes("owner") ||
+      user.value.managedDepartmentIds.includes(d.id)
   )
 );
 const dirty = ref(false),
@@ -90,7 +92,7 @@ function init() {
   send("award-init", {
     canvas: activeTemplate.value.latest_version?.canvas || {},
     title: selected.value.name,
-    readonly: !canManage.value,
+    readonly: !canEdit.value,
     dark: document.documentElement.classList.contains("dark"),
     context: { departments: departments.value, fonts: fonts.value }
   });
@@ -167,12 +169,7 @@ async function receive(event: MessageEvent) {
     ElMessage.error(data);
   }
   if (type === "award-preview") preview();
-  if (
-    type === "award-save" &&
-    canManage.value &&
-    selected.value &&
-    !busy.value
-  ) {
+  if (type === "award-save" && canEdit.value && selected.value && !busy.value) {
     busy.value = true;
     try {
       await saveTemplateVersion(
@@ -181,7 +178,7 @@ async function receive(event: MessageEvent) {
         selected.value.latest_version?.number || 0
       );
       await load();
-      ElMessage.success("已保存新版本，当前页面将用于签发");
+      ElMessage.success("模板已保存，将用于后续新建批次");
     } finally {
       busy.value = false;
     }
@@ -321,7 +318,7 @@ onMounted(async () => {
   });
   await load();
 });
-watch(canManage, init);
+watch(canEdit, init);
 onBeforeUnmount(() => {
   window.removeEventListener("message", receive);
   window.removeEventListener("beforeunload", unload);
@@ -355,15 +352,15 @@ onBeforeUnmount(() => {
       <el-button @click="router.push('/business/template-library')"
         >可视化模板库</el-button
       >
-      <el-button v-if="isAdmin" @click="open()">新建</el-button
-      ><el-button v-if="isAdmin && selected" @click="open(true)"
+      <el-button v-if="canCreate" @click="open()">新建</el-button
+      ><el-button v-if="canCreate && selected" @click="open(true)"
         >复制</el-button
       >
       <el-button v-if="canManage" @click="rename">修改信息</el-button
       ><el-button v-if="canManage" type="danger" plain @click="remove"
         >删除</el-button
       >
-      <el-button v-if="canManage" :loading="busy" @click="importer?.click()"
+      <el-button v-if="canEdit" :loading="busy" @click="importer?.click()"
         >导入模板</el-button
       ><input
         ref="importer"
@@ -375,16 +372,14 @@ onBeforeUnmount(() => {
       <el-button @click="fontDialog = true">导入字体</el-button
       ><el-button v-if="selected" @click="preview">签发预览</el-button>
       <el-button
-        v-if="canManage"
+        v-if="canEdit"
         type="primary"
         :loading="busy"
         @click="send('award-save-request')"
         >保存当前页为签发模板</el-button
       >
       <el-tag v-if="dirty" type="warning">未保存</el-tag
-      ><el-tag v-else-if="selected"
-        >版本 {{ selected.latest_version?.number }}</el-tag
-      >
+      ><el-tag v-else-if="selected">已保存</el-tag>
     </div>
     <el-alert
       title="PPTX、PPT、ODP 可编辑导入；PDF、图片作为页面背景。请检查字体与排版，使用“证书字段”绑定获奖数据，并选择要签发的一页后保存。"
@@ -415,7 +410,7 @@ onBeforeUnmount(() => {
         ref="frame"
         class="ppt-frame"
         src="/ppt-editor/"
-        title="证书 PPT 模板编辑器"
+        title="证书模板编辑器"
         @load="send('award-handshake')"
         sandbox="allow-scripts allow-same-origin allow-downloads allow-modals allow-popups"
       />

@@ -6,7 +6,8 @@ const listTask = useModuleTask(),
   listLoading = listTask.loading,
   listError = listTask.error;
 
-import BatchDownload from "@/components/BatchDownload.vue";
+import BatchWorkflow from "@/components/BatchWorkflow.vue";
+import { statusLabel } from "@/utils/display";
 import ManagementActions from "@/components/ManagementActions.vue";
 import { useLiveStore } from "@/store/modules/live";
 import { useBusinessAccess } from "@/utils/businessAccess";
@@ -19,7 +20,6 @@ import RecordDetail from "@/components/RecordDetail.vue";
 import { ElMessage, type UploadFile } from "element-plus";
 import {
   batchDetail,
-  batchProgress,
   createBatch,
   importAwards,
   listBatches,
@@ -62,6 +62,13 @@ const rows = ref<Batch[]>([]),
   selected = ref<any>(null),
   uploading = ref(false),
   actionBusy = ref(false);
+const canEditRoster = computed(
+  () =>
+    !!selected.value?.can_manage &&
+    ["draft", "returned"].includes(selected.value.batch.status) &&
+    !uploading.value &&
+    !actionBusy.value
+);
 const job = computed(() =>
   selected.value
     ? live.jobs.find(j => j.batch_id === selected.value.batch.id)
@@ -79,6 +86,7 @@ const rowForm = reactive({
   note: ""
 });
 function editRow(row?: any) {
+  if (!canEditRoster.value) return;
   rowSource.value = row?.source_row;
   Object.assign(rowForm, {
     members: row?.members?.join("、") || "",
@@ -92,40 +100,57 @@ function editRow(row?: any) {
   rowDialog.value = true;
 }
 async function saveRow() {
-  await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
-    data: {
-      operation: rowSource.value ? "update" : "create",
-      source_row: rowSource.value,
-      expected_version: selected.value.batch.current_version,
-      row: {
-        ...rowForm,
-        members: rowForm.members
-          .split(/[、，,\n]/)
-          .map(s => s.trim())
-          .filter(Boolean),
-        teachers: rowForm.teachers
-          .split(/[、，,\n]/)
-          .map(s => s.trim())
-          .filter(Boolean)
+  if (!canEditRoster.value) return;
+  actionBusy.value = true;
+  try {
+    await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
+      data: {
+        operation: rowSource.value ? "update" : "create",
+        source_row: rowSource.value,
+        expected_version: selected.value.batch.current_version,
+        row: {
+          ...rowForm,
+          members: rowForm.members
+            .split(/[、，,\n]/)
+            .map(s => s.trim())
+            .filter(Boolean),
+          teachers: rowForm.teachers
+            .split(/[、，,\n]/)
+            .map(s => s.trim())
+            .filter(Boolean)
+        }
       }
-    }
-  });
-  rowDialog.value = false;
-  await open(selected.value.batch);
-  await load();
+    });
+    rowDialog.value = false;
+    await open(selected.value.batch);
+    await load();
+  } finally {
+    actionBusy.value = false;
+  }
 }
 async function deleteRow(row: any) {
+  if (!canEditRoster.value) return;
   const { ElMessageBox } = await import("element-plus");
-  await ElMessageBox.confirm("确认删除此获奖记录？", "删除名单行");
-  await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
-    data: {
-      operation: "delete",
-      source_row: row.source_row,
-      expected_version: selected.value.batch.current_version
-    }
-  });
-  await open(selected.value.batch);
-  await load();
+  try {
+    await ElMessageBox.confirm("确认删除此获奖记录？", "删除名单行");
+  } catch {
+    return;
+  }
+  if (!canEditRoster.value) return;
+  actionBusy.value = true;
+  try {
+    await http.post(`/api/v1/batches/${selected.value.batch.id}/rows/`, {
+      data: {
+        operation: "delete",
+        source_row: row.source_row,
+        expected_version: selected.value.batch.current_version
+      }
+    });
+    await open(selected.value.batch);
+    await load();
+  } finally {
+    actionBusy.value = false;
+  }
 }
 async function deleteAwardSelection() {
   const { ElMessageBox } = await import("element-plus");
@@ -255,7 +280,7 @@ async function changeAwardPage(page: number) {
   } catch {}
 }
 async function upload(file: UploadFile) {
-  if (!selected.value || !file.raw) return;
+  if (!selected.value || !file.raw || !canEditRoster.value) return;
   uploading.value = true;
   try {
     await importAwards(
@@ -274,9 +299,14 @@ async function upload(file: UploadFile) {
   }
 }
 async function submit() {
+  if (!canEditRoster.value) return;
   actionBusy.value = true;
   try {
-    await submitBatch(selected.value.batch.id);
+    await submitBatch(
+      selected.value.batch.id,
+      selected.value.batch.current_version
+    );
+    selected.value.batch.status = "review";
     ElMessage.success("已提交全部部门并行会签");
     selected.value = await batchDetail(
       selected.value.batch.id,
@@ -297,16 +327,6 @@ async function retryGeneration() {
 async function progress() {
   selected.value = await batchDetail(selected.value.batch.id, awardPage.value);
   await load();
-  const task = await batchProgress(selected.value.batch.id);
-  if (!task) return ElMessage.info("尚未创建生成任务");
-  awardData.value = {
-    任务状态: task.status,
-    已处理: task.processed,
-    总数: task.total,
-    尝试次数: task.attempts,
-    错误详情: task.error || "无"
-  };
-  awardDetail.value = true;
 }
 
 onMounted(async () => {
@@ -377,10 +397,11 @@ onMounted(async () => {
             >{{ s.row.approval_summary.approved }} /
             {{ s.row.approval_summary.total }}</template
           ></el-table-column
-        ><el-table-column
-          prop="status"
-          label="状态"
-          width="110" /><el-table-column label="操作" width="230"
+        ><el-table-column prop="status" label="状态" width="110"
+          ><template #default="s">{{
+            statusLabel(s.row.status)
+          }}</template></el-table-column
+        ><el-table-column label="操作" width="230"
           ><template #default="s"
             ><el-button link type="primary" @click="open(s.row as Batch)"
               >查看</el-button
@@ -415,7 +436,7 @@ onMounted(async () => {
             ><el-option
               v-for="t in templates"
               :key="t.latest_version?.id"
-              :label="`${t.name} · v${t.latest_version?.number}`"
+              :label="t.name"
               :value="t.latest_version?.id"
               :disabled="!t.latest_version" /></el-select></el-form-item
         ><el-form-item label="输出格式"
@@ -478,7 +499,7 @@ onMounted(async () => {
             selected.batch.name
           }}</el-descriptions-item
           ><el-descriptions-item label="状态">{{
-            selected.batch.status
+            statusLabel(selected.batch.status)
           }}</el-descriptions-item
           ><el-descriptions-item label="版本"
             >v{{ selected.batch.current_version }}</el-descriptions-item
@@ -489,42 +510,11 @@ onMounted(async () => {
             selected.configuration.output_formats.join(" + ").toUpperCase()
           }}</el-descriptions-item></el-descriptions
         >
-        <div v-if="job" class="generation-status">
-          <strong
-            >证书生成：{{
-              job.status === "done"
-                ? "已完成，可下载"
-                : job.status === "failed"
-                  ? "失败，请查看原因"
-                  : job.status === "queued"
-                    ? "排队中"
-                    : "正在生成"
-            }}</strong
-          ><el-progress
-            :percentage="job.percent"
-            :status="
-              job.status === 'done'
-                ? 'success'
-                : job.status === 'failed'
-                  ? 'exception'
-                  : undefined
-            "
-          /><span
-            >{{ job.processed }} / {{ job.total }} 份 ·
-            {{
-              job.status === "done"
-                ? "全部文件已发布"
-                : job.eta_seconds
-                  ? `预计还需 ${Math.ceil(job.eta_seconds / 60)} 分钟`
-                  : "剩余时间估算中"
-            }}（估算会随进度更新）</span
-          ><el-alert
-            v-if="job.error"
-            :title="job.error"
-            type="error"
-            :closable="false"
-          />
-        </div>
+        <BatchWorkflow
+          :batch="selected.batch"
+          :job="job"
+          :approvals="selected.approvals"
+          :submitting="actionBusy" />
         <div class="actions">
           <el-button
             v-if="job?.status === 'failed'"
@@ -533,17 +523,18 @@ onMounted(async () => {
             >重试生成</el-button
           >
           <el-button
-            v-if="['draft', 'returned'].includes(selected.batch.status)"
+            v-if="selected.can_manage"
+            :disabled="!canEditRoster"
             @click="editRow()"
             >新增获奖记录</el-button
           >
           <el-upload
-            :disabled="!['draft', 'returned'].includes(selected.batch.status)"
+            :disabled="!canEditRoster"
             :auto-upload="false"
             :show-file-list="false"
             accept=".xlsx"
             :on-change="upload"
-            ><el-button :loading="uploading"
+            ><el-button :disabled="!canEditRoster" :loading="uploading"
               >导入 / 修订 Excel</el-button
             ></el-upload
           ><el-button
@@ -554,18 +545,13 @@ onMounted(async () => {
             >预览首条名单</el-button
           ><el-button
             type="primary"
-            :disabled="
-              !selected.awards.length ||
-              !['draft', 'returned'].includes(selected.batch.status)
-            "
+            :disabled="!selected.awards.length || !canEditRoster"
             @click="submit"
             :loading="actionBusy"
             >提交会签</el-button
-          ><el-button @click="progress">任务进度</el-button>
+          ><el-button @click="progress">刷新进度</el-button>
         </div>
-        <BatchDownload
-          v-if="selected.batch.status === 'issued'"
-          :batch-id="selected.batch.id" />
+
         <p>共 {{ selected.award_count }} 条，点击名单行可查看完整信息</p>
         <BulkActions
           :selected="awardSelection"
@@ -579,7 +565,11 @@ onMounted(async () => {
             "
             type="danger"
             plain
-            :disabled="!awardSelection.length || awardSelection.length > 200"
+            :disabled="
+              !canEditRoster ||
+              !awardSelection.length ||
+              awardSelection.length > 200
+            "
             :loading="actionBusy"
             @click="deleteAwardSelection"
             >批量删除名单</el-button
@@ -618,9 +608,17 @@ onMounted(async () => {
               label="操作"
               width="150"
               ><template #default="s"
-                ><el-button link type="primary" @click.stop="editRow(s.row)"
+                ><el-button
+                  link
+                  type="primary"
+                  :disabled="!canEditRoster"
+                  @click.stop="editRow(s.row)"
                   >修改</el-button
-                ><el-button link type="danger" @click.stop="deleteRow(s.row)"
+                ><el-button
+                  link
+                  type="danger"
+                  :disabled="!canEditRoster"
+                  @click.stop="deleteRow(s.row)"
                   >删除</el-button
                 ></template
               ></el-table-column
@@ -653,7 +651,9 @@ onMounted(async () => {
           ><el-input v-model="rowForm[field.key]" /></el-form-item></el-form
       ><template #footer
         ><el-button @click="rowDialog = false">取消</el-button
-        ><el-button type="primary" @click="saveRow">保存</el-button></template
+        ><el-button type="primary" :disabled="!canEditRoster" @click="saveRow"
+          >保存</el-button
+        ></template
       ></el-dialog
     ><RecordDetail
       v-model="awardDetail"

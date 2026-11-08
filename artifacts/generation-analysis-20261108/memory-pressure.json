@@ -1,0 +1,15 @@
+{
+  "memory_current": 2144792576,
+  "memory_peak": 2147483648,
+  "pressure": "some avg10=0.00 avg60=1.56 avg300=2.27 total=11948567\nfull avg10=0.00 avg60=1.56 avg300=2.27 total=11948567\n",
+  "stat": {
+    "anon": 137138176,
+    "file": 1983012864,
+    "workingset_refault_file": 828540,
+    "pgscan": 1421964,
+    "pgsteal": 1421811,
+    "pgscan_direct": 1421964,
+    "pgsteal_direct": 1421811,
+    "pgmajfault": 0
+  }
+}

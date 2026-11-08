@@ -11,6 +11,7 @@ const listTask = useModuleTask(),
 import { onMounted, ref } from "vue";
 import RecordDetail from "@/components/RecordDetail.vue";
 import { listLogs, logDetail } from "@/api/business";
+import { actionLabel, objectLabel } from "@/utils/display";
 const rows = ref<any[]>([]),
   total = ref(0),
   page = ref(1),
@@ -40,8 +41,8 @@ async function show(row: any) {
           日志编号: log.id,
           时间: log.created_at,
           操作人: log.actor,
-          操作: log.action,
-          对象类型: log.object_type,
+          操作: actionLabel(log.action),
+          对象类型: objectLabel(log.object_type),
           对象编号: log.object_id,
           详细内容: log.detail
         };
@@ -112,11 +113,11 @@ onMounted(load);
           prop="action"
           label="操作"
           min-width="180"
-        /><el-table-column
+        ><template #default="s">{{actionLabel(s.row.action)}}</template></el-table-column><el-table-column
           min-width="160"
           prop="object_type"
           label="对象"
-        /><el-table-column label="操作" width="90"
+        ><template #default="s">{{objectLabel(s.row.object_type)}}</template></el-table-column><el-table-column label="操作" width="90"
           ><template #default="s"
             ><el-button link @click="show(s.row)">查看</el-button></template
           ></el-table-column

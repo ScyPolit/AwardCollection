@@ -1,131 +1,155 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
-import { adminVerify, getChallenge, publicVerify } from "@/api/business";
+import { ref } from "vue";
+import CertificateIcon from "~icons/ep/document-checked";
+import { adminVerify, publicVerify } from "@/api/business";
 import { useRoute } from "vue-router";
-
+import { useBusinessAccess } from "@/utils/businessAccess";
+import VerificationResult from "@/components/VerificationResult.vue";
+import VerificationSettings from "@/components/VerificationSettings.vue";
 const isPublic = useRoute().name === "PublicVerification";
-const form = reactive({ number: "", answer: "" });
-const question = ref("");
-const result = ref<any>(null);
-const loading = ref(false);
-const challengeLoading = ref(false);
-
-async function challenge() {
-  challengeLoading.value = true;
-  try {
-    question.value = (await getChallenge()).question;
-    form.answer = "";
-  } finally {
-    challengeLoading.value = false;
-  }
-}
+const access = isPublic ? undefined : useBusinessAccess();
+const number = ref(""),
+  queriedNumber = ref(""),
+  result = ref<any>(),
+  loading = ref(false);
 async function query() {
+  if (loading.value || !number.value.trim()) return;
   loading.value = true;
+  result.value = undefined;
+  queriedNumber.value = number.value.trim();
   try {
-    result.value = await publicVerify(form);
-  } finally {
-    loading.value = false;
-    await challenge();
-  }
-}
-async function admin() {
-  loading.value = true;
-  try {
-    result.value = await adminVerify(form.number);
+    result.value = isPublic
+      ? await publicVerify({ number: queriedNumber.value })
+      : await adminVerify(queriedNumber.value);
   } finally {
     loading.value = false;
   }
 }
-onMounted(challenge);
 </script>
-
 <template>
   <div class="verify" :class="{ public: isPublic }">
-    <section>
-      <h2>证书编号查验</h2>
-      <p>访客每次查询都需要新的服务端验证码</p>
-      <el-form label-position="top">
+    <section class="query-panel">
+      <div class="heading">
+        <span class="heading-icon"
+          ><IconifyIconOffline :icon="CertificateIcon"
+        /></span>
+        <div>
+          <h2>证书编号查验</h2>
+          <p>输入证书编号，核对获奖信息与证书状态。</p>
+        </div>
+      </div>
+      <el-form label-position="top" @submit.prevent="query">
         <el-form-item label="证书编号"
-          ><el-input v-model="form.number" placeholder="例如 2026-AC-00000001"
+          ><el-input
+            v-model="number"
+            maxlength="40"
+            clearable
+            placeholder="例如 2026AC00000001"
+            size="large"
         /></el-form-item>
-        <el-form-item
-          v-loading="challengeLoading"
-          :label="question || '正在加载验证码…'"
-          ><el-input v-model="form.answer"
-        /></el-form-item>
-        <el-button type="primary" :loading="loading" @click="query"
-          >访客查验</el-button
+        <el-button
+          type="primary"
+          native-type="submit"
+          :loading="loading"
+          :disabled="!number.trim()"
+          size="large"
+          >查验证书</el-button
         >
-        <el-button v-if="!isPublic" :loading="loading" @click="admin"
-          >管理员免验证码核验</el-button
-        >
+        <span class="limit-note">每分钟最多查验60次，历史编号可直接输入。</span>
       </el-form>
-      <el-skeleton v-if="loading" :rows="3" animated style="margin-top: 20px" />
-      <el-result
-        v-if="result"
-        :icon="
-          result.found
-            ? result.status === 'active'
-              ? 'success'
-              : 'warning'
-            : 'error'
-        "
-        :title="
-          result.found
-            ? `证书${result.status === 'active' ? '有效' : '已作废'}`
-            : '未找到记录'
-        "
-      >
-        <template #sub-title
-          ><div v-if="result.found">
-            {{ result.competition }} · {{ result.award }}<br />{{ result.team
-            }}<br />{{ result.members?.join("、") }}
-          </div></template
-        >
-      </el-result>
+      <el-skeleton v-if="loading" :rows="5" animated class="result-loading" />
+      <VerificationResult
+        v-else-if="result"
+        :result="result"
+        :number="queriedNumber"
+      />
     </section>
+    <VerificationSettings
+      v-if="!isPublic && access?.isSuper.value"
+      class="settings-panel"
+    />
   </div>
 </template>
 <style scoped>
 .verify {
   min-height: calc(100vh - 130px);
   padding: 24px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 760px);
   justify-content: center;
-  align-items: flex-start;
-  background: var(--el-fill-color-light);
+  align-content: start;
+  gap: 24px;
 }
-.verify section {
-  width: min(680px, 100%);
-  background: var(--el-bg-color);
-  border: 1px solid var(--el-border-color);
-  border-radius: 6px;
+.query-panel {
   padding: 28px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: var(--el-bg-color);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.heading-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  font-size: 26px;
+  flex-shrink: 0;
 }
 h2 {
-  font-size: 22px;
-  letter-spacing: 0;
   margin: 0;
+  font-size: 22px;
 }
 p {
   color: var(--el-text-color-secondary);
-  margin-bottom: 22px;
+  line-height: 1.7;
+  margin: 6px 0 0;
+}
+.limit-note {
+  display: inline-block;
+  margin: 10px 0 0 14px;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+}
+.result-loading {
+  margin-top: 24px;
 }
 .verify.public {
   min-height: 100vh;
+  background: var(--el-fill-color-light);
+  padding-top: clamp(24px, 8vh, 80px);
+}
+@media (min-width: 1300px) {
+  .verify:has(.settings-panel) {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.85fr);
+  }
+  .query-panel,
+  .settings-panel {
+    align-self: start;
+  }
 }
 @media (max-width: 700px) {
   .verify {
     padding: 12px;
+    gap: 16px;
   }
-  .verify section {
+  .query-panel {
     padding: 20px;
   }
-  .verify :deep(.el-form > .el-button) {
-    margin: 8px 8px 0 0;
-    white-space: normal;
-    height: auto;
-    min-height: 32px;
+  .limit-note {
+    display: block;
+    margin: 10px 0 0;
+  }
+  .heading {
+    align-items: flex-start;
   }
 }
 </style>

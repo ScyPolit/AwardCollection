@@ -16,7 +16,7 @@ function addField(){
 function addSeal(){
   const id=Number(department.value);if(!id)return message.error('请选择盖章部门')
   const label=context.departments?.find((d:any)=>d.id===id)?.name||'公章位'
-  slides.addElement({id:nanoid(10),type:'image',left:slides.viewportSize-220,top:slides.viewportSize*slides.viewportRatio-170,width:100,height:100,rotate:0,fixedRatio:true,src:placeholder(id,label),awardSealDepartment:id} as any)
+  slides.addElement({id:nanoid(10),type:'image',left:slides.viewportSize-220,top:slides.viewportSize*slides.viewportRatio-170,width:119,height:119,rotate:0,fixedRatio:true,src:placeholder(id,label),awardSealDepartment:id} as any)
   useSnapshotStore().addSnapshot()
 }
 function save(){window.dispatchEvent(new Event('award-save'))}

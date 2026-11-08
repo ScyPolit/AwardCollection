@@ -163,18 +163,15 @@ def dashboard(request):
 
 @api_view(["GET", "PUT"])
 def public_verification_setting(request):
-    setting, _ = SystemSetting.objects.get_or_create(
-        key="public_verification",
-        defaults={"value": {"show_team": True, "show_members": True, "mask_members": True}},
-    )
-    if request.method == "GET":
-        return Response(setting.value)
     if not request.user.is_superuser:
-        return Response({"detail": "仅超管可修改全校公开设置"}, status=403)
-    allowed = {"show_team", "show_members", "mask_members"}
-    setting.value = {key: bool(request.data.get(key, setting.value.get(key, True))) for key in allowed}
-    setting.save(update_fields=["value", "updated_at"])
-    return Response(setting.value)
+        raise PermissionDenied('只有超级管理员可以管理查验设置')
+    from .verification import configuration, validate_configuration
+    if request.method == 'GET':
+        return Response(configuration())
+    value = validate_configuration(request.data)
+    SystemSetting.objects.update_or_create(key='public_verification', defaults={'value': value})
+    AuditEvent.objects.create(actor=request.user, action='verification.settings_updated', object_type='SystemSetting', object_id='public_verification', detail=value)
+    return Response(value)
 
 
 def account_data(user, actor=None):
@@ -520,7 +517,10 @@ class BatchViewSet(ModelViewSet):
         batch=self.get_object()
         if not can_manage_batch(request.user,batch):raise PermissionDenied("无权提交该批次")
         try:
-            version = submit_batch(batch.id, request.user)
+            expected = request.data.get('expected_version')
+            if expected is not None and (not isinstance(expected, int) or isinstance(expected, bool)):
+                raise ValueError('名单版本无效，请刷新后重试')
+            version = submit_batch(batch.id, request.user, expected_version=expected)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
         return Response({"status": "review", "version": version.number})
@@ -580,12 +580,16 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
     serializer_class = ApprovalSerializer
 
     def get_queryset(self):
-        qs = ApprovalDepartment.objects.filter(
-            version__batch__deleted_at__isnull=True, version__batch__status=AwardBatch.Status.REVIEW,
-            version__number=models.F("version__batch__current_version"),
-        ).select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot")
+        qs = ApprovalDepartment.objects.filter(version__batch__deleted_at__isnull=True).select_related("department", "version__batch__competition", "seal_version__seal", "decision__actor").defer("version__snapshot")
+        if self.action == 'list' and self.request.query_params.get('scope') == 'approved':
+            qs = qs.filter(decision__decision='approved', version__number=models.F('version__batch__current_version'))
+        elif self.action != 'withdraw':
+            qs = qs.filter(version__batch__status=AwardBatch.Status.REVIEW, version__number=models.F('version__batch__current_version'))
         if not self.request.user.is_superuser:
-            qs = qs.filter(department_id__in=managed_departments(self.request.user))
+            if is_department_admin(self.request.user):
+                qs = qs.filter(department_id__in=managed_departments(self.request.user))
+            else:
+                qs = qs.filter(version__in=accessible_versions(self.request.user))
         return qs.order_by("-created_at")
 
     @action(detail=True, methods=["post"])
@@ -598,6 +602,16 @@ class ApprovalViewSet(ReadOnlyModelViewSet):
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=409)
         return Response({"accepted": True, "taskCreated": task is not None})
+
+    @action(detail=True, methods=['post'])
+    def withdraw(self, request, pk=None):
+        from .services import withdraw_approval
+        try:
+            return Response(withdraw_approval(self.get_object().pk, request.user, request.data.get('reason', '')))
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc))
+        except ValueError as exc:
+            return Response({'detail':str(exc)},status=409)
 
     @action(detail=True, methods=["post"], url_path="seal")
     def select_seal(self, request, pk=None):
@@ -643,24 +657,27 @@ class TemplateViewSet(ModelViewSet):
     def get_queryset(self):
         qs = Template.objects.filter(deleted_at__isnull=True)
         if not self.request.user.is_superuser:
-            qs = qs.filter(models.Q(published=True) | models.Q(department_id__in=managed_departments(self.request.user)))
+            qs = qs.filter(models.Q(published=True) | models.Q(created_by=self.request.user) | models.Q(department_id__in=managed_departments(self.request.user)))
         qs = qs.select_related("department").order_by("-updated_at")
         if self.action == "list":
             qs = qs.prefetch_related(models.Prefetch("versions", queryset=TemplateVersion.objects.only("id", "template_id", "number", "created_at", "summary").order_by("-number"), to_attr="light_versions"))
         return qs
 
     def can_manage(self, template):
-        return self.request.user.is_superuser or DepartmentMembership.objects.filter(
+        return self.request.user.is_superuser or (is_owner(self.request.user) and template.created_by_id == self.request.user.pk) or DepartmentMembership.objects.filter(
             user=self.request.user,
             department=template.department,
             role=DepartmentMembership.Role.ADMIN,
             active=True,
         ).exists()
 
+    def can_edit(self, template):
+        return self.can_manage(template) or (is_owner(self.request.user) and template.published)
+
     @transaction.atomic
     def perform_create(self, serializer):
         department = serializer.validated_data["department"]
-        if not self.request.user.is_superuser and not DepartmentMembership.objects.filter(user=self.request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
+        if not is_owner(self.request.user) and not self.request.user.is_superuser and not DepartmentMembership.objects.filter(user=self.request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             raise ValidationError("只能为本部门创建模板")
         try:
             canvas = validate_canvas(self.request.data.get("canvas", {}))
@@ -684,8 +701,8 @@ class TemplateViewSet(ModelViewSet):
     @transaction.atomic
     def save_version(self, request, pk=None):
         template = self.get_object()
-        if not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=template.department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
-            return Response({"detail": "只能维护本部门发布的模板"}, status=403)
+        if not self.can_edit(template):
+            raise PermissionDenied('无此模板的编辑权限')
         Template.objects.select_for_update().get(pk=template.pk)
         try:
             canvas = validate_canvas(request.data.get("canvas", {}))
@@ -696,12 +713,14 @@ class TemplateViewSet(ModelViewSet):
             return Response({"detail":"模板已被其他人修改，请重新载入后编辑"},status=409)
         number = latest_number + 1
         version = TemplateVersion.objects.create(template=template, number=number, canvas=canvas)
+        Template.objects.filter(pk=template.pk).update(updated_at=timezone.now())
         AuditEvent.objects.create(actor=request.user, action="template.version_saved", object_type="Template", object_id=str(template.id), detail={"name": template.name, "version": number})
         return Response({"id": version.id, "number": version.number}, status=201)
 
     @action(detail=False, methods=["post"])
     def import_file(self, request):
-        if not is_department_admin(request.user):raise PermissionDenied("需要模板管理权限")
+        from .permissions import can_edit_templates
+        if not can_edit_templates(request.user):raise PermissionDenied("需要模板编辑权限")
         uploaded=request.FILES.get('file')
         if not uploaded:raise ValidationError('请选择模板文件')
         from .template_import import import_file
@@ -712,11 +731,11 @@ class TemplateViewSet(ModelViewSet):
     def layout(self, request):
         try:
             canvas = validate_canvas(request.data.get("canvas", {}))
-            sample = type("Sample", (), {"team_name": "测试专用团队", "members": ["张三", "李四"], "award_name": "一等奖", "work_name": "测试专用作品", "category": "创新类", "teachers": ["王老师"]})()
+            sample = type("Sample", (), {"team_name": "示例团队", "members": ["张三", "李四"], "award_name": "一等奖", "work_name": "示例作品", "category": "创新类", "teachers": ["王老师"]})()
             result = {}
             for layer in canvas.get("layers", []):
                 if layer["type"] == "text":
-                    text = layer.get("text", "") if layer.get("field") == "static" else _field_value(sample, layer["field"], "2026-AC-00000001")
+                    text = layer.get("text", "") if layer.get("field") == "static" else _field_value(sample, layer["field"], "2026AC00000001")
                     result[layer["id"]] = layout_text(text, layer)
             return Response(result)
         except (ValueError, KeyError, TypeError) as exc:
@@ -740,12 +759,12 @@ class TemplateViewSet(ModelViewSet):
     def copy(self, request, pk=None):
         source = self.get_object()
         department = get_object_or_404(Department,pk=request.data.get("department"),deleted_at__isnull=True)
-        if not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
+        if not is_owner(request.user) and not request.user.is_superuser and not DepartmentMembership.objects.filter(user=request.user, department=department, role=DepartmentMembership.Role.ADMIN, active=True).exists():
             return Response({"detail": "无目标部门权限"}, status=403)
         target = Template.objects.create(name=request.data.get("name") or f"{source.name} - 副本", department=department, created_by=request.user, source=source, published=False)
         latest = source.versions.order_by("-number").first()
         TemplateVersion.objects.create(template=target, number=1, canvas=latest.canvas if latest else {})
-        return Response(TemplateSerializer(target).data, status=201)
+        return Response(self.get_serializer(target).data, status=201)
 
 
 class SealViewSet(ModelViewSet):
@@ -1037,47 +1056,33 @@ def public_routes(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def verification_challenge(request):
-    left, right = random.randint(1, 9), random.randint(1, 9)
-    request.session["verification_answer"] = left + right
-    request.session["verification_used"] = False
-    return Response({"question": f"{left} + {right} = ?"})
+    return Response({'required': False, 'limit_per_minute': 60})
 
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def public_verify(request):
+    from .verification import reserve_query, find_certificate, result
     ip = client_ip(request)
-    cutoff = timezone.now() - timedelta(minutes=1)
-    if VerificationAttempt.objects.filter(ip_address=ip, created_at__gte=cutoff).count() >= 10:
-        return Response({"detail": "查询过于频繁，请稍后重试"}, status=429)
-    number = request.data.get("number", "")
-    if not isinstance(number,str) or not 1<=len(number.strip())<=32:raise ValidationError("证书编号需要1～32个字符")
-    number=number.strip()
-    if request.session.get("verification_used", True) or str(request.data.get("answer", "")) != str(request.session.get("verification_answer", "missing")):
-        VerificationAttempt.objects.create(ip_address=ip, certificate_number=number, successful=False)
-        return Response({"detail": "验证码错误或已使用"}, status=400)
-    request.session["verification_used"] = True
-    certificate = Certificate.objects.select_related("award__version__batch__competition").filter(number=number, published_at__isnull=False).first()
-    VerificationAttempt.objects.create(ip_address=ip, certificate_number=number, successful=certificate is not None)
-    if certificate is None:
-        return Response({"found": False})
-    setting = SystemSetting.objects.filter(key="public_verification").first()
-    config = setting.value if setting else {"show_team": True, "show_members": True, "mask_members": True}
-    award = certificate.award
-    result = {"found": True, "number": certificate.number, "status": certificate.status, "competition": award.version.snapshot.get("competition",{}).get("name",award.version.batch.competition.name), "award": award.award_name}
-    if config.get("show_team", True):
-        result["team"] = award.team_name
-    if config.get("show_members", True):
-        result["members"] = [name[0] + "*" * max(1, len(name) - 1) for name in award.members] if config.get("mask_members", True) else award.members
-    return Response(result)
+    retry = reserve_query(ip)
+    if retry:
+        return Response({'detail': '每分钟最多查验60次，请稍后重试', 'retry_after': retry}, status=429, headers={'Retry-After': str(retry)})
+    number = request.data.get('number', '')
+    certificate = find_certificate(number)
+    VerificationAttempt.objects.create(ip_address=ip, certificate_number=number.strip()[:32], successful=certificate is not None)
+    return Response(result(certificate))
 
 
 @api_view(["POST"])
 def admin_verify(request):
-    certificate = Certificate.objects.select_related("award__version__batch__competition").filter(number=request.data.get("number", ""), published_at__isnull=False).first()
-    if not certificate or not visible_certificates(request.user).filter(pk=certificate.pk).exists():
-        return Response({"found": False})
-    return Response({"found": True, "number": certificate.number, "status": certificate.status, "team": certificate.award.team_name, "members": certificate.award.members, "competition": certificate.award.version.snapshot.get("competition",{}).get("name",certificate.award.version.batch.competition.name), "award": certificate.award.award_name})
+    from .verification import reserve_query, find_certificate, result
+    retry = reserve_query(client_ip(request))
+    if retry:
+        return Response({'detail': '每分钟最多查验60次，请稍后重试', 'retry_after': retry}, status=429, headers={'Retry-After': str(retry)})
+    certificate = find_certificate(request.data.get('number', ''))
+    if certificate and not visible_certificates(request.user).filter(pk=certificate.pk).exists():
+        certificate = None
+    return Response(result(certificate, internal=True))
 
 
 @api_view(["GET", "HEAD"])
@@ -1097,8 +1102,9 @@ def certificate_download(request, certificate_id, kind):
 
 @api_view(["GET", "POST"])
 def fonts_view(request):
-    if not is_department_admin(request.user):
-        raise PermissionDenied("负责人无字体管理权限")
+    from .permissions import can_edit_templates
+    if not can_edit_templates(request.user):
+        raise PermissionDenied("需要模板编辑权限")
     if request.method == 'GET':
         include_inactive = request.query_params.get('include_inactive') == '1'
         if include_inactive and not request.user.is_superuser:
@@ -1155,10 +1161,25 @@ def font_management(request, font_id):
     return Response(next(item for item in font_catalog(include_inactive=True) if item['id'] == font.pk))
 
 
+@api_view(['POST'])
+@transaction.atomic
+def font_order(request):
+    if not request.user.is_superuser:
+        raise PermissionDenied('只有超级管理员可以调整字体顺序')
+    ids = request.data.get('ids')
+    available = {item['id'] for item in font_catalog(include_inactive=True)}
+    if not isinstance(ids, list) or len(ids) > 300 or any(not isinstance(key, str) for key in ids) or len(set(ids)) != len(ids) or set(ids) - available:
+        raise ValidationError('字体顺序无效，请刷新字体列表后重试')
+    SystemSetting.objects.update_or_create(key='font_order', defaults={'value': {'ids': ids}})
+    AuditEvent.objects.create(actor=request.user, action='font.order_updated', object_type='SystemSetting', object_id='font_order', detail={'ids': ids})
+    return Response(font_catalog(include_inactive=True))
+
+
 @api_view(["GET"])
 def font_download(request, font_id):
-    if not is_department_admin(request.user):
-        raise PermissionDenied("需要模板管理权限")
+    from .permissions import can_edit_templates
+    if not can_edit_templates(request.user):
+        raise PermissionDenied("需要模板编辑权限")
     try:
         path = font_file(font_id)
     except ValueError as exc:

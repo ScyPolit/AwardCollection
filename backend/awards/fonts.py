@@ -33,11 +33,24 @@ def resolved_font_files(files):
 
 
 def font_catalog(include_inactive=False):
-    from .models import CertificateFont
+    from .models import CertificateFont, SystemSetting
     result = [{**item, 'builtin': True, 'active': True, 'url': f"/api/v1/fonts/{item['id']}/file/?v={item['sha256']}"} for item in json.loads((ASSETS / 'manifest.json').read_text(encoding='utf8'))]
     result += [{'id': item.pk, 'name': item.name, 'sha256': item.pk, 'builtin': False,
                 'active': item.active, 'license': item.license_note, 'url': f'/api/v1/fonts/{item.pk}/file/'} for item in CertificateFont.objects.filter(deleted_at__isnull=True, **({} if include_inactive else {'active': True}))]
-    return result
+    setting = SystemSetting.objects.filter(key='font_order').first()
+    order = (setting.value.get('ids', []) if setting else [])
+    positions = {key: index for index, key in enumerate(order)}
+    def default_priority(item):
+        name = item['name'].lower()
+        if '华文行楷' in name or 'stxingkai' in name:
+            return 0
+        if name.strip() == '宋体' or 'simsun' in name:
+            return 1
+        if '宋体' in name and '仿宋' not in name:
+            return 2
+        return 3
+    result.sort(key=lambda item: (0, positions[item['id']]) if item['id'] in positions else (1, default_priority(item)))
+    return [{**item, 'sort_order': index + 1} for index, item in enumerate(result)]
 
 
 def font_file(font_id):

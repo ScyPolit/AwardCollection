@@ -1,0 +1,48 @@
+{
+  "observed_at": "2026-11-08 06:22:30.720834+00:00",
+  "task_id": 12,
+  "batch_id": 12,
+  "status": "done",
+  "processed": 300,
+  "total": 300,
+  "attempts": 1,
+  "started_at": "2026-11-08 06:02:47.448463+00:00",
+  "last_updated_at": "2026-11-08 06:19:51.579617+00:00",
+  "seconds_from_start_to_last_update": 1024.131154,
+  "certificate_intervals": {
+    "samples": 299,
+    "median_seconds": 3.311289,
+    "mean_seconds": 3.3505867525083612,
+    "max_seconds": 4.695093
+  },
+  "prepared_files": [
+    {
+      "kind": "batch_thumbnail",
+      "status": "ready",
+      "processed": 1,
+      "total": 1,
+      "byte_size": 521258
+    },
+    {
+      "kind": "batch_thumbnail",
+      "status": "ready",
+      "processed": 1,
+      "total": 1,
+      "byte_size": 525706
+    },
+    {
+      "kind": "batch_zip",
+      "status": "ready",
+      "processed": 300,
+      "total": 300,
+      "byte_size": 2006194717
+    }
+  ],
+  "health": {
+    "status": "ok",
+    "database": "ok",
+    "version": "405309b81871c06a65d2ecb17de59c03085c50d5"
+  },
+  "worker_memory_events": "low 0\nhigh 0\nmax 12161\noom 0\noom_kill 0\noom_group_kill 0\n",
+  "isolated_container_remaining": ""
+}

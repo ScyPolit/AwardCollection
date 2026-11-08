@@ -112,8 +112,8 @@ def department_pfx(department):
         key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
         name = x509.Name([
             x509.NameAttribute(NameOID.COUNTRY_NAME, "CN"),
-            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AwardCollection TEST ONLY"),
-            x509.NameAttribute(NameOID.COMMON_NAME, f"{department.name} 测试签名"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "校赛电子证书系统"),
+            x509.NameAttribute(NameOID.COMMON_NAME, f"{department.name} 电子签名"),
         ])
         now = datetime.now(dt_timezone.utc)
         cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())

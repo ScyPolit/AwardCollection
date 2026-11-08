@@ -31,6 +31,7 @@ export type Batch = {
 };
 export type Approval = {
   id: number;
+  can_withdraw?: boolean;
   batch_id: number;
   batch_name: string;
   version_number: number;
@@ -62,6 +63,8 @@ export type Certificate = {
 };
 export type Template = {
   id: number;
+  can_edit?: boolean;
+  can_manage?: boolean;
   name: string;
   department: number;
   department_name: string;
@@ -118,6 +121,7 @@ export const currentUser = () =>
   >("/api/v1/auth/me/");
 export type CertificateFont = {
   id: string;
+  sort_order: number;
   name: string;
   url: string;
   builtin: boolean;
@@ -129,6 +133,10 @@ export const listFonts = () =>
   http.get<CertificateFont[], never>("/api/v1/fonts/");
 export const manageFonts = () =>
   http.get<CertificateFont[], never>("/api/v1/fonts/?include_inactive=1");
+export const reorderFonts = (ids: string[]) =>
+  http.post<CertificateFont[], object>("/api/v1/fonts/order/", {
+    data: { ids }
+  });
 export const updateFont = (id: string, data: object) =>
   http.request<CertificateFont>("patch", `/api/v1/fonts/${id}/`, { data });
 export const importFont = (data: FormData) =>
@@ -158,9 +166,9 @@ export const batchDetail = (id: number, page = 1) =>
   http.get<any, never>(`/api/v1/batches/${id}/detail/`, {
     params: { page, page_size: 50 }
   });
-export const submitBatch = (id: number) =>
+export const submitBatch = (id: number, expectedVersion?: number) =>
   http.post<any, object>(`/api/v1/batches/${id}/submit/`, {
-    data: {},
+    data: {expected_version:expectedVersion},
     timeout: 120000
   });
 export const batchProgress = (id: number) =>
@@ -178,8 +186,15 @@ export const importAwards = (
     headers: { "Content-Type": "multipart/form-data" }
   });
 };
-export const listApprovals = () =>
-  http.get<Approval[], never>("/api/v1/approvals/");
+export const listApprovals = (scope?: string) =>
+  http.get<Approval[], never>(
+    `/api/v1/approvals/${scope ? "?scope=" + scope : ""}`
+  );
+export const withdrawApproval = (id: number, reason: string) =>
+  http.post<{ withdrawn: boolean; voided_certificates: number }, object>(
+    `/api/v1/approvals/${id}/withdraw/`,
+    { data: { reason } }
+  );
 export const decideApproval = (
   id: number,
   decision: string,

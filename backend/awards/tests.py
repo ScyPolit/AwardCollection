@@ -185,16 +185,16 @@ class WorkflowTests(TestCase):
         response = client.get(f"/api/v1/certificates/batch/{self.batch.id}/archive/")
         self.assertEqual(response.status_code, 404)
 
-    def test_verification_challenge_is_single_use(self):
+    def test_verification_no_longer_requires_captcha(self):
         certificate = self.create_published_certificate()
         client = APIClient()
         response = client.get("/api/v1/verification/challenge/")
-        left, right = [int(item.strip()) for item in response.data["question"].split("=")[0].split("+")]
-        payload = {"number": certificate.number, "answer": left + right}
+        self.assertFalse(response.data['required'])
+        payload = {"number": certificate.number}
         first = client.post("/api/v1/verification/query/", payload, format="json")
         second = client.post("/api/v1/verification/query/", payload, format="json")
         self.assertTrue(first.data["found"])
-        self.assertEqual(second.status_code, 400)
+        self.assertTrue(second.data['found'])
 
     def test_login_locks_after_five_failures(self):
         client = APIClient()
@@ -547,9 +547,10 @@ class WorkflowTests(TestCase):
         self.assertEqual(client.post('/api/v1/fonts/',{'file':SimpleUploadedFile('bad.ttf',b'not a font'),'license_confirmed':'true'},format='multipart').status_code,400)
 
 
-        for user in (self.owner,self.outsider):
-            client.force_authenticate(user)
-            self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,403)
+        client.force_authenticate(self.owner)
+        self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,400)
+        client.force_authenticate(self.outsider)
+        self.assertEqual(client.post('/api/v1/fonts/',{},format='multipart').status_code,403)
 
     def test_only_superuser_can_manage_font_without_changing_historical_bytes(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

@@ -25,7 +25,9 @@ defineEmits<{ "update:modelValue": [value: boolean] }>();
         :key="label"
         :label="String(label)"
       >
-        <div class="value"><DetailValue :value="value" /></div>
+        <div class="value">
+          <DetailValue :value="value" :field="String(label)" />
+        </div>
       </el-descriptions-item>
     </el-descriptions>
     <el-alert

@@ -178,12 +178,16 @@ class ApprovalDecision(TimeStampedModel):
     class Decision(models.TextChoices):
         APPROVED = "approved", "通过"
         RETURNED = "returned", "退回"
+        WITHDRAWN = "withdrawn", "批准已撤回"
 
     requirement = models.OneToOneField(ApprovalDepartment, on_delete=models.CASCADE, related_name="decision")
     decision = models.CharField(max_length=16, choices=Decision.choices)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
     comment = models.TextField(blank=True)
     issue_rows = models.JSONField(default=list, blank=True)
+    withdrawn_at = models.DateTimeField(null=True, blank=True)
+    withdrawn_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT, related_name='withdrawn_approvals')
+    withdrawal_reason = models.TextField(blank=True)
 
 
 class GenerationTask(TimeStampedModel):
@@ -192,6 +196,7 @@ class GenerationTask(TimeStampedModel):
         RUNNING = "running", "处理中"
         FAILED = "failed", "失败"
         DONE = "done", "完成"
+        CANCELLED = "cancelled", "已取消"
 
     version = models.OneToOneField(BatchVersion, on_delete=models.PROTECT, related_name="generation_task")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.QUEUED)
@@ -310,3 +315,9 @@ class VerificationAttempt(models.Model):
     ip_address = models.GenericIPAddressField()
     certificate_number = models.CharField(max_length=32, blank=True)
     successful = models.BooleanField(default=False)
+
+
+class VerificationRateLimit(models.Model):
+    ip_address = models.GenericIPAddressField(primary_key=True)
+    timestamps = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True, db_index=True)

@@ -15,6 +15,10 @@ def is_owner(user):
     return user.groups.filter(name=OWNER_GROUP).exists()
 
 
+def can_edit_templates(user):
+    return is_department_admin(user) or is_owner(user)
+
+
 def grant_owner(user):
     user.groups.add(Group.objects.get_or_create(name=OWNER_GROUP)[0])
 

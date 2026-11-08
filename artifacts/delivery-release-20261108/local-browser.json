@@ -1,0 +1,51 @@
+{
+  "environment": "local synthetic QA data only",
+  "backend_tests": {
+    "total": 133,
+    "passed": 132,
+    "skipped": 1,
+    "skip_reason": "PostgreSQL-only concurrency case; scheduled for isolated target test database"
+  },
+  "frontend_typecheck": true,
+  "production_build": true,
+  "checks": {
+    "menu_badge_center_difference_px": 0,
+    "visible_upstream_branding_or_links": 0,
+    "owner_template_edit_saved": true,
+    "new_seal_positions": [
+      [
+        119,
+        119
+      ],
+      [
+        119,
+        119
+      ]
+    ],
+    "owner_has_no_seal_or_font_management_menu": true,
+    "font_order_save_and_reset": true,
+    "submission_immediately_disables_roster_and_excel_controls": true,
+    "submission_preview_ready_on_first_approver_open": true,
+    "preview_size": [
+      640,
+      453
+    ],
+    "approved_tab": true,
+    "issued_certificate_withdrawal_test": {
+      "number": "2026AC00000069",
+      "status_before": "active",
+      "status_after": "void",
+      "pdf_original_intact": true,
+      "png_original_intact": true,
+      "new_revision": 3,
+      "batch_status": "returned",
+      "owner_updated_without_refresh": true
+    },
+    "public_legacy_number_without_hyphens": true,
+    "public_masked_names_and_watermark": true,
+    "dark_editor_and_flow_checked": true,
+    "mobile_public_result_width": 390,
+    "page_horizontal_overflow": false
+  },
+  "generation_tuning": "none; concurrency 1 and worker 2 GiB preserved"
+}

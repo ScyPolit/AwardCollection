@@ -28,7 +28,42 @@ KINDS = {"batch_zip", "batch_preview", "batch_thumbnail", "template_thumbnail"}
 
 def template_versions_for(user):
     qs = TemplateVersion.objects.filter(template__deleted_at__isnull=True)
-    return qs if user.is_superuser else qs.filter(models.Q(template__published=True) | models.Q(template__department_id__in=managed_departments(user)))
+    return qs if user.is_superuser else qs.filter(models.Q(template__published=True) | models.Q(template__created_by=user) | models.Q(template__department_id__in=managed_departments(user)))
+
+
+def publish_submission_previews(version_id, expected_keys, pdf_bytes):
+    """Persist the already validated first page; no second browser or worker queue."""
+    import pymupdf as fitz
+    root = Path(settings.MEDIA_ROOT) / 'protected' / 'prepared'
+    root.mkdir(parents=True, exist_ok=True)
+    written = []
+    try:
+        with transaction.atomic():
+            for kind, ext in [('batch_preview', 'pdf'), ('batch_thumbnail', 'png')]:
+                if key_for(kind, version_id) != expected_keys[kind]:
+                    continue
+                asset, _ = PreparedFile.objects.get_or_create(key=expected_keys[kind], defaults={'kind': kind, 'version_id': version_id})
+                asset = PreparedFile.objects.select_for_update().get(pk=asset.pk)
+                if asset.status == 'ready' and asset.file.storage.exists(asset.file.name):
+                    continue
+                path = root / f'{asset.pk}-submission-{uuid.uuid4()}.{ext}'
+                written.append(path)
+                if ext == 'pdf':
+                    path.write_bytes(pdf_bytes)
+                else:
+                    with fitz.open(stream=pdf_bytes, filetype='pdf') as document:
+                        page = document[0]
+                        scale = min(1, 640 / max(page.rect.width, page.rect.height))
+                        page.get_pixmap(matrix=fitz.Matrix(scale, scale), alpha=False).save(path)
+                asset.file.name = path.relative_to(settings.MEDIA_ROOT).as_posix()
+                asset.sha256, asset.byte_size = file_digest(path), path.stat().st_size
+                asset.status, asset.processed, asset.total = 'ready', 1, 1
+                asset.error, asset.lease_token, asset.lease_expires_at = '', None, None
+                asset.save()
+    except Exception:
+        for path in written:
+            path.unlink(missing_ok=True)
+        raise
 
 
 def archive_stamp(version_id):
@@ -66,7 +101,15 @@ def request_file(user, kind, *, batch_id=None, template_version_id=None):
         version_id = version.pk
         template_version_id = None
         if kind == "batch_zip" and not Certificate.objects.filter(award__version_id=version_id, deleted_at__isnull=True, published_at__isnull=False).exists():
-            raise ValidationError("证书尚未全部发布，请等待生成完成")
+            # A withdrawal creates a clean revision. Its published originals still
+            # belong in the archive, within the caller's historical approval scope.
+            version = accessible_versions(user).filter(
+                batch=batch, awards__certificate__deleted_at__isnull=True,
+                awards__certificate__published_at__isnull=False,
+            ).order_by("-number").only("pk").first()
+            if version is None:
+                raise ValidationError("证书尚未全部发布，请等待生成完成")
+            version_id = version.pk
         if kind in ("batch_preview", "batch_thumbnail") and not version.awards.exists():
             raise ValidationError("请先导入名单")
     key = key_for(kind, version_id, template_version_id)
@@ -196,7 +239,7 @@ def render_preview_job(kind, canvas, values, seals, fonts, target):
     try:
         with resolved_font_files(fonts):
             buffer = io.BytesIO()
-            render_unsigned(SimpleNamespace(**values), "PREVIEW-ONLY", buffer, template=canvas, seals=seals)
+            render_unsigned(SimpleNamespace(**values), "2026AC00000000", buffer, template=canvas, seals=seals)
             if kind == "batch_preview":
                 Path(target).write_bytes(buffer.getbuffer())
             else:

@@ -1,6 +1,6 @@
 {
-  "name": "pure-admin-thin",
-  "version": "6.2.0",
+  "name": "awardcollection-web",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -23,30 +23,24 @@
     "build:main": "rimraf dist && NODE_OPTIONS=--max-old-space-size=8192 vite build"
   },
   "keywords": [
-    "pure-admin-thin",
-    "vue-pure-admin",
-    "element-plus",
-    "tailwindcss",
-    "pure-admin",
-    "typescript",
-    "pinia",
+    "awardcollection",
+    "certificate-management",
     "vue3",
-    "vite",
-    "esm"
+    "element-plus",
+    "typescript"
   ],
-  "homepage": "https://github.com/pure-admin/pure-admin-thin",
+  "homepage": "https://github.com/ScyPolit/AwardCollection",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pure-admin/pure-admin-thin.git"
+    "url": "git+https://github.com/ScyPolit/AwardCollection.git"
   },
   "bugs": {
-    "url": "https://github.com/pure-admin/vue-pure-admin/issues"
+    "url": "https://github.com/ScyPolit/AwardCollection/issues"
   },
   "license": "MIT",
   "author": {
-    "name": "xiaoxian521",
-    "email": "pureadmin@163.com",
-    "url": "https://github.com/xiaoxian521"
+    "name": "ScyPolit",
+    "url": "https://github.com/ScyPolit"
   },
   "dependencies": {
     "@pureadmin/descriptions": "^1.2.1",
