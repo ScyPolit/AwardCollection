@@ -1,5 +1,6 @@
 """One source of truth for object-level visibility, including frozen approvals."""
 
+from django.contrib.auth import get_user_model
 from django.db.models import Q, F, Value, CharField
 from django.db.models.functions import Cast, Concat
 from .models import Competition, AwardBatch, BatchVersion, Certificate, DepartmentMembership, Notification, RevocationRequest, Template
@@ -22,7 +23,25 @@ def accessible_templates(user):
 
 
 def owned_competitions(user):
+    from .permissions import is_owner
+    if not is_owner(user):
+        return Competition.objects.none()
     return Competition.objects.filter(Q(created_by=user) | Q(collaborators=user)).distinct()
+
+
+def collaborator_options(user):
+    """Use the same role and relationship boundary for options and writes."""
+    from .permissions import OWNER_GROUP
+    users = get_user_model().objects.filter(
+        is_active=True, management_profile__deleted_at__isnull=True,
+    )
+    if user.is_superuser:
+        return users.filter(Q(groups__name=OWNER_GROUP) | Q(is_superuser=True)).distinct()
+    related = accessible_competitions(user)
+    return users.filter(is_superuser=False, groups__name=OWNER_GROUP).filter(
+        Q(pk=user.pk) | Q(management_profile__created_by=user)
+        | Q(competitions__in=related) | Q(created_competitions__in=related)
+    ).distinct()
 
 
 def accessible_versions(user):

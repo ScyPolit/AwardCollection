@@ -1,11 +1,51 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 
 from .models import (
     ApprovalDepartment, AwardBatch, Certificate, Competition, Department,
     Notification, RevocationRequest, Seal, SealVersion, TeamAward, Template,
     TemplateVersion,
 )
+
+
+class AccountCreateSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150)
+    password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=1024)
+    name = serializers.CharField(max_length=150, required=False, allow_blank=True, default="")
+    role = serializers.ChoiceField(choices=["admin", "owner"], default="owner")
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(deleted_at__isnull=True),
+        required=False, allow_null=True,
+    )
+
+    def to_internal_value(self, data):
+        # DRF normally ignores unknown fields, which can hide tampering such as
+        # department_id or is_superuser behind an apparently successful create.
+        if isinstance(data, dict):
+            unknown = set(data) - set(self.fields)
+            if unknown:
+                raise serializers.ValidationError({key: "不支持的字段" for key in sorted(unknown)})
+        return super().to_internal_value(data)
+
+    def validate(self, attrs):
+        if attrs["role"] == "admin":
+            if not self.context["request"].user.is_superuser:
+                raise PermissionDenied("只有超管可以创建部门管理员")
+            if not attrs.get("department"):
+                raise serializers.ValidationError({"department": "部门管理员需要选择管理部门"})
+        elif attrs.get("department") is not None:
+            raise serializers.ValidationError({"department": "负责人是全局角色，创建时不能指定部门"})
+        User = get_user_model()
+        candidate = User(username=attrs["username"], first_name=attrs["name"])
+        try:
+            User._meta.get_field("username").run_validators(attrs["username"])
+            validate_password(attrs["password"], candidate)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError("；".join(exc.messages))
+        return attrs
 
 
 class UserOptionSerializer(serializers.ModelSerializer):
@@ -30,7 +70,13 @@ class CompetitionSerializer(serializers.ModelSerializer):
     department_names = serializers.SerializerMethodField()
     collaborator_names = serializers.SerializerMethodField()
     departments = serializers.PrimaryKeyRelatedField(many=True, queryset=Department.objects.filter(deleted_at__isnull=True))
-    collaborators = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.filter(is_active=True), required=False, allow_empty=True)
+    collaborators = serializers.PrimaryKeyRelatedField(many=True, queryset=get_user_model().objects.none(), required=False, allow_empty=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if request := self.context.get("request"):
+            from .scopes import collaborator_options
+            self.fields["collaborators"].child_relation.queryset = collaborator_options(request.user)
 
     class Meta:
         model = Competition

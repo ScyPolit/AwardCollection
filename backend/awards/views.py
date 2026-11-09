@@ -8,8 +8,6 @@ import zipfile
 from datetime import timedelta
 
 from django.contrib.auth import authenticate, get_user_model, login, logout
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError as DjangoValidationError
 from PIL import Image, ImageDraw
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -32,7 +30,7 @@ from .models import (
     TeamAward, Template, TemplateVersion, VerificationAttempt, CertificateFont, AccountProfile,
 )
 from .serializers import (
-    ApprovalSerializer, BatchSerializer, CertificateSerializer,
+    AccountCreateSerializer, ApprovalSerializer, BatchSerializer, CertificateSerializer,
     CompetitionSerializer, DepartmentSerializer, NotificationSerializer,
     RevocationSerializer, SealSerializer, TemplateSerializer,
     UserOptionSerializer,
@@ -196,27 +194,11 @@ def account_management(request):
             departments = DepartmentMembership.objects.filter(user=request.user, role="admin", active=True).values_list("department_id", flat=True)
             users = users.filter(models.Q(pk=request.user.pk) | models.Q(management_profile__created_by=request.user) | models.Q(management_profile__created_by__departmentmembership__department_id__in=departments, management_profile__created_by__departmentmembership__role="admin", management_profile__created_by__departmentmembership__active=True) | models.Q(departmentmembership__department_id__in=departments, departmentmembership__role="admin", departmentmembership__active=True)).distinct()
         return Response([account_data(user, request.user) for user in users.order_by("username")])
-    username = str(request.data.get("username", "")).strip()
-    password = str(request.data.get("password", ""))
-    name = str(request.data.get("name", "")).strip()
-    role = request.data.get("role", "owner")
-    if role not in ("admin", "owner"):
-        raise ValidationError("角色无效")
-    if not username or len(username) > 150 or len(name) > 150:
-        raise ValidationError("账号或姓名为空或超过长度限制")
-    candidate = User(username=username, first_name=name)
-    try:
-        User._meta.get_field("username").run_validators(username)
-        validate_password(password, candidate)
-    except DjangoValidationError as exc:
-        raise ValidationError("；".join(exc.messages))
-    department = None
-    if role == "admin":
-        if not request.user.is_superuser:
-            raise PermissionDenied("只有超管可以创建部门管理员")
-        department = Department.objects.filter(pk=request.data.get("department")).first()
-        if not department:
-            raise ValidationError("部门管理员需要选择管理部门")
+    serializer = AccountCreateSerializer(data=request.data, context={"request": request})
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    username, password, name, role = (data[key] for key in ("username", "password", "name", "role"))
+    department = data.get("department")
     try:
         with transaction.atomic():
             user = User.objects.create_user(username=username, password=password, first_name=name)
@@ -247,6 +229,12 @@ def membership_management(request):
     if role == "owner":
         if not active and not request.user.is_superuser:
             raise PermissionDenied("只有超管可以撤销全局负责人角色")
+        if not request.user.is_superuser and (
+            not user.is_active or user.is_superuser
+            or not AccountProfile.objects.filter(user=user, created_by=request.user, deleted_at__isnull=True).exists()
+            or is_department_admin(user)
+        ):
+            raise PermissionDenied("只能为本人创建的有效普通账号授予负责人角色")
         if active:
             grant_owner(user)
         else:
@@ -256,7 +244,7 @@ def membership_management(request):
     else:
         if not request.user.is_superuser:
             raise PermissionDenied("只有超管可以授予部门管理员权限")
-        department = Department.objects.filter(pk=request.data.get("department")).first()
+        department = Department.objects.filter(pk=request.data.get("department"), deleted_at__isnull=True).first()
         if not department:
             raise ValidationError("请选择管理部门")
         membership, _ = DepartmentMembership.objects.update_or_create(user=user, department=department, role="admin", defaults={"active": active})
@@ -297,13 +285,8 @@ class UserOptionViewSet(ReadOnlyModelViewSet):
     serializer_class = UserOptionSerializer
 
     def get_queryset(self):
-        if self.request.user.is_superuser:
-            return get_user_model().objects.filter(is_active=True).order_by("username")
-        related = accessible_competitions(self.request.user)
-        return get_user_model().objects.filter(is_active=True, groups__name=OWNER_GROUP).filter(
-            models.Q(pk=self.request.user.pk) | models.Q(management_profile__created_by=self.request.user)
-            | models.Q(competitions__in=related) | models.Q(created_competitions__in=related)
-        ).distinct().order_by("username")
+        from .scopes import collaborator_options
+        return collaborator_options(self.request.user).order_by("username")
 
 
 class CompetitionViewSet(ModelViewSet):
