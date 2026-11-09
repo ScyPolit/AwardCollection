@@ -303,9 +303,9 @@ def decide(requirement_id, actor, decision, comment="", *, seal_version_id=UNSET
 
 @transaction.atomic
 def emergency_issue(batch_id, actor, reason, password):
-    if not actor.is_superuser or not actor.check_password(password):
+    if not actor.is_superuser or not isinstance(password, str) or not actor.check_password(password):
         raise PermissionError("超管身份或密码复核失败")
-    if not reason.strip():
+    if not isinstance(reason, str) or not reason.strip():
         raise ValueError("必须填写应急原因")
     batch = AwardBatch.objects.select_for_update().get(pk=batch_id)
     if batch.status not in [AwardBatch.Status.DRAFT, AwardBatch.Status.RETURNED, AwardBatch.Status.REVIEW, AwardBatch.Status.FAILED]:
@@ -403,9 +403,9 @@ def decide_revocation(request_id, department_id, actor, decision, comment=""):
 
 @transaction.atomic
 def emergency_void(certificate_id, actor, reason, password):
-    if not actor.is_superuser or not actor.check_password(password):
+    if not actor.is_superuser or not isinstance(password, str) or not actor.check_password(password):
         raise PermissionError("超管身份或密码复核失败")
-    if not reason.strip():
+    if not isinstance(reason, str) or not reason.strip():
         raise ValueError("必须填写应急原因")
     certificate = Certificate.objects.select_for_update().get(pk=certificate_id)
     certificate.status = Certificate.Status.VOID

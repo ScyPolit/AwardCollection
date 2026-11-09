@@ -333,7 +333,7 @@ class WorkflowTests(TestCase):
 
     def test_department_admin_can_create_owner_but_not_admin(self):
         client = APIClient(); client.force_authenticate(self.admin_a)
-        payload = {"username": "new_owner", "name": "新负责人", "password": "Owner-Pass-2026", "department": self.departments[0].id, "role": "owner"}
+        payload = {"username": "new_owner", "name": "新负责人", "password": "Owner-Pass-2026", "role": "owner"}
         response = client.post("/api/v1/management/accounts/", payload, format="json")
         self.assertEqual(response.status_code, 201, response.data)
         payload.update(username="new_admin", role="admin")
@@ -396,6 +396,8 @@ class WorkflowTests(TestCase):
         self.assertFalse(Department.objects.filter(code="FORBIDDEN").exists())
 
     def test_admin_can_link_existing_owner_without_resetting_password(self):
+        from .models import AccountProfile
+        AccountProfile.objects.create(user=self.owner, created_by=self.admin_a)
         client = APIClient()
         client.force_authenticate(self.admin_a)
         response = client.post("/api/v1/management/memberships/", {
